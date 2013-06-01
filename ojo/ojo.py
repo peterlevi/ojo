@@ -101,7 +101,8 @@ class Ojo(Gtk.Window):
             GObject.idle_add(lambda: self.go(1 if key == "Right" else -1))
 
     def clicked(self, widget, event):
-        self.go(-1 if event.x < 0.5 * self.real_width else 1)
+        if event.button == 1:
+            self.go(-1 if event.x < 0.5 * self.real_width else 1)
 
     def scrolled(self, widget, event):
         if event.direction not in (
