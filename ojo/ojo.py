@@ -8,13 +8,14 @@ import sys
 class Ojo(Gtk.Window):
     def __init__(self):
         super(Ojo, self).__init__()
-
-    def main(self):
         self.full = False
+        self.screen = self.get_screen()
         self.set_position(Gtk.WindowPosition.CENTER)
         self.set_decorated(False)
         #self.maximize()
-        self.screen = self.get_screen()
+        self.add_events(Gdk.EventMask.BUTTON_PRESS_MASK)
+        self.add_events(Gdk.EventMask.BUTTON_RELEASE_MASK)
+        self.add_events(Gdk.EventMask.SCROLL_MASK)
 
         self.visual = self.screen.get_rgba_visual()
         if self.visual and self.screen.is_composited():
@@ -23,11 +24,11 @@ class Ojo(Gtk.Window):
         self.connect("draw", self.area_draw)
 
         self.image = Gtk.Image()
-        self.set_events(Gdk.EventMask.BUTTON_RELEASE_MASK)
         self.add(self.image)
+
+    def main(self):
         self.show(sys.argv[1])
         self.show_all()
-
         GObject.idle_add(self.after_quick_start)
         Gtk.main()
 
@@ -78,7 +79,9 @@ class Ojo(Gtk.Window):
             print str(ex), filename
             GObject.idle_add(lambda: self.go(direction))
 
-    def toggle_fullscreen(self, full):
+    def toggle_fullscreen(self, full=None):
+        if full is None:
+            full = not self.full
         self.full = full
         if self.full:
             self.get_window().set_cursor(Gdk.Cursor.new_for_display(Gdk.Display.get_default(), Gdk.CursorType.BLANK_CURSOR))
@@ -92,7 +95,7 @@ class Ojo(Gtk.Window):
         if key == 'Escape':
             Gtk.main_quit()
         elif key in ("f", "F", "F11"):
-            self.toggle_fullscreen(not self.full)
+            self.toggle_fullscreen()
             self.show()
         elif key in ("Right", "Left"):
             GObject.idle_add(lambda: self.go(1 if key == "Right" else -1))
@@ -100,11 +103,23 @@ class Ojo(Gtk.Window):
     def clicked(self, widget, event):
         self.go(-1 if event.x < 0.5 * self.real_width else 1)
 
+    def scrolled(self, widget, event):
+        if event.direction not in (
+            Gdk.ScrollDirection.UP, Gdk.ScrollDirection.LEFT, Gdk.ScrollDirection.DOWN, Gdk.ScrollDirection.RIGHT):
+            return
+
+        if getattr(self, "wheel_timer", None):
+            GObject.source_remove(self.wheel_timer)
+
+        direction = -1 if event.direction in (Gdk.ScrollDirection.UP, Gdk.ScrollDirection.LEFT) else 1
+        self.wheel_timer = GObject.timeout_add(100, lambda: self.go(direction))
+
     def after_quick_start(self):
         self.connect("delete-event", Gtk.main_quit)
         self.connect("key-press-event", self.process_key)
-        #self.connect("focus-out-event", Gtk.main_quit)
+        self.connect("focus-out-event", Gtk.main_quit)
         self.connect("button-release-event", self.clicked)
+        self.connect("scroll-event", self.scrolled)
         self.folder = os.path.dirname(self.current)
         self.images = os.listdir(self.folder)
         self.position = self.images.index(os.path.basename(self.current))
