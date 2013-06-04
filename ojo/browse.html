@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<body style='background: rgba(0, 0, 0, 0);'>
+</body>
+<script type="text/javascript">
+    function add_image(file, b64, current) {
+        var child = document.createElement('a');
+        child.setAttribute('href', 'ojo:' + file);
+        var html = "<img src='data:image/jpg;base64,%b64' style='margin: 10px; %border'/>".replace('%b64', b64);
+        html = html.replace('%border', false ? 'border: gray 5px solid' : 1) //todo border
+        child.innerHTML = html;
+        document.body.appendChild(child)
+    }
+</script>
+</html>
