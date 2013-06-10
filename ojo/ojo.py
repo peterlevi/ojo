@@ -35,9 +35,11 @@ class Ojo(Gtk.Window):
         path = os.path.realpath(sys.argv[1])
         print path
         if os.path.isfile(path):
+            self.mode = 'image'
             self.show(path)
             GObject.idle_add(self.after_quick_start)
         else:
+            self.mode = 'folder'
             self.current = os.path.join(path, 'none')
             self.after_quick_start()
             self.show(self.images[0])
@@ -55,13 +57,16 @@ class Ojo(Gtk.Window):
         cr.paint()
         cr.set_operator(cairo.OPERATOR_OVER)
 
+    def update_browser(self, file):
+        self.web_view.execute_script("select('%s')" % file)
+
     def show(self, filename=None):
         if filename:
             print filename
         self.current = filename or self.current
         self.set_title(self.current)
         if getattr(self, "web_view", None):
-            self.web_view.execute_script("select('%s')" % self.current)
+            self.update_browser(self.current)
         if self.mode == 'image':
             self.adjust_size()
 
@@ -137,8 +142,8 @@ class Ojo(Gtk.Window):
         elif key == 'Return':
             modes = ["image", "folder"]
             self.set_mode(modes[(modes.index(self.mode) + 1) % len(modes)])
-        else:
-            return False
+        elif self.mode == 'folder':
+            self.web_view.execute_script("on_key('%s')" % key)
 
     def clicked(self, widget, event):
         import time
@@ -198,11 +203,15 @@ class Ojo(Gtk.Window):
             import urllib
             import re
             import time
-            if not action.get_original_uri().startswith('ojo:'):
+
+            url = action.get_original_uri()
+            if not url.startswith('ojo:') and not url.startswith('ojo-select:'):
                 return False
-            self.show(urllib.unquote(re.sub('^ojo:', '', action.get_original_uri())))
-            self.from_browser_time = time.time()
-            self.set_mode("image")
+            self.current = urllib.unquote(re.sub('^ojo.*:', '', url))
+            if url.startswith('ojo:'):
+                self.show()
+                self.from_browser_time = time.time()
+                self.set_mode("image")
             policy.ignore()
             return True
         self.web_view.connect("navigation-policy-decision-requested", nav)
@@ -223,7 +232,7 @@ class Ojo(Gtk.Window):
                     b64 = self.b64(img).replace('\n', '')
                     self.web_view.execute_script("add_image('%s', '%s', %s)" % (img, b64, 'true' if img==self.current else 'false'))
                     if img == self.current:
-                        self.web_view.execute_script("select('%s')" % img)
+                        self.update_browser(img)
                 except Exception, e:
                     print str(e)
                 GObject.idle_add(self.prepare_thumbs)

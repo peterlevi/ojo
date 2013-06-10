@@ -20,12 +20,25 @@
             margin: 0px;
             border: solid 10px #F07746;
         }
+
+        #label {
+            position: fixed;
+            z-index: 100;
+            bottom: 10px;
+            right: 50px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            color: white;
+            border-radius: 10px;
+        }
     </style>
 </head>
 
 <body>
+<div id="label"></div>
 </body>
 <script src="lib/jquery-2.0.2.min.js" type="text/javascript"></script>
+<script src="lib/underscore-min.js" type="text/javascript"></script>
 <script type="text/javascript">
     function add_image(file, b64, current) {
         var html = "<div class='item' file='%file'><img src='data:image/jpg;base64,%b64'/></div>";
@@ -38,6 +51,7 @@
     var current;
     function select(file) {
         current = file;
+        $("#label").html(file);
         $(".item").removeClass('selected');
         var el = $(".item[file='" + file + "']");
         el.addClass('selected');
@@ -48,9 +62,40 @@
         }
     }
 
+    function on_key(key) {
+        if (key == 'Up' || key == 'Down') {
+            var sel = $('.item.selected')[0];
+            var applicable = _.filter($(".item"), function(x) {
+                var o1 = $(x).offset().top;
+                var o2 = $(sel).offset().top;
+                return key == 'Up' ? o1 < o2 - 10 : o1 > o2 + 10;
+            });
+            if (applicable.length > 0) {
+                var goto = _.min(applicable, function(el) {
+                    return distance($(el), $(sel));
+                });
+                var file = $(goto).attr('file');
+                select(file);
+                window.location = "ojo-select:" + file;
+            }
+        }
+    }
+
+    function distance(el1, el2) {
+        dy = $(el1).offset().top - $(el2).offset().top;
+        dx = $(el1).offset().left - $(el2).offset().left;
+        return dx*dx + dy*dy
+    }
+
     $(function() {
         $(document).contextmenu(function(event) {
             event.preventDefault();
+        });
+
+        $(document).keydown(function(event) {
+            if (event.which == 38 || event.which == 40) {
+                event.preventDefault();
+            }
         });
 
         $(window).resize(function() {
