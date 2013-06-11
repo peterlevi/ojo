@@ -12,7 +12,7 @@ class Ojo(Gtk.Window):
         self.screen = self.get_screen()
         self.set_position(Gtk.WindowPosition.CENTER)
         self.set_decorated(False)
-        #self.maximize()
+        self.maximize()
 
         self.visual = self.screen.get_rgba_visual()
         if self.visual and self.screen.is_composited():
@@ -75,8 +75,10 @@ class Ojo(Gtk.Window):
         height = self.screen.get_height() if self.full else self.screen.get_height() - 200
         self.pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(self.current, width, height, True)
         self.image.set_from_pixbuf(self.pixbuf)
+        self.update_margins()
 
-        if not self.full:
+    def update_margins(self):
+        if not self.full and self.mode == 'image':
             self.box.set_margin_right(30)
             self.box.set_margin_left(30)
             self.box.set_margin_bottom(30)
@@ -115,6 +117,7 @@ class Ojo(Gtk.Window):
         else:
             self.unfullscreen()
         self.update_cursor()
+        self.update_margins()
 
     def update_cursor(self):
         if self.get_window():
@@ -128,6 +131,7 @@ class Ojo(Gtk.Window):
         self.image.set_visible(self.mode == 'image')
         self.browser.set_visible(self.mode == 'folder')
         self.update_cursor()
+        self.update_margins()
 
     def process_key(self, widget, event):
         key = Gdk.keyval_name(event.keyval)

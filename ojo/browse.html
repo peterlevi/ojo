@@ -110,10 +110,10 @@
 	    } else if (key == 'Left') {
 		    goto(sel.prev('.item'));
 	    } else if (key == "Page_Up") {
-		    $(window).scrollTop($(window).scrollTop() - $(window).height());
+		    $('body').scrollTop($('body').scrollTop() - $(window).height());
 		    goto_first_visible(-1);
 	    } else if (key == "Page_Down") {
-		    $(window).scrollTop($(window).scrollTop() + $(window).height());
+		    $('body').scrollTop($('body').scrollTop() + $(window).height());
 		    goto_first_visible(1);
 	    } else if (key == "Home") {
 		    goto($(".item:first"));
