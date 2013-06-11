@@ -131,6 +131,7 @@ class Ojo(Gtk.Window):
 
     def process_key(self, widget, event):
         key = Gdk.keyval_name(event.keyval)
+        print key
         if key == 'Escape':
             Gtk.main_quit()
         elif key in ("f", "F", "F11"):
@@ -141,8 +142,10 @@ class Ojo(Gtk.Window):
             self.set_mode(modes[(modes.index(self.mode) + 1) % len(modes)])
         elif self.mode == 'folder':
             self.web_view.execute_script("on_key('%s')" % key)
-        elif key in ("Right", "Left"):
-            GObject.idle_add(lambda: self.go(1 if key == "Right" else -1))
+        elif key in ("Right", "Down", "Page_Down", "space"):
+            GObject.idle_add(lambda: self.go(1))
+        elif key in ("Left", "Up", "Page_Up", "BackSpace"):
+            GObject.idle_add(lambda: self.go(-1))
 
     def clicked(self, widget, event):
         import time
