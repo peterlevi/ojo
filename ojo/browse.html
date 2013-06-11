@@ -49,47 +49,76 @@
     }
 
     var current;
-    function select(file) {
+    function select(file, dontScrollTo) {
         current = file;
         $("#label").html(file);
 	    $("#label").css('left', ($(document).width() - $("#label").width())/2);
         $(".item").removeClass('selected');
         var el = $(".item[file='" + file + "']");
         el.addClass('selected');
-        if (el.offset().top > $('body').scrollTop() + $(window).height() - 200) {
-            $('body').animate({scrollTop: el.offset().top - $(window).height() + 200}, {duration: 100, queue: false});
-        } else if (el.offset().top < $('body').scrollTop() + 200) {
-            $('body').animate({scrollTop: el.offset().top - 200}, {duration: 100, queue: false});
-        }
+	    if (!dontScrollTo) {
+	        if (el.offset().top > $('body').scrollTop() + $(window).height() - 200) {
+	            $('body').animate({scrollTop: el.offset().top - $(window).height() + 200}, {duration: 100, queue: false});
+	        } else if (el.offset().top < $('body').scrollTop() + 200) {
+	            $('body').animate({scrollTop: el.offset().top - 200}, {duration: 100, queue: false});
+	        }
+	    }
     }
 
-    function goto($elem) {
-	    if ($elem.length > 0) {
+    function goto($elem, dontScrollTo) {
+	    if ($elem && $elem.length > 0) {
 		    var file = $elem.attr('file');
-		    select(file);
+		    select(file, dontScrollTo);
 		    window.location = "ojo-select:" + file;
+	    }
+    }
+
+    function get_next_in_direction(elem, direction) {
+	    var applicable = _.filter($(".item"), function(x) {
+		    var o1 = $(x).offset().top;
+		    var o2 = elem.offset().top;
+		    return direction < 0 ? o1 < o2 - 10 : o1 > o2 + 10;
+	    });
+	    if (applicable.length > 0) {
+		    return $(_.min(applicable, function(el) {
+			    return distance($(el), elem);
+		    }));
+	    } else {
+		    return null;
+	    }
+    }
+
+    function goto_first_visible(direction) {
+	    var sel = $('.item.selected');
+	    var el = sel;
+	    while (el.offset().top > $('body').scrollTop() + $(window).height() - 200 ||
+	           el.offset().top < $('body').scrollTop() + 200) {
+		    el = get_next_in_direction(el, direction);
+	    }
+	    if (el != sel) {
+		    goto(el, true);
 	    }
     }
 
     function on_key(key) {
 	    console.log(key);
 	    var sel = $('.item.selected');
-	    console.log(sel.toString());
 	    if (key == 'Up' || key == 'Down') {
-            var applicable = _.filter($(".item"), function(x) {
-                var o1 = $(x).offset().top;
-                var o2 = sel.offset().top;
-                return key == 'Up' ? o1 < o2 - 10 : o1 > o2 + 10;
-            });
-            if (applicable.length > 0) {
-                goto($(_.min(applicable, function(el) {
-                    return distance($(el), sel);
-                })));
-            }
+		    goto(get_next_in_direction(sel, key == 'Up' ? -1 : 1));
         } else if (key == 'Right') {
 	        goto(sel.next('.item'));
 	    } else if (key == 'Left') {
 		    goto(sel.prev('.item'));
+	    } else if (key == "Page_Up") {
+		    $(window).scrollTop($(window).scrollTop() - $(window).height());
+		    goto_first_visible(-1);
+	    } else if (key == "Page_Down") {
+		    $(window).scrollTop($(window).scrollTop() + $(window).height());
+		    goto_first_visible(1);
+	    } else if (key == "Home") {
+		    goto($(".item:first"));
+	    } else if (key == "End") {
+		    goto($(".item:last"));
 	    }
     }
 
@@ -99,15 +128,20 @@
         return dx*dx + dy*dy
     }
 
+    function test_it() {
+	    for (var i = 0; i < 2000; i++) {
+		    add_image(i, i);
+	    }
+	    select(0, 0);
+    }
+
     $(function() {
         $(document).contextmenu(function(event) {
             event.preventDefault();
         });
 
         $(document).keydown(function(event) {
-            if (event.which == 38 || event.which == 40) {
-                event.preventDefault();
-            }
+            event.preventDefault();
         });
 
         $(window).resize(function() {
