@@ -68,14 +68,13 @@ class Ojo(Gtk.Window):
         if getattr(self, "web_view", None):
             self.update_browser(self.current)
         if self.mode == 'image':
-            self.adjust_size()
+            self.update_image_and_size()
 
-    def adjust_size(self):
+    def update_image_and_size(self):
         width = self.screen.get_width() if self.full else self.screen.get_width() - 100
         height = self.screen.get_height() if self.full else self.screen.get_height() - 200
         self.pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(self.current, width, height, True)
         self.image.set_from_pixbuf(self.pixbuf)
-        #self.set_icon(self.pixbuf)
 
         if not self.full:
             self.box.set_margin_right(30)
@@ -85,7 +84,7 @@ class Ojo(Gtk.Window):
 
             self.real_width = self.pixbuf.get_width() + 60
             self.real_height = self.pixbuf.get_height() + 60
-            self.resize(self.real_width, self.real_height)
+            self.resize(1, 1)
             self.move((self.screen.get_width() - self.real_width) // 2,
                 (self.screen.get_height() - self.real_height) // 2)
         else:
@@ -137,13 +136,13 @@ class Ojo(Gtk.Window):
         elif key in ("f", "F", "F11"):
             self.toggle_fullscreen()
             self.show()
-        elif key in ("Right", "Left"):
-            GObject.idle_add(lambda: self.go(1 if key == "Right" else -1))
         elif key == 'Return':
             modes = ["image", "folder"]
             self.set_mode(modes[(modes.index(self.mode) + 1) % len(modes)])
         elif self.mode == 'folder':
             self.web_view.execute_script("on_key('%s')" % key)
+        elif key in ("Right", "Left"):
+            GObject.idle_add(lambda: self.go(1 if key == "Right" else -1))
 
     def clicked(self, widget, event):
         import time
@@ -186,7 +185,6 @@ class Ojo(Gtk.Window):
         self.folder = os.path.dirname(self.current)
         self.images = filter(self.is_image, map(lambda f: os.path.join(self.folder, f), sorted(os.listdir(self.folder))))
 
-        self.thumbs = {}
         GObject.idle_add(self.render_browser)
 
     def is_image(self, filename):
@@ -216,7 +214,9 @@ class Ojo(Gtk.Window):
             return True
         self.web_view.connect("navigation-policy-decision-requested", nav)
 
+        self.thumbs = {}
         self.web_view.connect('document-load-finished', lambda wf, data: self.prepare_thumbs()) # Load page
+
         self.web_view.load_string(html, "text/html", "UTF-8", "file://" + os.path.dirname(__file__) + "/")
         self.web_view.set_visible(True)
         rgba = Gdk.RGBA()
@@ -224,19 +224,29 @@ class Ojo(Gtk.Window):
         self.web_view.override_background_color(Gtk.StateFlags.NORMAL, rgba)
         self.browser.add(self.web_view)
 
+    def add_thumb(self, img):
+        self.thumbs[img] = True
+        try:
+            b64 = self.b64(img).replace('\n', '')
+            self.web_view.execute_script(
+                "add_image('%s', '%s', %s)" %
+                (img, b64, 'true' if img==self.current else 'false'))
+            if img == self.current:
+                self.update_browser(img)
+        except Exception, e:
+            print str(e)
+
     def prepare_thumbs(self):
-        for img in self.images:
+        if len(self.thumbs) == len(self.images):
+            return
+
+        position = self.images.index(self.current)
+        for img in self.images[position:] + self.images[:position]:
             if not img in self.thumbs:
-                self.thumbs[img] = True
-                try:
-                    b64 = self.b64(img).replace('\n', '')
-                    self.web_view.execute_script("add_image('%s', '%s', %s)" % (img, b64, 'true' if img==self.current else 'false'))
-                    if img == self.current:
-                        self.update_browser(img)
-                except Exception, e:
-                    print str(e)
-                GObject.idle_add(self.prepare_thumbs)
-                return
+                self.add_thumb(img)
+                break
+        GObject.idle_add(self.prepare_thumbs)
+
 
     def b64(self, img):
         from PIL import Image

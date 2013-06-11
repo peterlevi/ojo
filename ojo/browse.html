@@ -25,7 +25,7 @@
             position: fixed;
             z-index: 100;
             bottom: 10px;
-            right: 50px;
+            left: 50px;
             background: rgba(0, 0, 0, 0.8);
             padding: 10px;
             color: white;
@@ -41,17 +41,18 @@
 <script src="lib/underscore-min.js" type="text/javascript"></script>
 <script type="text/javascript">
     function add_image(file, b64, current) {
-        var html = "<div class='item' file='%file'><img src='data:image/jpg;base64,%b64'/></div>";
-        html = html.replace(/%file/g, file).replace("%b64", b64);
+        var html = "<div class='item %selected' file='%file'><img src='data:image/jpg;base64,%b64'/></div>";
+        html = html.replace(/%file/g, file).replace("%b64", b64).replace('%selected', current ? 'selected' : '');
         var elem = $(html);
         elem.click(function() {window.location = "ojo:" + file});
-        $('body').append(elem);
+	    $('body').append(elem);
     }
 
     var current;
     function select(file) {
         current = file;
         $("#label").html(file);
+	    $("#label").css('left', ($(document).width() - $("#label").width())/2);
         $(".item").removeClass('selected');
         var el = $(".item[file='" + file + "']");
         el.addClass('selected');
@@ -62,23 +63,34 @@
         }
     }
 
+    function goto($elem) {
+	    if ($elem.length > 0) {
+		    var file = $elem.attr('file');
+		    select(file);
+		    window.location = "ojo-select:" + file;
+	    }
+    }
+
     function on_key(key) {
-        if (key == 'Up' || key == 'Down') {
-            var sel = $('.item.selected')[0];
+	    console.log(key);
+	    var sel = $('.item.selected');
+	    console.log(sel.toString());
+	    if (key == 'Up' || key == 'Down') {
             var applicable = _.filter($(".item"), function(x) {
                 var o1 = $(x).offset().top;
-                var o2 = $(sel).offset().top;
+                var o2 = sel.offset().top;
                 return key == 'Up' ? o1 < o2 - 10 : o1 > o2 + 10;
             });
             if (applicable.length > 0) {
-                var goto = _.min(applicable, function(el) {
-                    return distance($(el), $(sel));
-                });
-                var file = $(goto).attr('file');
-                select(file);
-                window.location = "ojo-select:" + file;
+                goto($(_.min(applicable, function(el) {
+                    return distance($(el), sel);
+                })));
             }
-        }
+        } else if (key == 'Right') {
+	        goto(sel.next('.item'));
+	    } else if (key == 'Left') {
+		    goto(sel.prev('.item'));
+	    }
     }
 
     function distance(el1, el2) {
@@ -99,7 +111,9 @@
         });
 
         $(window).resize(function() {
-            select(current);
+	        if (current) {
+		        select(current);
+	        }
         })
     });
 </script>
