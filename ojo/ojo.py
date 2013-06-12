@@ -309,7 +309,7 @@ class Ojo(Gtk.Window):
 
     def pil_to_pixbuf(self, pil_image):
         if pil_image.mode != 'RGB':          # Fix IOError: cannot write mode P as PPM
-            img = pil_image.convert('RGB')
+            pil_image = pil_image.convert('RGB')
         buff = cStringIO.StringIO()
         pil_image.save(buff, 'ppm')
         contents = buff.getvalue()
@@ -328,25 +328,42 @@ class Ojo(Gtk.Window):
 #        return GdkPixbuf.Pixbuf.new_from_data(
 #            arr, GdkPixbuf.Colorspace.RGB, True, 8, width, height, width * 4, None, None)
 
-    def auto_rotate(self, meta, pil):
+    def auto_rotate(self, meta, im):
         from PIL import Image
-
+        # We rotate regarding to the EXIF orientation information
         if 'Exif.Image.Orientation' in meta.keys():
             orientation = meta['Exif.Image.Orientation'].value
-            ops = {
-                1: pil, # Nothing
-                2: pil.transpose(Image.FLIP_LEFT_RIGHT), # Vertical Mirror
-                3: pil.transpose(Image.ROTATE_180), # Rotation 180°
-                4: pil.transpose(Image.FLIP_TOP_BOTTOM), # Horizontal Mirror
-                5: pil.transpose(Image.FLIP_TOP_BOTTOM).transpose(Image.ROTATE_270), # Horizontal Mirror + Rotation 270°
-                6: pil.transpose(Image.ROTATE_270), # Rotation 270°
-                7: pil.transpose(Image.FLIP_LEFT_RIGHT).transpose(Image.ROTATE_270), # Vertical Mirror + Rotation 270°
-                8: pil.transpose(Image.ROTATE_90) # Rotation 90°
-            }
-            return ops.get(orientation, pil)
+            if orientation == 1:
+                # Nothing
+                result = im
+            elif orientation == 2:
+                # Vertical Mirror
+                result = im.transpose(Image.FLIP_LEFT_RIGHT)
+            elif orientation == 3:
+                # Rotation 180°
+                result = im.transpose(Image.ROTATE_180)
+            elif orientation == 4:
+                # Horizontal Mirror
+                result = im.transpose(Image.FLIP_TOP_BOTTOM)
+            elif orientation == 5:
+                # Horizontal Mirror + Rotation 270°
+                result = im.transpose(Image.FLIP_TOP_BOTTOM).transpose(Image.ROTATE_270)
+            elif orientation == 6:
+                # Rotation 270°
+                result = im.transpose(Image.ROTATE_270)
+            elif orientation == 7:
+                # Vertical Mirror + Rotation 270°
+                result = im.transpose(Image.FLIP_LEFT_RIGHT).transpose(Image.ROTATE_270)
+            elif orientation == 8:
+                # Rotation 90°
+                result = im.transpose(Image.ROTATE_90)
+            else:
+                result = im
         else:
-            # No orientation EXIF info
-            return pil
+            # No EXIF information, the user has to do it
+            result = im
+
+        return result
 
 if __name__ == "__main__":
     import signal
