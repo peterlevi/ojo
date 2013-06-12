@@ -21,6 +21,7 @@ from gi.repository import Gtk, Gdk, GdkPixbuf, GObject, Gio, WebKit
 from pyexiv2 import ImageMetadata
 import os
 import sys
+import cStringIO
 
 class Ojo(Gtk.Window):
     def __init__(self):
@@ -87,10 +88,7 @@ class Ojo(Gtk.Window):
         if self.mode == 'image' or force_resize:
             width = self.screen.get_width() if self.full else self.screen.get_width() - 150
             height = self.screen.get_height() if self.full else self.screen.get_height() - 150
-            try:
-                self.pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(self.current, width, height, True)
-            except GObject.GError:
-                self.pixbuf = self.pixbuf_from_data(self.attempt_preview_data(self.current), width, height)
+            self.pixbuf = self.get_pixbuf(self.current, width, height)
             self.image.set_from_pixbuf(self.pixbuf)
             self.update_margins(force_resize)
 
@@ -255,7 +253,7 @@ class Ojo(Gtk.Window):
 
     def add_thumb(self, img):
         try:
-            b64 = self.b64(img)
+            b64 = self.b64(img, 500, 120)
             self.web_view.execute_script(
                 "add_image('%s', '%s', %s)" %
                 (img, b64, 'true' if img==self.current else 'false'))
@@ -278,59 +276,77 @@ class Ojo(Gtk.Window):
         pixbuf = GdkPixbuf.Pixbuf.new_from_stream_at_scale(input_str, width, height, True, None)
         return pixbuf
 
-    def b64(self, img, width=500, height=120):
+    def b64(self, filename, width, height):
+        return self.pil_to_base64(self.get_pil(filename, width, height))
+
+    def get_pixbuf(self, filename, width, height):
+#        try:
+#            return GdkPixbuf.Pixbuf.new_from_file_at_scale(self.current, width, height, True)
+#        except GObject.GError:
+#            return self.pixbuf_from_data(self.attempt_preview_data(self.current), width, height)
+
+        return self.pil_to_pixbuf(self.get_pil(filename, width, height))
+
+    def get_pil(self, filename, width, height):
         from PIL import Image
         import cStringIO
-        meta = ImageMetadata(img)
+        meta = ImageMetadata(filename)
         meta.read()
         try:
-            pil_image = Image.open(img)
+            pil_image = Image.open(filename)
         except IOError:
             pil_image = Image.open(cStringIO.StringIO(meta.previews[-1].data))
         pil_image = self.auto_rotate(meta, pil_image)
         pil_image.thumbnail((width, height), Image.ANTIALIAS)
+        return pil_image
+
+    def pil_to_base64(self, pil_image):
         output = cStringIO.StringIO()
         pil_image.save(output, "PNG")
         contents = output.getvalue().encode("base64")
         output.close()
         return contents.replace('\n', '')
 
-    def auto_rotate(self, meta, im):
+    def pil_to_pixbuf(self, pil_image):
+        if pil_image.mode != 'RGB':          # Fix IOError: cannot write mode P as PPM
+            img = pil_image.convert('RGB')
+        buff = cStringIO.StringIO()
+        pil_image.save(buff, 'ppm')
+        contents = buff.getvalue()
+        buff.close()
+        loader = GdkPixbuf.PixbufLoader()
+        loader.write(contents)
+        pixbuf = loader.get_pixbuf()
+        loader.close()
+        return pixbuf
+
+#        import array
+#        if pil_image.mode != 'RGB':
+#            pil_image = pil_image.convert('RGB')
+#        arr = array.array('B', pil_image.tostring())
+#        height, width = pil_image.size
+#        return GdkPixbuf.Pixbuf.new_from_data(
+#            arr, GdkPixbuf.Colorspace.RGB, True, 8, width, height, width * 4, None, None)
+
+    def auto_rotate(self, meta, pil):
         from PIL import Image
-        # We rotate regarding to the EXIF orientation information
+
         if 'Exif.Image.Orientation' in meta.keys():
             orientation = meta['Exif.Image.Orientation'].value
-            if orientation == 1:
-                # Nothing
-                result = im
-            elif orientation == 2:
-                # Vertical Mirror
-                result = im.transpose(Image.FLIP_LEFT_RIGHT)
-            elif orientation == 3:
-                # Rotation 180°
-                result = im.transpose(Image.ROTATE_180)
-            elif orientation == 4:
-                # Horizontal Mirror
-                result = im.transpose(Image.FLIP_TOP_BOTTOM)
-            elif orientation == 5:
-                # Horizontal Mirror + Rotation 270°
-                result = im.transpose(Image.FLIP_TOP_BOTTOM).transpose(Image.ROTATE_270)
-            elif orientation == 6:
-                # Rotation 270°
-                result = im.transpose(Image.ROTATE_270)
-            elif orientation == 7:
-                # Vertical Mirror + Rotation 270°
-                result = im.transpose(Image.FLIP_LEFT_RIGHT).transpose(Image.ROTATE_270)
-            elif orientation == 8:
-                # Rotation 90°
-                result = im.transpose(Image.ROTATE_90)
-            else:
-                result = im
+            ops = {
+                1: pil, # Nothing
+                2: pil.transpose(Image.FLIP_LEFT_RIGHT), # Vertical Mirror
+                3: pil.transpose(Image.ROTATE_180), # Rotation 180°
+                4: pil.transpose(Image.FLIP_TOP_BOTTOM), # Horizontal Mirror
+                5: pil.transpose(Image.FLIP_TOP_BOTTOM).transpose(Image.ROTATE_270), # Horizontal Mirror + Rotation 270°
+                6: pil.transpose(Image.ROTATE_270), # Rotation 270°
+                7: pil.transpose(Image.FLIP_LEFT_RIGHT).transpose(Image.ROTATE_270), # Vertical Mirror + Rotation 270°
+                8: pil.transpose(Image.ROTATE_90) # Rotation 90°
+            }
+            return ops.get(orientation, pil)
         else:
-            # No EXIF information, the user has to do it
-            result = im
-
-        return result
+            # No orientation EXIF info
+            return pil
 
 if __name__ == "__main__":
     import signal
