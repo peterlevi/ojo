@@ -29,7 +29,7 @@ class Ojo(Gtk.Window):
         self.screen = self.get_screen()
         self.set_position(Gtk.WindowPosition.CENTER)
         self.set_decorated(False)
-        self.maximize()
+        #self.maximize()
 
         self.visual = self.screen.get_rgba_visual()
         if self.visual and self.screen.is_composited():
@@ -59,14 +59,14 @@ class Ojo(Gtk.Window):
             self.mode = 'folder'
             self.current = os.path.join(path, 'none')
             self.after_quick_start()
-            self.show(self.images[0])
             self.set_mode('folder')
+            self.show(self.images[0], True)
 
         self.set_visible(True)
         Gtk.main()
 
     def area_draw(self, widget, cr):
-        if self.full and self.mode == "image":
+        if self.full:# and self.mode == "image":
             cr.set_source_rgba(0, 0, 0, 1.0)
         else:
             cr.set_source_rgba(77.0/255, 75.0/255, 69.0/255, 0.9)
@@ -77,25 +77,22 @@ class Ojo(Gtk.Window):
     def update_browser(self, file):
         self.web_view.execute_script("select('%s')" % file)
 
-    def show(self, filename=None):
+    def show(self, filename=None, force_resize=False):
         if filename:
             print filename
         self.current = filename or self.current
         self.set_title(self.current)
         if getattr(self, "web_view", None):
             self.update_browser(self.current)
-        if self.mode == 'image':
-            self.update_image_and_size()
-
-    def update_image_and_size(self):
-        width = self.screen.get_width() if self.full else self.screen.get_width() - 150
-        height = self.screen.get_height() if self.full else self.screen.get_height() - 150
-        try:
-            self.pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(self.current, width, height, True)
-        except GObject.GError:
-            self.pixbuf = self.pixbuf_from_data(self.attempt_preview_data(self.current), width, height)
-        self.image.set_from_pixbuf(self.pixbuf)
-        self.update_margins()
+        if self.mode == 'image' or force_resize:
+            width = self.screen.get_width() if self.full else self.screen.get_width() - 150
+            height = self.screen.get_height() if self.full else self.screen.get_height() - 150
+            try:
+                self.pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(self.current, width, height, True)
+            except GObject.GError:
+                self.pixbuf = self.pixbuf_from_data(self.attempt_preview_data(self.current), width, height)
+            self.image.set_from_pixbuf(self.pixbuf)
+            self.update_margins(force_resize)
 
     def attempt_preview_data(self, img):
         meta = ImageMetadata(img)
@@ -108,18 +105,18 @@ class Ojo(Gtk.Window):
         self.box.set_margin_bottom(margin)
         self.box.set_margin_top(margin)
 
-    def update_margins(self):
+    def update_margins(self, force_resize=False):
         if self.mode == 'folder':
             self.set_margins(15)
-
         elif self.full:
             self.set_margins(0)
-
         else:
             self.set_margins(30)
+
+        if self.mode == "image" or force_resize:
             self.real_width = self.pixbuf.get_width() + 60
             self.real_height = self.pixbuf.get_height() + 60
-            self.resize(1, 1)
+            self.resize(self.real_width, self.real_height)
             self.move((self.screen.get_width() - self.real_width) // 2,
                 (self.screen.get_height() - self.real_height) // 2)
 
@@ -291,7 +288,7 @@ class Ojo(Gtk.Window):
         except IOError:
             pil_image = Image.open(cStringIO.StringIO(meta.previews[-1].data))
         pil_image = self.auto_rotate(meta, pil_image)
-        pil_image.thumbnail((width, height), Image.NEAREST)
+        pil_image.thumbnail((width, height), Image.ANTIALIAS)
         output = cStringIO.StringIO()
         pil_image.save(output, "PNG")
         contents = output.getvalue().encode("base64")
