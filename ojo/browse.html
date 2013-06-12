@@ -41,7 +41,7 @@
 <script src="lib/underscore-min.js" type="text/javascript"></script>
 <script type="text/javascript">
     function add_image(file, b64, current) {
-        var html = "<div class='item %selected' file='%file'><img src='data:image/jpg;base64,%b64'/></div>";
+        var html = "<div class='item %selected' file='%file'><img src='data:image/png;base64,%b64'/></div>";
         html = html.replace(/%file/g, file).replace("%b64", b64).replace('%selected', current ? 'selected' : '');
         var elem = $(html);
         elem.click(function() {window.location = "ojo:" + file});

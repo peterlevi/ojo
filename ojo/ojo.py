@@ -1,7 +1,24 @@
 #!/usr/bin/python
+# -*- Mode: Python; coding: utf-8; indent-tabs-mode: nil; tab-width: 4 -*-
+### BEGIN LICENSE
+# Copyright (c) 2012, Peter Levi <peterlevi@peterlevi.com>
+# This program is free software: you can redistribute it and/or modify it
+# under the terms of the GNU General Public License version 3, as published
+# by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranties of
+# MERCHANTABILITY, SATISFACTORY QUALITY, or FITNESS FOR A PARTICULAR
+# PURPOSE.  See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along
+# with this program.  If not, see <http://www.gnu.org/licenses/>.
+### END LICENSE
+
 
 import cairo
-from gi.repository import Gtk, Gdk, GdkPixbuf, GObject, WebKit
+from gi.repository import Gtk, Gdk, GdkPixbuf, GObject, Gio, WebKit
+from pyexiv2 import ImageMetadata
 import os
 import sys
 
@@ -33,7 +50,7 @@ class Ojo(Gtk.Window):
 
     def main(self):
         path = os.path.realpath(sys.argv[1])
-        print path
+        print "Started with: " + path
         if os.path.isfile(path):
             self.mode = 'image'
             self.show(path)
@@ -44,8 +61,8 @@ class Ojo(Gtk.Window):
             self.after_quick_start()
             self.show(self.images[0])
             self.set_mode('folder')
+
         self.set_visible(True)
-        self.show()
         Gtk.main()
 
     def area_draw(self, widget, cr):
@@ -71,30 +88,40 @@ class Ojo(Gtk.Window):
             self.update_image_and_size()
 
     def update_image_and_size(self):
-        width = self.screen.get_width() if self.full else self.screen.get_width() - 100
-        height = self.screen.get_height() if self.full else self.screen.get_height() - 200
-        self.pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(self.current, width, height, True)
+        width = self.screen.get_width() if self.full else self.screen.get_width() - 150
+        height = self.screen.get_height() if self.full else self.screen.get_height() - 150
+        try:
+            self.pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(self.current, width, height, True)
+        except GObject.GError:
+            self.pixbuf = self.pixbuf_from_data(self.attempt_preview_data(self.current), width, height)
         self.image.set_from_pixbuf(self.pixbuf)
         self.update_margins()
 
-    def update_margins(self):
-        if not self.full and self.mode == 'image':
-            self.box.set_margin_right(30)
-            self.box.set_margin_left(30)
-            self.box.set_margin_bottom(30)
-            self.box.set_margin_top(30)
+    def attempt_preview_data(self, img):
+        meta = ImageMetadata(img)
+        meta.read()
+        return meta.previews[-1].data
 
+    def set_margins(self, margin):
+        self.box.set_margin_right(margin)
+        self.box.set_margin_left(margin)
+        self.box.set_margin_bottom(margin)
+        self.box.set_margin_top(margin)
+
+    def update_margins(self):
+        if self.mode == 'folder':
+            self.set_margins(15)
+
+        elif self.full:
+            self.set_margins(0)
+
+        else:
+            self.set_margins(30)
             self.real_width = self.pixbuf.get_width() + 60
             self.real_height = self.pixbuf.get_height() + 60
             self.resize(1, 1)
             self.move((self.screen.get_width() - self.real_width) // 2,
                 (self.screen.get_height() - self.real_height) // 2)
-        else:
-            self.box.set_margin_right(0)
-            self.box.set_margin_left(0)
-            self.box.set_margin_bottom(0)
-            self.box.set_margin_top(0)
-
 
     def go(self, direction):
         filename = None
@@ -190,12 +217,9 @@ class Ojo(Gtk.Window):
         self.connect("button-release-event", self.clicked)
         self.connect("scroll-event", self.scrolled)
         self.folder = os.path.dirname(self.current)
-        self.images = filter(self.is_image, map(lambda f: os.path.join(self.folder, f), sorted(os.listdir(self.folder))))
+        self.images = filter(os.path.isfile, map(lambda f: os.path.join(self.folder, f), sorted(os.listdir(self.folder))))
 
         GObject.idle_add(self.render_browser)
-
-    def is_image(self, filename):
-        return filename.lower().endswith(('.jpg', '.jpeg', '.gif', '.png', '.tiff', '.svg', '.bmp'))
 
     def render_browser(self):
         with open(os.path.join(os.path.dirname(os.path.normpath(__file__)), 'browse.html')) as f:
@@ -214,14 +238,15 @@ class Ojo(Gtk.Window):
                 return False
             self.current = urllib.unquote(re.sub('^ojo.*:', '', url))
             if url.startswith('ojo:'):
-                self.show()
-                self.from_browser_time = time.time()
-                self.set_mode("image")
+                def _do():
+                    self.show()
+                    self.from_browser_time = time.time()
+                    self.set_mode("image")
+                GObject.idle_add(_do)
             policy.ignore()
             return True
         self.web_view.connect("navigation-policy-decision-requested", nav)
 
-        self.thumbs = {}
         self.web_view.connect('document-load-finished', lambda wf, data: self.prepare_thumbs()) # Load page
 
         self.web_view.load_string(html, "text/html", "UTF-8", "file://" + os.path.dirname(__file__) + "/")
@@ -232,9 +257,8 @@ class Ojo(Gtk.Window):
         self.browser.add(self.web_view)
 
     def add_thumb(self, img):
-        self.thumbs[img] = True
         try:
-            b64 = self.b64(img).replace('\n', '')
+            b64 = self.b64(img)
             self.web_view.execute_script(
                 "add_image('%s', '%s', %s)" %
                 (img, b64, 'true' if img==self.current else 'false'))
@@ -243,28 +267,73 @@ class Ojo(Gtk.Window):
         except Exception, e:
             print str(e)
 
-    def prepare_thumbs(self):
-        if len(self.thumbs) == len(self.images):
-            return
+    def prepare_thumbs(self, position=None, images=None):
+        if not position:
+            position = self.images.index(self.current)
+            images = self.images[position:] + self.images[:position]
+            position = 0
+        if position < len(images):
+            self.add_thumb(images[position])
+            GObject.idle_add(lambda: self.prepare_thumbs(position + 1, images))
 
-        position = self.images.index(self.current)
-        for img in self.images[position:] + self.images[:position]:
-            if not img in self.thumbs:
-                self.add_thumb(img)
-                break
-        GObject.idle_add(self.prepare_thumbs)
+    def pixbuf_from_data(self, data, width, height):
+        input_str = Gio.MemoryInputStream.new_from_data(data, None)
+        pixbuf = GdkPixbuf.Pixbuf.new_from_stream_at_scale(input_str, width, height, True, None)
+        return pixbuf
 
-
-    def b64(self, img):
+    def b64(self, img, width=500, height=120):
         from PIL import Image
-        import StringIO
-        x = Image.open(img)
-        x.thumbnail((500, 120))
-        output = StringIO.StringIO()
-        x.save(output, "PNG")
+        import cStringIO
+        meta = ImageMetadata(img)
+        meta.read()
+        try:
+            pil_image = Image.open(img)
+        except IOError:
+            pil_image = Image.open(cStringIO.StringIO(meta.previews[-1].data))
+        pil_image = self.auto_rotate(meta, pil_image)
+        pil_image.thumbnail((width, height), Image.NEAREST)
+        output = cStringIO.StringIO()
+        pil_image.save(output, "PNG")
         contents = output.getvalue().encode("base64")
         output.close()
-        return contents
+        return contents.replace('\n', '')
+
+    def auto_rotate(self, meta, im):
+        from PIL import Image
+        # We rotate regarding to the EXIF orientation information
+        if 'Exif.Image.Orientation' in meta.keys():
+            orientation = meta['Exif.Image.Orientation'].value
+            if orientation == 1:
+                # Nothing
+                result = im
+            elif orientation == 2:
+                # Vertical Mirror
+                result = im.transpose(Image.FLIP_LEFT_RIGHT)
+            elif orientation == 3:
+                # Rotation 180°
+                result = im.transpose(Image.ROTATE_180)
+            elif orientation == 4:
+                # Horizontal Mirror
+                result = im.transpose(Image.FLIP_TOP_BOTTOM)
+            elif orientation == 5:
+                # Horizontal Mirror + Rotation 270°
+                result = im.transpose(Image.FLIP_TOP_BOTTOM).transpose(Image.ROTATE_270)
+            elif orientation == 6:
+                # Rotation 270°
+                result = im.transpose(Image.ROTATE_270)
+            elif orientation == 7:
+                # Vertical Mirror + Rotation 270°
+                result = im.transpose(Image.FLIP_LEFT_RIGHT).transpose(Image.ROTATE_270)
+            elif orientation == 8:
+                # Rotation 90°
+                result = im.transpose(Image.ROTATE_90)
+            else:
+                result = im
+        else:
+            # No EXIF information, the user has to do it
+            result = im
+
+        return result
 
 if __name__ == "__main__":
     import signal
