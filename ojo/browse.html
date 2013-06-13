@@ -89,25 +89,31 @@
     }
 
     var current;
-    function select(file, dontScrollTo) {
+    function select(file, dontScrollTo, animate_duration) {
         current = file;
         $("#label").html(get_name(file));
         $(".item").removeClass('selected');
         var el = $(".item[file='" + file + "']");
         el.addClass('selected');
 	    if (!dontScrollTo) {
-	        if (el.offset().top > $('body').scrollTop() + $(window).height() - 250) {
-	            $('body').animate({scrollTop: el.offset().top - $(window).height() + 250}, {duration: 100, queue: false});
+		    var scrollTo;
+		    if (el.offset().top > $('body').scrollTop() + $(window).height() - 250) {
+		        scrollTo = el.offset().top - $(window).height() + 250;
 	        } else if (el.offset().top < $('body').scrollTop() + 150) {
-	            $('body').animate({scrollTop: el.offset().top - 150}, {duration: 100, queue: false});
+		        scrollTo = el.offset().top - 150;
 	        }
+		    if (animate_duration) {
+			    $('body').animate({scrollTop: scrollTo}, {duration: animate_duration, queue: false});
+		    } else {
+		        $('body').scrollTop(scrollTo);
+		    }
 	    }
     }
 
-    function goto($elem, dontScrollTo) {
+    function goto($elem, dontScrollTo, animate_duration) {
 	    if ($elem && $elem.length > 0) {
 		    var file = $elem.attr('file');
-		    select(file, dontScrollTo);
+		    select(file, dontScrollTo, animate_duration);
 		    python("ojo-select:" + file);
 	    }
     }
@@ -139,9 +145,9 @@
 	    console.log(key);
 	    var sel = $('.item.selected');
 	    if (key == 'Up' || key == 'Down') {
-		    goto(get_next_in_direction(sel, key == 'Up' ? -1 : 1));
+		    goto(get_next_in_direction(sel, key == 'Up' ? -1 : 1), false, 100);
         } else if (key == 'Right') {
-	        goto(sel.next('.item'));
+	        goto(sel.next('.item'), false, 100);
 	    } else if (key == 'Left') {
 		    goto(sel.prev('.item'));
 	    } else if (key == "Page_Up") {
@@ -151,9 +157,9 @@
 		    $('body').scrollTop($('body').scrollTop() + $(window).height() - 200);
 		    goto_first_visible();
 	    } else if (key == "Home") {
-		    goto($(".item:first"));
+		    goto($(".item:first"), false, false);
 	    } else if (key == "End") {
-		    goto($(".item:last"));
+		    goto($(".item:last"), false, false);
 	    }
     }
 
@@ -171,6 +177,7 @@
     }
 
     $(function() {
+	    var scroll_timeout;
         $(document).contextmenu(function(event) {
             event.preventDefault();
         });
@@ -186,12 +193,13 @@
         });
 
 	    $(window).scroll(function() {
+	       clearTimeout(scroll_timeout);
 		    var files = _.map(_.filter($('.item'), function(x) {
 			    return $(x).offset().top + $(x).height() >= $('body').scrollTop() &&
 			           $(x).offset().top < $('body').scrollTop() + $(window).height();
 		    }), function(x) { return $(x).attr('file') });
 
-		    setTimeout(function() {
+		    scroll_timeout = setTimeout(function() {
 			    python('ojo-priority:' + JSON.stringify(files));
 			}, 200);
 	    });

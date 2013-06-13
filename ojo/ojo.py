@@ -51,6 +51,7 @@ class Ojo(Gtk.Window):
         path = os.path.realpath(sys.argv[1])
         print "Started with: " + path
         self.need_orientation = {}
+        self.pix_cache = {}
         if os.path.isfile(path):
             self.mode = 'image'
             self.show(path)
@@ -92,9 +93,7 @@ class Ojo(Gtk.Window):
         self.set_title(self.current)
         if getattr(self, "web_view", None):
             self.update_browser(self.current)
-        width = self.screen.get_width() if self.full else self.screen.get_width() - 150
-        height = self.screen.get_height() if self.full else self.screen.get_height() - 150
-        self.pixbuf, oriented = self.get_pixbuf(self.current, width, height, orient)
+        self.pixbuf, oriented = self.get_pixbuf(self.current, orient)
         self.image.set_from_pixbuf(self.pixbuf)
         self.update_size()
 
@@ -104,6 +103,23 @@ class Ojo(Gtk.Window):
                 if self.current == filename and self.needs_orientation(meta):
                     self.show(self.current, True)
             GObject.idle_add(_check_orientation)
+
+        if hasattr(self, "cache_callback_id"):
+            GObject.source_remove(self.cache_callback_id)
+        self.cache_callback_id = GObject.timeout_add(300, self.cache_around)
+
+    def cache_around(self):
+        if not hasattr(self, "images"):
+            return
+        pos = self.images.index(self.current)
+        for f in self.images[pos - 1 : pos + 5]:
+            if not f in self.pix_cache:
+                def a(f):
+                    def _do():
+                        print "caching around: " + f
+                        self.get_pixbuf(f, False)
+                    return _do
+                GObject.idle_add(a(f))
 
     def get_meta(self, filename):
         from pyexiv2 import ImageMetadata
@@ -142,10 +158,10 @@ class Ojo(Gtk.Window):
             self.move((self.screen.get_width() - self.real_width) // 2,
                 (self.screen.get_height() - self.real_height) // 2)
 
-    def go(self, direction):
+    def go(self, direction, start_position=None):
         filename = None
         try:
-            position = self.images.index(self.current)
+            position = start_position - direction if not start_position is None else self.images.index(self.current)
             position = (position + direction + len(self.images)) % len(self.images)
             filename = self.images[position]
             self.show(filename)
@@ -157,6 +173,7 @@ class Ojo(Gtk.Window):
     def toggle_fullscreen(self, full=None):
         if full is None:
             full = not self.full
+        self.pix_cache.clear()
         self.full = full
         if self.full:
             self.fullscreen()
@@ -199,6 +216,10 @@ class Ojo(Gtk.Window):
             GObject.idle_add(lambda: self.go(1))
         elif key in ("Left", "Up", "Page_Up", "BackSpace"):
             GObject.idle_add(lambda: self.go(-1))
+        elif key == "Home":
+            GObject.idle_add(lambda: self.go(1, 0))
+        elif key == "End":
+            GObject.idle_add(lambda: self.go(-1, len(self.images) - 1))
 
     def clicked(self, widget, event):
         import time
@@ -242,6 +263,7 @@ class Ojo(Gtk.Window):
         self.images = filter(os.path.isfile, map(lambda f: os.path.join(self.folder, f), sorted(os.listdir(self.folder))))
 
         GObject.idle_add(self.render_browser)
+        self.cache_callback_id = GObject.timeout_add(200, self.cache_around)
 
     def render_browser(self):
         from gi.repository import WebKit
@@ -329,14 +351,26 @@ class Ojo(Gtk.Window):
     def b64(self, filename, width, height):
         return self.pil_to_base64(self.get_pil(filename, width, height))
 
-    def get_pixbuf(self, filename, width, height, orient):
+    def get_pixbuf(self, filename, orient):
+        if filename in self.pix_cache:
+            cached = self.pix_cache[filename]
+            if not orient or cached[1]:
+                print "cache hit: " + filename
+                return cached
+
+        width = self.screen.get_width() if self.full else self.screen.get_width() - 150
+        height = self.screen.get_height() if self.full else self.screen.get_height() - 150
         if not orient and (not filename in self.need_orientation or not self.need_orientation[filename]):
             try:
                 oriented = filename in self.need_orientation and not self.need_orientation[filename]
-                return GdkPixbuf.Pixbuf.new_from_file_at_scale(self.current, width, height, True), oriented
+                pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(filename, width, height, True)
+                self.pix_cache[filename] = pixbuf, oriented
+                return pixbuf, oriented
             except GObject.GError:
                 pass # below we'll use another method
-        return self.pil_to_pixbuf(self.get_pil(filename, width, height)), True
+        pixbuf = self.pil_to_pixbuf(self.get_pil(filename, width, height))
+        self.pix_cache[filename] = pixbuf, True
+        return pixbuf, True
 
     def get_pil(self, filename, width, height):
         from PIL import Image
