@@ -252,15 +252,13 @@ class Ojo(Gtk.Window):
         self.web_view = WebKit.WebView()
         self.web_view.set_transparent(True)
 
-        def nav(wv, wf, req, action, policy):
-            import urllib
+        def nav(wv, wf, title):
             import time
             import json
 
-            url = urllib.unquote(action.get_original_uri())
-            index = url.index(':')
-            action = url[:index]
-            argument = url[index + 1:]
+            index = title.index(':')
+            action = title[:index]
+            argument = title[index + 1:]
 
             if action in ('ojo', 'ojo-select'):
                 self.selected = argument
@@ -273,12 +271,7 @@ class Ojo(Gtk.Window):
             elif action == 'ojo-priority':
                 files = json.loads(argument)
                 self.priority_thumbs(map(lambda f: f.encode('utf-8'), files))
-            else:
-                return False
-
-            policy.ignore()
-            return True
-        self.web_view.connect("navigation-policy-decision-requested", nav)
+        self.web_view.connect("title-changed", nav)
 
         self.thumb_queue = None
         self.web_view.connect('document-load-finished', lambda wf, data: self.prepare_thumbs()) # Load page
