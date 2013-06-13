@@ -77,8 +77,11 @@ class Ojo(Gtk.Window):
         cr.paint()
         cr.set_operator(cairo.OPERATOR_OVER)
 
+    def js(self, command):
+        GObject.idle_add(lambda: self.web_view.execute_script(command))
+
     def update_browser(self, file):
-        self.web_view.execute_script("select('%s')" % file)
+        self.js("select('%s')" % file)
 
     def show(self, filename=None, orient=False):
         if filename:
@@ -189,7 +192,7 @@ class Ojo(Gtk.Window):
             modes = ["image", "folder"]
             self.set_mode(modes[(modes.index(self.mode) + 1) % len(modes)])
         elif self.mode == 'folder':
-            self.web_view.execute_script("on_key('%s')" % key)
+            self.js("on_key('%s')" % key)
         elif key == 'F5':
             self.show()
         elif key in ("Right", "Down", "Page_Down", "space"):
@@ -251,23 +254,33 @@ class Ojo(Gtk.Window):
 
         def nav(wv, wf, req, action, policy):
             import urllib
-            import re
             import time
+            import json
 
-            url = action.get_original_uri()
-            if not url.startswith('ojo:') and not url.startswith('ojo-select:'):
+            url = urllib.unquote(action.get_original_uri())
+            index = url.index(':')
+            action = url[:index]
+            argument = url[index + 1:]
+
+            if action in ('ojo', 'ojo-select'):
+                self.selected = argument
+                if action == 'ojo':
+                    def _do():
+                        self.show(self.selected)
+                        self.from_browser_time = time.time()
+                        self.set_mode("image")
+                    GObject.idle_add(_do)
+            elif action == 'ojo-priority':
+                files = json.loads(argument)
+                self.priority_thumbs(map(lambda f: f.encode('utf-8'), files))
+            else:
                 return False
-            self.selected = urllib.unquote(re.sub('^ojo.*:', '', url))
-            if url.startswith('ojo:'):
-                def _do():
-                    self.show(self.selected)
-                    self.from_browser_time = time.time()
-                    self.set_mode("image")
-                GObject.idle_add(_do)
+
             policy.ignore()
             return True
         self.web_view.connect("navigation-policy-decision-requested", nav)
 
+        self.thumb_queue = None
         self.web_view.connect('document-load-finished', lambda wf, data: self.prepare_thumbs()) # Load page
 
         self.web_view.load_string(html, "text/html", "UTF-8", "file://" + os.path.dirname(__file__) + "/")
@@ -279,25 +292,40 @@ class Ojo(Gtk.Window):
 
     def add_thumb(self, img):
         try:
+            self.thumb_queue.remove(img)
+        except Exception:
+            pass
+
+        try:
             b64 = self.b64(img, 500, 120)
-            self.web_view.execute_script(
-                "add_image('%s', '%s', %s)" %
-                (img, b64, 'true' if img==self.current else 'false'))
+            self.js("add_image('%s', '%s')" % (img, b64))
             if img == self.current:
                 self.update_browser(img)
         except Exception, e:
+            self.js("remove_image_div('%s')" % img)
             print str(e)
 
-    def prepare_thumbs(self, position=None, images=None):
-        if not position:
-            position = self.images.index(self.current)
-            images = self.images[position:] + self.images[:position]
-            position = 0
-        if position < len(images):
-            self.add_thumb(images[position])
-            def _next():
-                GObject.idle_add(lambda: self.prepare_thumbs(position + 1, images))
-            GObject.timeout_add(50, _next)
+    def prepare_thumbs(self):
+        if self.thumb_queue is None:
+            pos = self.images.index(self.current)
+            self.thumb_queue = [x[1] for x in sorted(enumerate(self.images), key=lambda (i,f): abs(i - pos))]
+            assert self.thumb_queue[0] == self.current
+            for img in self.images:
+                self.js("add_image_div('%s', %s)" % (img, 'true' if img==self.current else 'false'))
+                if img == self.current:
+                    self.update_browser(img)
+
+        if self.thumb_queue:
+            img = self.thumb_queue[0]
+            self.add_thumb(img)
+            if self.thumb_queue:
+                def _do():
+                    GObject.idle_add(self.prepare_thumbs)
+                GObject.timeout_add(50, _do)
+
+    def priority_thumbs(self, files):
+        self.thumb_queue = [f for f in files if f in self.thumb_queue] + \
+                           [f for f in self.thumb_queue if not f in files]
 
     def pixbuf_from_data(self, data, width, height):
         from gi.repository import Gio

@@ -36,6 +36,19 @@
             color: white;
             font-family: Ubuntu;
         }
+
+	    span.holder-name {
+		    color: #d3d3d3;
+		    font-family: Ubuntu;
+		    font-size: 80%;
+	    }
+
+	    div.holder {
+		    width: 180px;
+		    height: 120px;
+		    background-color: rgba(57, 55, 49, 0.2);
+		    overflow-x: hidden;
+	    }
     </style>
 </head>
 
@@ -47,18 +60,34 @@
 <script src="lib/jquery-2.0.2.min.js" type="text/javascript"></script>
 <script src="lib/underscore-min.js" type="text/javascript"></script>
 <script type="text/javascript">
-    function add_image(file, b64, current) {
-        var html = "<div class='item %selected' file='%file'><img src='data:image/png;base64,%b64'/></div>";
-        html = html.replace(/%file/g, file).replace("%b64", b64).replace('%selected', current ? 'selected' : '');
-        var elem = $(html);
-        elem.click(function() {window.location = "ojo:" + file});
+    function add_image_div(file, current) {
+	    var html = "<div class='item %selected' file='%file'>" +
+	               "<div class='holder'><span class='holder-name'>%name</span></div>" +
+	               "</div>";
+	    html = html.replace(/%file/g, file);
+	    html = html.replace(/%name/g, get_name(file));
+	    html = html.replace('%selected', current ? 'selected' : '');
+	    var elem = $(html);
+	    elem.click(function() {window.location = "ojo:" + file});
 	    $('#images').append(elem);
+    }
+
+    function remove_image_div(file) {
+	    $(".item[file='" + file + "']").remove();
+    }
+
+    function add_image(file, b64) {
+	    $(".item[file='" + file + "']").html("<img src='data:image/png;base64," + b64 + "'/>");
+    }
+
+    function get_name(file) {
+	    return file.substring(file.lastIndexOf('/') + 1);
     }
 
     var current;
     function select(file, dontScrollTo) {
         current = file;
-        $("#label").html(file.substring(file.lastIndexOf('/') + 1));
+        $("#label").html(get_name(file));
         $(".item").removeClass('selected');
         var el = $(".item[file='" + file + "']");
         el.addClass('selected');
@@ -154,7 +183,19 @@
 	        if (current) {
 		        select(current);
 	        }
-        })
+        });
+
+	    $(window).scroll(function() {
+		    setTimeout(function() {
+			    var files = _.map(_.filter($('.item'), function(x) {
+				    return $(x).offset().top + $(x).height() >= $('body').scrollTop() &&
+				           $(x).offset().top < $('body').scrollTop() + $(window).height();
+			    }), function(x) { return $(x).attr('file') });
+
+			    console.log(JSON.stringify(files));
+				window.location = 'ojo-priority:' + JSON.stringify(files);
+			}, 200);
+	    });
     });
 </script>
 </html>
