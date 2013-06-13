@@ -132,7 +132,7 @@ class Ojo(Gtk.Window):
             if self.real_width > 1.5 * self.real_height:
                 self.real_width = int(1.5 * self.real_height)
             else:
-                self.real_height = int(1.5 * self.real_width)
+                self.real_height = int(self.real_width / 1.5)
 
         if not self.full:
             self.resize(self.real_width, self.real_height)
@@ -160,7 +160,7 @@ class Ojo(Gtk.Window):
         else:
             self.unfullscreen()
         self.update_cursor()
-        self.update_size()
+        self.show()
 
     def update_cursor(self):
         if self.get_window():
@@ -185,13 +185,13 @@ class Ojo(Gtk.Window):
         elif key in ("f", "F", "F11"):
             self.toggle_fullscreen()
             self.show()
-        elif key == 'F5':
-            self.update_size()
         elif key == 'Return':
             modes = ["image", "folder"]
             self.set_mode(modes[(modes.index(self.mode) + 1) % len(modes)])
         elif self.mode == 'folder':
             self.web_view.execute_script("on_key('%s')" % key)
+        elif key == 'F5':
+            self.show()
         elif key in ("Right", "Down", "Page_Down", "space"):
             GObject.idle_add(lambda: self.go(1))
         elif key in ("Left", "Up", "Page_Up", "BackSpace"):
