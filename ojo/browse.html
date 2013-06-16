@@ -19,11 +19,14 @@
         .item {
             margin: 10px;
             float: left;
+            border-radius: 10px;
+            overflow: hidden;
         }
 
         .item.selected {
             margin: 0px;
             border: solid 10px #F07746;
+            overflow: hidden;
         }
 
         #label {
@@ -48,6 +51,7 @@
 		    height: 120px;
 		    background-color: rgba(57, 55, 49, 0.2);
 		    overflow-x: hidden;
+            border-radius: 10px;
 	    }
     </style>
 </head>
@@ -145,9 +149,9 @@
 	    console.log(key);
 	    var sel = $('.item.selected');
 	    if (key == 'Up' || key == 'Down') {
-		    goto(get_next_in_direction(sel, key == 'Up' ? -1 : 1), false, 100);
+		    goto(get_next_in_direction(sel, key == 'Up' ? -1 : 1), false);
         } else if (key == 'Right') {
-	        goto(sel.next('.item'), false, 100);
+	        goto(sel.next('.item'), false);
 	    } else if (key == 'Left') {
 		    goto(sel.prev('.item'));
 	    } else if (key == "Page_Up") {
@@ -157,9 +161,9 @@
 		    $('body').scrollTop($('body').scrollTop() + $(window).height() - 200);
 		    goto_first_visible();
 	    } else if (key == "Home") {
-		    goto($(".item:first"), false, false);
+		    goto($(".item:first"), false);
 	    } else if (key == "End") {
-		    goto($(".item:last"), false, false);
+		    goto($(".item:last"), false);
 	    }
     }
 
@@ -178,6 +182,7 @@
 
     $(function() {
 	    var scroll_timeout;
+
         $(document).contextmenu(function(event) {
             event.preventDefault();
         });

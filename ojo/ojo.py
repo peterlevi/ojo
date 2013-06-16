@@ -21,6 +21,30 @@ from gi.repository import Gtk, Gdk, GdkPixbuf, GObject
 import os
 import sys
 
+class Easylog:
+    def __init__(self, level):
+        self.level = level
+
+    def log(x):
+        print x
+
+    def info(self, x):
+        if self.level >= 0:
+            print x
+
+    def debug(self, x):
+        if self.level >= 1:
+            print x
+
+    def warning(self, x):
+        print x
+
+    def exception(self, x):
+        import logging
+        print logging.exception(x)
+
+logging = Easylog(1)
+
 class Ojo(Gtk.Window):
     def __init__(self):
         super(Ojo, self).__init__()
@@ -49,12 +73,13 @@ class Ojo(Gtk.Window):
 
     def main(self):
         path = os.path.realpath(sys.argv[1])
-        print "Started with: " + path
+        logging.info("Started with: " + path)
         self.need_orientation = {}
         self.pix_cache = {}
+        self.current_preparing = None
         if os.path.isfile(path):
             self.mode = 'image'
-            self.show(path)
+            self.show(path, quick=True)
             GObject.idle_add(self.after_quick_start)
         else:
             self.mode = 'folder'
@@ -64,7 +89,12 @@ class Ojo(Gtk.Window):
             self.show(self.images[0])
 
         self.set_visible(True)
+
+        GObject.threads_init()
+        Gdk.threads_init()
+        Gdk.threads_enter()
         Gtk.main()
+        Gdk.threads_leave()
 
     def area_draw(self, widget, cr):
         if self.full:# and self.mode == "image":
@@ -84,15 +114,14 @@ class Ojo(Gtk.Window):
     def update_browser(self, file):
         self.js("select('%s')" % file)
 
-    def show(self, filename=None, orient=False):
+    def show(self, filename=None, orient=False, quick=False):
         if filename:
-            print filename
+            logging.info("Showing " + filename)
+
         filename = filename or self.current
         self.current = filename
         self.selected = self.current
         self.set_title(self.current)
-        if getattr(self, "web_view", None):
-            self.update_browser(self.current)
         self.pixbuf, oriented = self.get_pixbuf(self.current, orient)
         self.image.set_from_pixbuf(self.pixbuf)
         self.update_size()
@@ -104,22 +133,166 @@ class Ojo(Gtk.Window):
                     self.show(self.current, True)
             GObject.idle_add(_check_orientation)
 
-        if hasattr(self, "cache_callback_id"):
-            GObject.source_remove(self.cache_callback_id)
-        self.cache_callback_id = GObject.timeout_add(300, self.cache_around)
+        if not quick:
+            self.update_browser(self.current)
+            self.cache_around()
+
+    def after_quick_start(self):
+        self.mode = "image"
+        self.from_browser_time = 0
+
+        self.browser = Gtk.ScrolledWindow()
+        self.browser.set_visible(False)
+        rgba = Gdk.RGBA()
+        rgba.parse('rgba(0, 0, 0, 0)')
+        self.browser.override_background_color(Gtk.StateFlags.NORMAL, rgba)
+        self.box.add(self.browser)
+
+        self.connect("delete-event", Gtk.main_quit)
+        self.connect("key-press-event", self.process_key)
+        #self.connect("focus-out-event", Gtk.main_quit)
+        self.connect("button-release-event", self.clicked)
+        self.connect("scroll-event", self.scrolled)
+        self.folder = os.path.dirname(self.current)
+        self.images = filter(os.path.isfile, map(lambda f: os.path.join(self.folder, f), sorted(os.listdir(self.folder))))
+
+        GObject.idle_add(self.render_browser)
+        self.start_cache_thread()
+        self.start_thumbnail_thread()
+
+    def render_browser(self):
+        from gi.repository import WebKit
+
+        with open(os.path.join(os.path.dirname(os.path.normpath(__file__)), 'browse.html')) as f:
+            html = f.read()
+
+        self.web_view = WebKit.WebView()
+        self.web_view.set_transparent(True)
+
+        def nav(wv, wf, title):
+            import time
+            import json
+
+            index = title.index(':')
+            action = title[:index]
+            argument = title[index + 1:]
+
+            if action in ('ojo', 'ojo-select'):
+                self.selected = argument
+                if action == 'ojo':
+                    def _do():
+                        self.show(self.selected)
+                        self.from_browser_time = time.time()
+                        self.set_mode("image")
+                    GObject.idle_add(_do)
+            elif action == 'ojo-priority':
+                files = json.loads(argument)
+                self.priority_thumbs(map(lambda f: f.encode('utf-8'), files))
+        self.web_view.connect("title-changed", nav)
+
+        self.web_view.connect('document-load-finished', lambda wf, data: self.prepare_thumb_placeholders()) # Load page
+
+        self.web_view.load_string(html, "text/html", "UTF-8", "file://" + os.path.dirname(__file__) + "/")
+        self.web_view.set_visible(True)
+        rgba = Gdk.RGBA()
+        rgba.parse('rgba(0, 0, 0, 0)')
+        self.web_view.override_background_color(Gtk.StateFlags.NORMAL, rgba)
+        self.browser.add(self.web_view)
+
+    def prepare_thumb_placeholders(self):
+        import threading
+        def _thread():
+            for img in self.images:
+                self.js("add_image_div('%s', %s)" % (img, 'true' if img==self.current else 'false'))
+                if img == self.current:
+                    self.update_browser(img)
+
+        prepare_thread = threading.Thread(target=_thread)
+        prepare_thread.daemon = True
+        prepare_thread.start()
 
     def cache_around(self):
         if not hasattr(self, "images"):
             return
         pos = self.images.index(self.current)
-        for f in self.images[pos - 1 : pos + 5]:
+        for i in [1, -1]:
+            if pos + i < 0 or pos + i >= len(self.images):
+                continue
+            f = self.images[pos + i]
             if not f in self.pix_cache:
-                def a(f):
-                    def _do():
-                        print "caching around: " + f
-                        self.get_pixbuf(f, False)
-                    return _do
-                GObject.idle_add(a(f))
+                logging.debug("Caching around: " + f)
+                self.cache_queue.append(f)
+                self.cache_queue_event.set()
+
+    def start_cache_thread(self):
+        import threading
+        def _queue_thread():
+            logging.info("Starting cache thread")
+            self.cache_queue = []
+            self.cache_queue_event = threading.Event()
+            self.preparing_event = threading.Event()
+            while True:
+                self.cache_queue_event.wait()
+                if len(self.pix_cache) > 20:
+                    self.pix_cache = {}
+
+                while self.cache_queue:
+                    file = self.cache_queue[0]
+                    self.cache_queue.remove(file)
+                    if not file in self.pix_cache:
+                        logging.debug("Cache thread loads file " + file)
+                        self.current_preparing = file
+                        try:
+                            self.get_pixbuf(file, orient=True, force=True)
+                        except Exception:
+                            logging.exception("Could not cache file " + file)
+                        finally:
+                            self.current_preparing = None
+                            self.preparing_event.set()
+                self.cache_queue_event.clear()
+        cache_thread = threading.Thread(target=_queue_thread)
+        cache_thread.daemon = True
+        cache_thread.start()
+
+    def start_thumbnail_thread(self):
+        import threading
+        import time
+        def _thumbs_thread():
+            logging.info("Starting thumbs thread")
+            self.prepared_thumbs = set()
+            self.thumbs_queue = []
+            self.thumbs_queue_event = threading.Event()
+            while True:
+                self.thumbs_queue_event.wait()
+                while self.thumbs_queue:
+                    img = self.thumbs_queue[0]
+                    self.thumbs_queue.remove(img)
+                    if not img in self.prepared_thumbs:
+                        self.prepared_thumbs.add(img)
+                        logging.debug("Thumbs thread loads file " + img)
+                        self.add_thumb(img)
+                        time.sleep(0.1)
+                self.thumbs_queue_event.clear()
+        thumbs_thread = threading.Thread(target=_thumbs_thread)
+        thumbs_thread.daemon = True
+        thumbs_thread.start()
+
+    def add_thumb(self, img):
+        try:
+            b64 = self.b64(img, 500, 120)
+            self.js("add_image('%s', '%s')" % (img, b64))
+            if img == self.current:
+                self.update_browser(img)
+        except Exception, e:
+            self.js("remove_image_div('%s')" % img)
+            logging.warning("Could not add thumb for " + img)
+
+    def priority_thumbs(self, files):
+        logging.debug("Priority thumbs: " + str(files))
+        new_thumbs_queue = [f for f in files if not f in self.prepared_thumbs] + \
+                           [f for f in self.thumbs_queue if not f in files and not f in self.prepared_thumbs]
+        self.thumbs_queue = new_thumbs_queue
+        self.thumbs_queue_event.set()
 
     def get_meta(self, filename):
         from pyexiv2 import ImageMetadata
@@ -167,13 +340,13 @@ class Ojo(Gtk.Window):
             self.show(filename)
             return
         except Exception, ex:
-            print str(ex), filename
+            logging.exception("go: Could not show " + filename)
             GObject.idle_add(lambda: self.go(direction))
 
     def toggle_fullscreen(self, full=None):
         if full is None:
             full = not self.full
-        self.pix_cache.clear()
+        self.pix_cache = {}
         self.full = full
         if self.full:
             self.fullscreen()
@@ -193,13 +366,15 @@ class Ojo(Gtk.Window):
             self.show(self.selected)
         else:
             self.update_size()
+            pos = self.images.index(self.current)
+            self.priority_thumbs([x[1] for x in sorted(enumerate(self.images), key=lambda (i,f): abs(i - pos))][:40])
         self.update_cursor()
         self.image.set_visible(self.mode == 'image')
         self.browser.set_visible(self.mode == 'folder')
 
     def process_key(self, widget, event):
         key = Gdk.keyval_name(event.keyval)
-        print key
+        logging.debug("Pressed key " + key)
         if key == 'Escape':
             Gtk.main_quit()
         elif key in ("f", "F", "F11"):
@@ -243,133 +418,58 @@ class Ojo(Gtk.Window):
         direction = -1 if event.direction in (Gdk.ScrollDirection.UP, Gdk.ScrollDirection.LEFT) else 1
         self.wheel_timer = GObject.timeout_add(100, lambda: self.go(direction))
 
-    def after_quick_start(self):
-        self.mode = "image"
-        self.from_browser_time = 0
-
-        self.browser = Gtk.ScrolledWindow()
-        self.browser.set_visible(False)
-        rgba = Gdk.RGBA()
-        rgba.parse('rgba(0, 0, 0, 0)')
-        self.browser.override_background_color(Gtk.StateFlags.NORMAL, rgba)
-        self.box.add(self.browser)
-
-        self.connect("delete-event", Gtk.main_quit)
-        self.connect("key-press-event", self.process_key)
-        #self.connect("focus-out-event", Gtk.main_quit)
-        self.connect("button-release-event", self.clicked)
-        self.connect("scroll-event", self.scrolled)
-        self.folder = os.path.dirname(self.current)
-        self.images = filter(os.path.isfile, map(lambda f: os.path.join(self.folder, f), sorted(os.listdir(self.folder))))
-
-        GObject.idle_add(self.render_browser)
-        self.cache_callback_id = GObject.timeout_add(200, self.cache_around)
-
-    def render_browser(self):
-        from gi.repository import WebKit
-
-        with open(os.path.join(os.path.dirname(os.path.normpath(__file__)), 'browse.html')) as f:
-            html = f.read()
-
-        self.web_view = WebKit.WebView()
-        self.web_view.set_transparent(True)
-
-        def nav(wv, wf, title):
-            import time
-            import json
-
-            index = title.index(':')
-            action = title[:index]
-            argument = title[index + 1:]
-
-            if action in ('ojo', 'ojo-select'):
-                self.selected = argument
-                if action == 'ojo':
-                    def _do():
-                        self.show(self.selected)
-                        self.from_browser_time = time.time()
-                        self.set_mode("image")
-                    GObject.idle_add(_do)
-            elif action == 'ojo-priority':
-                files = json.loads(argument)
-                self.priority_thumbs(map(lambda f: f.encode('utf-8'), files))
-        self.web_view.connect("title-changed", nav)
-
-        self.thumb_queue = None
-        self.web_view.connect('document-load-finished', lambda wf, data: self.prepare_thumbs()) # Load page
-
-        self.web_view.load_string(html, "text/html", "UTF-8", "file://" + os.path.dirname(__file__) + "/")
-        self.web_view.set_visible(True)
-        rgba = Gdk.RGBA()
-        rgba.parse('rgba(0, 0, 0, 0)')
-        self.web_view.override_background_color(Gtk.StateFlags.NORMAL, rgba)
-        self.browser.add(self.web_view)
-
-    def add_thumb(self, img):
-        try:
-            self.thumb_queue.remove(img)
-        except Exception:
-            pass
-
-        try:
-            b64 = self.b64(img, 500, 120)
-            self.js("add_image('%s', '%s')" % (img, b64))
-            if img == self.current:
-                self.update_browser(img)
-        except Exception, e:
-            self.js("remove_image_div('%s')" % img)
-            print str(e)
-
-    def prepare_thumbs(self):
-        if self.thumb_queue is None:
-            pos = self.images.index(self.current)
-            self.thumb_queue = [x[1] for x in sorted(enumerate(self.images), key=lambda (i,f): abs(i - pos))]
-            assert self.thumb_queue[0] == self.current
-            for img in self.images:
-                self.js("add_image_div('%s', %s)" % (img, 'true' if img==self.current else 'false'))
-                if img == self.current:
-                    self.update_browser(img)
-
-        if self.thumb_queue:
-            img = self.thumb_queue[0]
-            self.add_thumb(img)
-            if self.thumb_queue:
-                def _do():
-                    GObject.idle_add(self.prepare_thumbs)
-                GObject.timeout_add(50, _do)
-
-    def priority_thumbs(self, files):
-        self.thumb_queue = [f for f in files if f in self.thumb_queue] + \
-                           [f for f in self.thumb_queue if not f in files]
-
     def pixbuf_from_data(self, data, width, height):
         from gi.repository import Gio
         input_str = Gio.MemoryInputStream.new_from_data(data, None)
         pixbuf = GdkPixbuf.Pixbuf.new_from_stream_at_scale(input_str, width, height, True, None)
         return pixbuf
 
+    def pixbuf_to_b64(self, pixbuf):
+        return pixbuf.save_to_bufferv('png', [], [])[1].encode("base64").replace('\n', '')
+
     def b64(self, filename, width, height):
         return self.pil_to_base64(self.get_pil(filename, width, height))
 
-    def get_pixbuf(self, filename, orient):
-        if filename in self.pix_cache:
-            cached = self.pix_cache[filename]
-            if not orient or cached[1]:
-                print "cache hit: " + filename
-                return cached
+    def get_pixbuf(self, filename, orient, width=None, height=None, force=False):
+        use_cache = width is None
+        width = width or (self.screen.get_width() if self.full else self.screen.get_width() - 150)
+        height = height or (self.screen.get_height() if self.full else self.screen.get_height() - 150)
 
-        width = self.screen.get_width() if self.full else self.screen.get_width() - 150
-        height = self.screen.get_height() if self.full else self.screen.get_height() - 150
+        while not force and use_cache and self.current_preparing == filename:
+            logging.info("Waiting on cache")
+            self.preparing_event.wait()
+            self.preparing_event.clear()
+        if use_cache and filename in self.pix_cache:
+            cached = self.pix_cache[filename]
+            if cached[2] == width and (not orient or cached[1]):
+                logging.debug("Cache hit: " + filename)
+                return cached[0], cached[1]
+
         if not orient and (not filename in self.need_orientation or not self.need_orientation[filename]):
+            oriented = filename in self.need_orientation and not self.need_orientation[filename]
             try:
-                oriented = filename in self.need_orientation and not self.need_orientation[filename]
                 pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(filename, width, height, True)
-                self.pix_cache[filename] = pixbuf, oriented
+                if use_cache:
+                    self.pix_cache[filename] = pixbuf, oriented, width
+                logging.debug("Loaded directly")
                 return pixbuf, oriented
-            except GObject.GError:
+            except GObject.GError, e:
                 pass # below we'll use another method
+
+            try:
+                preview = self.get_meta(filename).previews[-1].data
+                pixbuf = self.pixbuf_from_data(preview, width, height)
+                if use_cache:
+                    self.pix_cache[filename] = pixbuf, oriented, width
+                logging.debug("Loaded from preview")
+                return pixbuf, oriented
+            except Exception, e:
+                pass # below we'll use another method
+
         pixbuf = self.pil_to_pixbuf(self.get_pil(filename, width, height))
-        self.pix_cache[filename] = pixbuf, True
+        if use_cache:
+            self.pix_cache[filename] = pixbuf, True, width
+        logging.debug("Loaded with PIL")
         return pixbuf, True
 
     def get_pil(self, filename, width, height):
