@@ -48,11 +48,17 @@ logging = Easylog(1)
 class Ojo(Gtk.Window):
     def __init__(self):
         super(Ojo, self).__init__()
-        self.full = False
         self.screen = self.get_screen()
-        self.set_position(Gtk.WindowPosition.CENTER)
-        self.set_decorated(False)
-        #self.maximize()
+
+        self.full = '-f' in sys.argv or '--fullscreen' in sys.argv
+        if self.full:
+            self.fullscreen()
+        else:
+            self.set_position(Gtk.WindowPosition.CENTER)
+
+        self.set_decorated('-d' in sys.argv or '--decorated' in sys.argv)
+        if '-m' in sys.argv or '--maximize' in sys.argv:
+            self.maximize()
 
         self.visual = self.screen.get_rgba_visual()
         if self.visual and self.screen.is_composited():
@@ -72,9 +78,9 @@ class Ojo(Gtk.Window):
                         Gdk.EventMask.SCROLL_MASK)
 
     def main(self):
-        path = os.path.realpath(sys.argv[1])
+        path = os.path.realpath(sys.argv[-1])
         logging.info("Started with: " + path)
-        self.need_orientation = {}
+        self.meta_cache = {}
         self.pix_cache = {}
         self.current_preparing = None
         if os.path.isfile(path):
@@ -86,7 +92,7 @@ class Ojo(Gtk.Window):
             self.current = os.path.join(path, 'none')
             self.after_quick_start()
             self.set_mode('folder')
-            self.show(self.images[0])
+            self.show(self.images[0], quick=True)
 
         self.set_visible(True)
 
@@ -109,7 +115,10 @@ class Ojo(Gtk.Window):
         cr.set_operator(cairo.OPERATOR_OVER)
 
     def js(self, command):
-        GObject.idle_add(lambda: self.web_view.execute_script(command))
+        if hasattr(self, "web_view_loaded"):
+            GObject.idle_add(lambda: self.web_view.execute_script(command))
+        else:
+            GObject.timeout_add(100, lambda: self.js(command))
 
     def update_browser(self, file):
         self.js("select('%s')" % file)
@@ -134,11 +143,18 @@ class Ojo(Gtk.Window):
             GObject.idle_add(_check_orientation)
 
         if not quick:
+            import time
+            self.last_shown_time = time.time()
             self.update_browser(self.current)
             self.cache_around()
+        else:
+            self.last_shown_time = 0
 
     def after_quick_start(self):
-        self.mode = "image"
+        self.folder = os.path.dirname(self.current)
+        self.images = filter(os.path.isfile, map(lambda f: os.path.join(self.folder, f), sorted(os.listdir(self.folder))))
+        self.update_cursor()
+
         self.from_browser_time = 0
 
         self.browser = Gtk.ScrolledWindow()
@@ -150,14 +166,16 @@ class Ojo(Gtk.Window):
 
         self.connect("delete-event", Gtk.main_quit)
         self.connect("key-press-event", self.process_key)
-        #self.connect("focus-out-event", Gtk.main_quit)
+        if "--quit-on-focus-out" in sys.argv:
+            self.connect("focus-out-event", Gtk.main_quit)
         self.connect("button-release-event", self.clicked)
         self.connect("scroll-event", self.scrolled)
-        self.folder = os.path.dirname(self.current)
-        self.images = filter(os.path.isfile, map(lambda f: os.path.join(self.folder, f), sorted(os.listdir(self.folder))))
 
         GObject.idle_add(self.render_browser)
+
         self.start_cache_thread()
+        if self.mode == "image":
+            self.cache_around()
         self.start_thumbnail_thread()
 
     def render_browser(self):
@@ -190,7 +208,7 @@ class Ojo(Gtk.Window):
                 self.priority_thumbs(map(lambda f: f.encode('utf-8'), files))
         self.web_view.connect("title-changed", nav)
 
-        self.web_view.connect('document-load-finished', lambda wf, data: self.prepare_thumb_placeholders()) # Load page
+        self.web_view.connect('document-load-finished', lambda wf, data: self.web_view_loaded()) # Load page
 
         self.web_view.load_string(html, "text/html", "UTF-8", "file://" + os.path.dirname(__file__) + "/")
         self.web_view.set_visible(True)
@@ -199,13 +217,17 @@ class Ojo(Gtk.Window):
         self.web_view.override_background_color(Gtk.StateFlags.NORMAL, rgba)
         self.browser.add(self.web_view)
 
-    def prepare_thumb_placeholders(self):
+    def web_view_loaded(self):
+        self.web_view_loaded = True
+
         import threading
         def _thread():
             for img in self.images:
                 self.js("add_image_div('%s', %s)" % (img, 'true' if img==self.current else 'false'))
                 if img == self.current:
                     self.update_browser(img)
+            pos = self.images.index(self.current)
+            self.priority_thumbs([x[1] for x in sorted(enumerate(self.images), key=lambda (i,f): abs(i - pos))])
 
         prepare_thread = threading.Thread(target=_thread)
         prepare_thread.daemon = True
@@ -226,11 +248,12 @@ class Ojo(Gtk.Window):
 
     def start_cache_thread(self):
         import threading
+        self.cache_queue = []
+        self.cache_queue_event = threading.Event()
+        self.preparing_event = threading.Event()
+
         def _queue_thread():
             logging.info("Starting cache thread")
-            self.cache_queue = []
-            self.cache_queue_event = threading.Event()
-            self.preparing_event = threading.Event()
             while True:
                 self.cache_queue_event.wait()
                 if len(self.pix_cache) > 20:
@@ -243,6 +266,7 @@ class Ojo(Gtk.Window):
                         logging.debug("Cache thread loads file " + file)
                         self.current_preparing = file
                         try:
+                            self.get_meta(file)
                             self.get_pixbuf(file, orient=True, force=True)
                         except Exception:
                             logging.exception("Could not cache file " + file)
@@ -257,21 +281,28 @@ class Ojo(Gtk.Window):
     def start_thumbnail_thread(self):
         import threading
         import time
+        self.prepared_thumbs = set()
+        self.thumbs_queue = []
+        self.thumbs_queue_event = threading.Event()
+
         def _thumbs_thread():
+            # delay the start to give the caching thread some time to prepare next images
+            start_time = time.time()
+            while self.mode == "image" and time.time() - start_time < 2:
+                time.sleep(0.1)
+
             logging.info("Starting thumbs thread")
-            self.prepared_thumbs = set()
-            self.thumbs_queue = []
-            self.thumbs_queue_event = threading.Event()
             while True:
                 self.thumbs_queue_event.wait()
                 while self.thumbs_queue:
+                    while time.time() - self.last_shown_time < 2:
+                        time.sleep(0.2)
                     img = self.thumbs_queue[0]
                     self.thumbs_queue.remove(img)
                     if not img in self.prepared_thumbs:
                         self.prepared_thumbs.add(img)
                         logging.debug("Thumbs thread loads file " + img)
                         self.add_thumb(img)
-                        time.sleep(0.1)
                 self.thumbs_queue_event.clear()
         thumbs_thread = threading.Thread(target=_thumbs_thread)
         thumbs_thread.daemon = True
@@ -289,7 +320,7 @@ class Ojo(Gtk.Window):
 
     def priority_thumbs(self, files):
         logging.debug("Priority thumbs: " + str(files))
-        new_thumbs_queue = [f for f in files if not f in self.prepared_thumbs] + \
+        new_thumbs_queue = [self.current] + [f for f in files if not f in self.prepared_thumbs] + \
                            [f for f in self.thumbs_queue if not f in files and not f in self.prepared_thumbs]
         self.thumbs_queue = new_thumbs_queue
         self.thumbs_queue_event.set()
@@ -298,7 +329,8 @@ class Ojo(Gtk.Window):
         from pyexiv2 import ImageMetadata
         meta = ImageMetadata(filename)
         meta.read()
-        self.need_orientation[filename] = self.needs_orientation(meta)
+        self.meta_cache[filename] = self.needs_orientation(meta), meta.dimensions[0], meta.dimensions[1]
+        self.js("set_dimensions('%s', '%d x %d')" % (filename, meta.dimensions[0], meta.dimensions[1]))
         return meta
 
     def set_margins(self, margin):
@@ -366,8 +398,7 @@ class Ojo(Gtk.Window):
             self.show(self.selected)
         else:
             self.update_size()
-            pos = self.images.index(self.current)
-            self.priority_thumbs([x[1] for x in sorted(enumerate(self.images), key=lambda (i,f): abs(i - pos))][:40])
+            self.last_shown_time = 0
         self.update_cursor()
         self.image.set_visible(self.mode == 'image')
         self.browser.set_visible(self.mode == 'folder')
@@ -445,8 +476,8 @@ class Ojo(Gtk.Window):
                 logging.debug("Cache hit: " + filename)
                 return cached[0], cached[1]
 
-        if not orient and (not filename in self.need_orientation or not self.need_orientation[filename]):
-            oriented = filename in self.need_orientation and not self.need_orientation[filename]
+        oriented = filename in self.meta_cache and not self.meta_cache[filename][0]
+        if oriented or (not orient and not filename in self.meta_cache):
             try:
                 pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(filename, width, height, True)
                 if use_cache:

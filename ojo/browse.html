@@ -57,7 +57,7 @@
 </head>
 
 <body>
-<div id="label"></div>
+<div id="label"><span id="filename"></span><span id="dimensions" style="float:right; padding-right: 20px"></span></div>
 <div id="images"></div>
 <br style="clear: both"><br><br>&nbsp;
 </body>
@@ -76,7 +76,6 @@
 	    html = html.replace(/%name/g, get_name(file));
 	    html = html.replace('%selected', is_current ? 'selected' : '');
 	    var elem = $(html);
-	    elem.click(function() {python("ojo:" + file)});
 	    $('#images').append(elem);
     }
 
@@ -92,12 +91,18 @@
 	    return file.substring(file.lastIndexOf('/') + 1);
     }
 
+    function set_dimensions(file, dimensions) {
+        $(".item[file='" + file + "']").attr('dimensions', dimensions);
+    }
+
     var current;
     function select(file, dontScrollTo, animate_duration) {
         current = file;
-        $("#label").html(get_name(file));
-        $(".item").removeClass('selected');
         var el = $(".item[file='" + file + "']");
+        $("#filename").html(get_name(file));
+        var dim = el.attr('dimensions');
+        $("#dimensions").html(dim ? dim : '');
+        $(".item").removeClass('selected');
         el.addClass('selected');
 	    if (!dontScrollTo) {
 		    var scrollTo;
@@ -142,7 +147,9 @@
 		    return $(x).offset().top >= $('body').scrollTop() - 5 &&
 		           $(x).offset().top + $(x).height() < $('body').scrollTop() + $(window).height() + 5;
 	    });
-	    select($(visible[0]).attr('file'), true);
+        var file = $(visible[0]).attr('file');
+        select(file, true);
+        python("ojo-select:" + file);
     }
 
     function on_key(key) {
@@ -200,14 +207,17 @@
 	    $(window).scroll(function() {
 	       clearTimeout(scroll_timeout);
 		    var files = _.map(_.filter($('.item'), function(x) {
-			    return $(x).offset().top + $(x).height() >= $('body').scrollTop() &&
-			           $(x).offset().top < $('body').scrollTop() + $(window).height();
+			    return $(x).offset().top + $(x).height() >= $('body').scrollTop();
 		    }), function(x) { return $(x).attr('file') });
 
 		    scroll_timeout = setTimeout(function() {
 			    python('ojo-priority:' + JSON.stringify(files));
 			}, 200);
 	    });
+
+        $(document).on('click', '.item', function() {
+            python("ojo:" + $(this).attr('file'));
+        });
     });
 </script>
 </html>
