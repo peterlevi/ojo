@@ -204,15 +204,21 @@
 	        }
         });
 
+        var lastScrollTop = -1;
 	    $(window).scroll(function() {
-	       clearTimeout(scroll_timeout);
-		    var files = _.map(_.filter($('.item'), function(x) {
-			    return $(x).offset().top + $(x).height() >= $('body').scrollTop();
-		    }), function(x) { return $(x).attr('file') });
+            if ($('body').scrollTop() == lastScrollTop) {
+                return;
+            }
+            lastScrollTop = $('body').scrollTop();
 
-		    scroll_timeout = setTimeout(function() {
-			    python('ojo-priority:' + JSON.stringify(files));
-			}, 200);
+            clearTimeout(scroll_timeout);
+            var files = _.map(_.filter($('.item'), function(x) {
+                return $(x).offset().top + $(x).height() >= $('body').scrollTop();
+            }), function(x) { return $(x).attr('file') });
+
+            scroll_timeout = setTimeout(function() {
+                python('ojo-priority:' + JSON.stringify(files));
+            }, 200);
 	    });
 
         $(document).on('click', '.item', function() {
