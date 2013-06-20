@@ -484,7 +484,6 @@ class Ojo(Gtk.Window):
     def process_key(self, widget, event):
         key = Gdk.keyval_name(event.keyval)
         logging.debug("Pressed key " + key)
-        self.register_action()
         if key == 'Escape':
             Gtk.main_quit()
         elif key in ("f", "F", "F11"):
