@@ -51,6 +51,8 @@ class Ojo(Gtk.Window):
         self.screen = self.get_screen()
 
         self.full = '-f' in sys.argv or '--fullscreen' in sys.argv
+        self.mousedown_zoomed = False
+        self.mousedown_panning = False
 
         self.set_decorated('-d' in sys.argv or '--decorated' in sys.argv)
         if '-m' in sys.argv or '--maximize' in sys.argv:
@@ -79,7 +81,8 @@ class Ojo(Gtk.Window):
 
         self.set_events(Gdk.EventMask.BUTTON_PRESS_MASK |
                         Gdk.EventMask.BUTTON_RELEASE_MASK |
-                        Gdk.EventMask.SCROLL_MASK)
+                        Gdk.EventMask.SCROLL_MASK |
+                        Gdk.EventMask.POINTER_MOTION_MASK)
 
         if self.full:
             self.set_margins(0)
@@ -159,6 +162,8 @@ class Ojo(Gtk.Window):
                     va = self.scroll_window.get_vadjustment()
                     va.set_value(self.zoom_y_percent * (va.get_upper() - va.get_page_size() - va.get_lower()))
                     self.zoom_y_percent = None
+                self.scroll_h = self.scroll_window.get_hadjustment().get_value()
+                self.scroll_v = self.scroll_window.get_vadjustment().get_value()
             GObject.idle_add(_f)
 
     def show(self, filename=None, orient=False, quick=False):
@@ -184,11 +189,11 @@ class Ojo(Gtk.Window):
 
         if not quick:
             import time
-            self.last_shown_time = time.time()
+            self.last_action_time = time.time()
             self.update_browser(self.current)
             self.cache_around()
         else:
-            self.last_shown_time = 0
+            self.last_action_time = 0
 
     def after_quick_start(self):
         self.folder = os.path.dirname(self.current)
@@ -210,6 +215,7 @@ class Ojo(Gtk.Window):
         self.last_mouseup_time = 0
         self.connect("button-release-event", self.mouseup)
         self.connect("scroll-event", self.scrolled)
+        self.connect('motion-notify-event', self.mouse_motion)
 
 #        def _ha(ha):
 #            self.zoom_x_percent = ha.get_value() / (ha.get_upper() - ha.get_page_size() - ha.get_lower())
@@ -345,7 +351,7 @@ class Ojo(Gtk.Window):
             while True:
                 self.thumbs_queue_event.wait()
                 while self.thumbs_queue:
-                    while time.time() - self.last_shown_time < 2:
+                    while time.time() - self.last_action_time < 2:
                         time.sleep(0.2)
                     img = self.thumbs_queue[0]
                     self.thumbs_queue.remove(img)
@@ -450,17 +456,26 @@ class Ojo(Gtk.Window):
         self.show()
 
     def update_cursor(self):
-        return
-        if self.get_window():
-            self.get_window().set_cursor(Gdk.Cursor.new_for_display(Gdk.Display.get_default(),
-                Gdk.CursorType.BLANK_CURSOR if self.full and self.mode == 'image' else Gdk.CursorType.ARROW))
+        if self.mousedown_zoomed:
+            self.set_cursor(Gdk.CursorType.HAND1)
+        elif self.mousedown_panning:
+            self.set_cursor(Gdk.CursorType.HAND1)
+        elif self.full and self.mode == 'image':
+            self.set_cursor(Gdk.CursorType.BLANK_CURSOR)
+        else:
+            self.set_cursor(Gdk.CursorType.ARROW)
+
+    def set_cursor(self, cursor):
+        if self.get_window() and (
+            not self.get_window().get_cursor() or cursor != self.get_window().get_cursor().get_cursor_type()):
+            self.get_window().set_cursor(Gdk.Cursor.new_for_display(Gdk.Display.get_default(), cursor))
 
     def set_mode(self, mode):
         self.mode = mode
         if self.mode == "image" and self.selected != self.current:
             self.show(self.selected)
         else:
-            self.last_shown_time = 0
+            self.last_action_time = 0
         self.update_cursor()
         self.scroll_window.set_visible(self.mode == 'image')
         self.image.set_visible(self.mode == 'image')
@@ -469,6 +484,7 @@ class Ojo(Gtk.Window):
     def process_key(self, widget, event):
         key = Gdk.keyval_name(event.keyval)
         logging.debug("Pressed key " + key)
+        self.register_action()
         if key == 'Escape':
             Gtk.main_quit()
         elif key in ("f", "F", "F11"):
@@ -493,6 +509,14 @@ class Ojo(Gtk.Window):
             self.set_zoom(not self.zoom)
             self.update_size()
             self.show()
+        elif key in ("1", "0"):
+            self.set_zoom(True)
+            self.update_size()
+            self.show()
+        elif key in ("slash", "asterisk"):
+            self.set_zoom(False)
+            self.update_size()
+            self.show()
 
     def set_zoom(self, zoom, x_percent=None, y_percent=None):
         self.zoom = zoom
@@ -502,21 +526,53 @@ class Ojo(Gtk.Window):
         self.zoom_y_percent = y_percent
         self.pix_cache = {}
 
-    def mousedown(self, widget, event):
-        if self.mode != "image" or self.zoom or event.button != 1:
+    def mouse_motion(self, widget, event):
+        if not self.mousedown_zoomed and not self.mousedown_panning:
+            self.set_cursor(Gdk.CursorType.ARROW)
             return
+
+        self.register_action()
+        if self.mousedown_zoomed:
+            self.set_zoom(True,
+                min(1, max(0, event.x - 100) / max(1, self.real_width - 200)),
+                min(1, max(0, event.y - 100) / max(1, self.real_height - 200)))
+            self.update_zoom_scrolling()
+        elif self.mousedown_panning:
+            ha = self.scroll_window.get_hadjustment()
+            ha.set_value(self.scroll_h - (event.x - self.mousedown_x))
+            va = self.scroll_window.get_vadjustment()
+            va.set_value(self.scroll_v - (event.y - self.mousedown_y))
+
+    def mousedown(self, widget, event):
+        if self.mode != "image" or event.button != 1:
+            return
+
+        self.mousedown_x = event.x
+        self.mousedown_y = event.y
+
+        if self.zoom:
+            self.mousedown_panning = True
+            self.update_cursor()
+            self.register_action()
+        else:
+            import time
+            mousedown_time = time.time()
+            x = event.x
+            y = event.y
+            def act():
+                if mousedown_time > self.last_mouseup_time:
+                    self.mousedown_zoomed = True
+                    self.register_action()
+                    self.set_zoom(True,
+                        min(1, max(0, x - 100) / max(1, self.real_width - 200)),
+                        min(1, max(0, y - 100) / max(1, self.real_height - 200)))
+                    self.show()
+                    self.update_cursor()
+            GObject.timeout_add(250, act)
+
+    def register_action(self):
         import time
-        mousedown_time = time.time()
-        x = event.x
-        y = event.y
-        def act():
-            if mousedown_time > self.last_mouseup_time:
-                self.mousedown_zoomed = True
-                self.set_zoom(True,
-                    min(1, max(0, x - 100) / max(1, self.real_width - 200)),
-                    min(1, max(0, y - 100) / max(1, self.real_height - 200)))
-                self.show()
-        GObject.timeout_add(250, act)
+        self.last_action_time = time.time()
 
     def mouseup(self, widget, event):
         import time
@@ -525,12 +581,17 @@ class Ojo(Gtk.Window):
             return
         if self.last_mouseup_time - self.from_browser_time < 0.2:
             return
-        if getattr(self, "mousedown_zoomed", False):
+        if self.mousedown_zoomed:
             self.set_zoom(False)
             self.show()
-            self.mousedown_zoomed = False
+        elif self.mousedown_panning and (event.x != self.mousedown_x or event.y != self.mousedown_y):
+            self.scroll_h = self.scroll_window.get_hadjustment().get_value()
+            self.scroll_v = self.scroll_window.get_vadjustment().get_value()
         else:
             self.go(-1 if event.x < 0.5 * self.real_width else 1)
+        self.mousedown_zoomed = False
+        self.mousedown_panning = False
+        self.update_cursor()
 
     def scrolled(self, widget, event):
         if self.mode != "image" or self.zoom:
