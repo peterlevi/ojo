@@ -41,4 +41,4 @@
 #    os.putenv('PYTHONPATH', "%s:%s" % (os.getenv('PYTHONPATH', ''), ':'.join(python_path))) # for subprocesses
 #
 from ojo.ojo import Ojo
-Ojo().main()
+Ojo()

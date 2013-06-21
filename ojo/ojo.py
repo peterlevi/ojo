@@ -48,17 +48,11 @@ logging = Easylog(1)
 class Ojo(Gtk.Window):
     def __init__(self):
         super(Ojo, self).__init__()
+
+        path = os.path.realpath(sys.argv[-1])
+        logging.info("Started with: " + path)
+
         self.screen = self.get_screen()
-
-        self.full = '-f' in sys.argv or '--fullscreen' in sys.argv
-        self.mousedown_zoomed = False
-        self.mousedown_panning = False
-
-        self.set_decorated('-d' in sys.argv or '--decorated' in sys.argv)
-        if '-m' in sys.argv or '--maximize' in sys.argv:
-            self.maximize()
-
-        self.update_size()
 
         self.visual = self.screen.get_rgba_visual()
         if self.visual and self.screen.is_composited():
@@ -68,7 +62,6 @@ class Ojo(Gtk.Window):
 
         self.box = Gtk.VBox()
         self.box.set_visible(True)
-
         self.image = Gtk.Image()
         self.image.set_visible(True)
         self.box.add(self.image)
@@ -79,24 +72,27 @@ class Ojo(Gtk.Window):
                         Gdk.EventMask.SCROLL_MASK |
                         Gdk.EventMask.POINTER_MOTION_MASK)
 
-        if self.full:
-            self.toggle_fullscreen(True, True)
-        else:
-            self.set_margins(30)
-            self.set_position(Gtk.WindowPosition.CENTER)
-        self.set_zoom(False, 0.5, 0.5)
+        self.mousedown_zoomed = False
+        self.mousedown_panning = False
 
-    def main(self):
-        path = os.path.realpath(sys.argv[-1])
-        logging.info("Started with: " + path)
+        self.set_decorated('-d' in sys.argv or '--decorated' in sys.argv)
+        if '-m' in sys.argv or '--maximize' in sys.argv:
+            self.maximize()
+        self.full = '-f' in sys.argv or '--fullscreen' in sys.argv
+
         self.meta_cache = {}
         self.pix_cache = {False: {}, True: {}} # keyed by "zoomed" property
         self.current_preparing = None
+
+        self.set_zoom(False, 0.5, 0.5)
+        self.toggle_fullscreen(self.full, first_run=True)
+        self.update_size()
+
         if os.path.isfile(path):
             self.mode = 'image'
             self.show(path, quick=True)
-            self.update_size(True)
-
+            if not self.full:
+                self.update_size(from_image=not self.full)
             GObject.idle_add(self.after_quick_start)
         else:
             self.mode = 'folder'
@@ -186,8 +182,6 @@ class Ojo(Gtk.Window):
         self.make_transparent(self.scroll_window.get_child())
         self.scroll_window.set_visible(False)
         self.box.add(self.scroll_window)
-        self.scroll_window.set_min_content_width(self.get_max_image_width())
-        self.scroll_window.set_min_content_height(self.get_max_image_height())
 
         self.folder = os.path.dirname(self.current)
         self.images = filter(os.path.isfile, map(lambda f: os.path.join(self.folder, f), sorted(os.listdir(self.folder))))
@@ -381,6 +375,9 @@ class Ojo(Gtk.Window):
         return meta
 
     def set_margins(self, margin):
+        if margin == getattr(self, "margin", -1):
+            return
+
         self.margin = margin
         def _f():
             self.box.set_margin_right(margin)
@@ -388,6 +385,15 @@ class Ojo(Gtk.Window):
             self.box.set_margin_bottom(margin)
             self.box.set_margin_top(margin)
         GObject.idle_add(_f)
+
+    def get_recommended_size(self):
+        width = self.screen.get_width() - 150
+        height = self.screen.get_height() - 150
+        if width > 1.5 * height:
+            width = int(1.5 * height)
+        else:
+            height = int(width / 1.5)
+        return min(width, self.screen.get_width() - 150), min(height, self.screen.get_height() - 150)
 
     def update_size(self, from_image=False, width=None, height=None):
         if self.full:
@@ -398,17 +404,12 @@ class Ojo(Gtk.Window):
                 self.real_width = self.pixbuf.get_width() + 2 * self.margin
                 self.real_height = self.pixbuf.get_height() + 2 * self.margin
             else:
-                self.real_width = self.screen.get_width() - 90
-                self.real_height = self.screen.get_height() - 90
-                if self.real_width > 1.5 * self.real_height:
-                    self.real_width = int(1.5 * self.real_height)
-                else:
-                    self.real_height = int(self.real_width / 1.5)
+                size = self.get_recommended_size()
+                self.real_width = width or size[0]
+                self.real_height = height or size[1]
 
-        if not self.full:
-            self.resize(width or self.real_width, height or self.real_height)
-            self.move((self.screen.get_width() - (width or self.real_width)) // 2,
-                (self.screen.get_height() - (height or self.real_height)) // 2)
+            self.resize(self.real_width, self.real_height)
+            self.move((self.screen.get_width() - self.real_width) // 2, (self.screen.get_height() - self.real_height) // 2)
 
     def get_max_image_width(self):
         return self.real_width - 2 * self.margin if not self.full else self.screen.get_width()
@@ -436,18 +437,26 @@ class Ojo(Gtk.Window):
         self.pix_cache[False] = {}
 
         if self.full:
-            self.saved_width = self.get_width()
-            self.saved_height = self.get_height()
+            if first_run:
+                self.saved_width, self.saved_height = self.get_recommended_size()
+            else:
+                self.saved_width, self.saved_height = self.get_width(), self.get_height()
             self.fullscreen()
+        else:
+            if not first_run:
+                self.unfullscreen()
+        self.update_margins()
+
+        if not first_run and not self.full:
+            self.update_size(width=self.saved_width, height=self.saved_height)
+            self.update_cursor()
+            self.show()
+
+    def update_margins(self):
+        if self.full:
             self.set_margins(0)
         else:
-            self.unfullscreen()
             self.set_margins(30)
-            self.update_size(width=self.saved_width, height=self.saved_height)
-
-        self.update_cursor()
-        if not first_run:
-            self.show()
 
     def update_cursor(self):
         if self.mousedown_zoomed:
@@ -474,6 +483,7 @@ class Ojo(Gtk.Window):
         self.scroll_window.set_visible(self.mode == 'image' and self.zoom)
         self.image.set_visible(self.mode == 'image' and not self.zoom)
         self.browser.set_visible(self.mode == 'folder')
+        self.update_margins()
 
     def process_key(self, widget, event):
         key = Gdk.keyval_name(event.keyval)
@@ -766,4 +776,4 @@ class Ojo(Gtk.Window):
 if __name__ == "__main__":
     import signal
     signal.signal(signal.SIGINT, signal.SIG_DFL)
-    Ojo().main()
+    Ojo()
