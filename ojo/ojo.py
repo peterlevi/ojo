@@ -188,7 +188,8 @@ class Ojo(Gtk.Window):
         self.scroll_window.add_with_viewport(self.zoomed_image)
         self.make_transparent(self.scroll_window)
         self.make_transparent(self.scroll_window.get_child())
-        self.scroll_window.set_visible(True)
+        self.scroll_window.set_visible(False)
+        self.box.add(self.scroll_window)
         self.scroll_window.set_min_content_width(self.get_max_image_width())
         self.scroll_window.set_min_content_height(self.get_max_image_height())
 
@@ -470,8 +471,8 @@ class Ojo(Gtk.Window):
         else:
             self.last_action_time = 0
         self.update_cursor()
-        self.scroll_window.set_visible(self.mode == 'image')
-        self.image.set_visible(self.mode == 'image')
+        self.scroll_window.set_visible(self.mode == 'image' and self.zoom)
+        self.image.set_visible(self.mode == 'image' and not self.zoom)
         self.browser.set_visible(self.mode == 'folder')
 
     def process_key(self, widget, event):
@@ -518,19 +519,20 @@ class Ojo(Gtk.Window):
         self.zoom_y_percent = y_percent
 
     def update_zoomed_views(self):
-        def _f():
-            self.update_zoom_scrolling(False)
+        rect = Gdk.Rectangle()
+        rect.width = self.get_max_image_width()
+        rect.height = self.get_max_image_height()
+        self.scroll_window.size_allocate(rect)
 
-            logging.debug("update_zoomed_views _f")
-            if self.zoom and self.image in self.box.get_children():
-                self.box.remove(self.image)
-                self.box.add(self.scroll_window)
-            elif not self.zoom and self.scroll_window in self.box.get_children():
-                self.box.remove(self.scroll_window)
-                self.box.add(self.image)
+        self.update_zoom_scrolling(False)
 
-            GObject.idle_add(self.update_zoom_scrolling)
-        GObject.idle_add(_f)
+        logging.debug("update_zoomed_views _f")
+        if self.zoom and self.image.get_visible():
+            self.image.set_visible(False)
+            self.scroll_window.set_visible(True)
+        elif not self.zoom and self.scroll_window.get_visible():
+            self.scroll_window.set_visible(False)
+            self.image.set_visible(True)
 
     def mouse_motion(self, widget, event):
         if not self.mousedown_zoomed and not self.mousedown_panning:
