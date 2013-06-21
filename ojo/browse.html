@@ -64,7 +64,7 @@
 <script src="lib/underscore-min.js" type="text/javascript"></script>
 <script type="text/javascript">
 	function python(command) {
-		document.title = command;
+		document.title = new Date().getTime() + '|' + command;
 	}
 
     function add_image_div(file, is_current) {

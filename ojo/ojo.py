@@ -80,8 +80,7 @@ class Ojo(Gtk.Window):
                         Gdk.EventMask.POINTER_MOTION_MASK)
 
         if self.full:
-            self.set_margins(0)
-            self.fullscreen()
+            self.toggle_fullscreen(True, True)
         else:
             self.set_margins(30)
             self.set_position(Gtk.WindowPosition.CENTER)
@@ -135,19 +134,16 @@ class Ojo(Gtk.Window):
     def update_browser(self, file):
         self.js("select('%s')" % file)
 
-    def update_zoom_scrolling(self, clear=True):
+    def update_zoom_scrolling(self):
         if self.zoom:
-            logging.debug("update_zoom_scrolling _f")
             if not self.zoom_x_percent is None:
                 ha = self.scroll_window.get_hadjustment()
                 ha.set_value(self.zoom_x_percent * (ha.get_upper() - ha.get_page_size() - ha.get_lower()))
-                if clear:
-                    self.zoom_x_percent = None
+                self.zoom_x_percent = None
             if not self.zoom_y_percent is None:
                 va = self.scroll_window.get_vadjustment()
                 va.set_value(self.zoom_y_percent * (va.get_upper() - va.get_page_size() - va.get_lower()))
-                if clear:
-                    self.zoom_y_percent = None
+                self.zoom_y_percent = None
             self.scroll_h = self.scroll_window.get_hadjustment().get_value()
             self.scroll_v = self.scroll_window.get_vadjustment().get_value()
 
@@ -239,6 +235,7 @@ class Ojo(Gtk.Window):
             import time
             import json
 
+            title = title[title.index('|') + 1:]
             index = title.index(':')
             action = title[:index]
             argument = title[index + 1:]
@@ -392,7 +389,7 @@ class Ojo(Gtk.Window):
             self.box.set_margin_top(margin)
         GObject.idle_add(_f)
 
-    def update_size(self, from_image=False):
+    def update_size(self, from_image=False, width=None, height=None):
         if self.full:
             self.real_width = self.screen.get_width()
             self.real_height = self.screen.get_height()
@@ -409,9 +406,9 @@ class Ojo(Gtk.Window):
                     self.real_height = int(self.real_width / 1.5)
 
         if not self.full:
-            self.resize(self.real_width, self.real_height)
-            self.move((self.screen.get_width() - self.real_width) // 2,
-                (self.screen.get_height() - self.real_height) // 2)
+            self.resize(width or self.real_width, height or self.real_height)
+            self.move((self.screen.get_width() - (width or self.real_width)) // 2,
+                (self.screen.get_height() - (height or self.real_height)) // 2)
 
     def get_max_image_width(self):
         return self.real_width - 2 * self.margin if not self.full else self.screen.get_width()
@@ -431,7 +428,7 @@ class Ojo(Gtk.Window):
             logging.exception("go: Could not show " + filename)
             GObject.idle_add(lambda: self.go(direction))
 
-    def toggle_fullscreen(self, full=None):
+    def toggle_fullscreen(self, full=None, first_run=False):
         if full is None:
             full = not self.full
         self.full = full
@@ -439,15 +436,18 @@ class Ojo(Gtk.Window):
         self.pix_cache[False] = {}
 
         if self.full:
+            self.saved_width = self.get_width()
+            self.saved_height = self.get_height()
             self.fullscreen()
             self.set_margins(0)
         else:
             self.unfullscreen()
             self.set_margins(30)
+            self.update_size(width=self.saved_width, height=self.saved_height)
 
-        self.update_size()
         self.update_cursor()
-        self.show()
+        if not first_run:
+            self.show()
 
     def update_cursor(self):
         if self.mousedown_zoomed:
@@ -513,8 +513,10 @@ class Ojo(Gtk.Window):
 
     def set_zoom(self, zoom, x_percent=None, y_percent=None):
         self.zoom = zoom
-        x_percent = x_percent or self.zoom_x_percent
-        y_percent = y_percent or self.zoom_y_percent
+        if x_percent is None:
+            x_percent = self.zoom_x_percent
+        if y_percent is None:
+            y_percent = self.zoom_y_percent
         self.zoom_x_percent = x_percent
         self.zoom_y_percent = y_percent
 
@@ -524,15 +526,20 @@ class Ojo(Gtk.Window):
         rect.height = self.get_max_image_height()
         self.scroll_window.size_allocate(rect)
 
-        self.update_zoom_scrolling(False)
+        self.update_zoom_scrolling()
 
-        logging.debug("update_zoomed_views _f")
         if self.zoom and self.image.get_visible():
             self.image.set_visible(False)
             self.scroll_window.set_visible(True)
         elif not self.zoom and self.scroll_window.get_visible():
             self.scroll_window.set_visible(False)
             self.image.set_visible(True)
+
+    def get_width(self):
+        return self.get_window().get_width()
+
+    def get_height(self):
+        return self.get_window().get_height()
 
     def mouse_motion(self, widget, event):
         if not self.mousedown_zoomed and not self.mousedown_panning:
@@ -542,8 +549,8 @@ class Ojo(Gtk.Window):
         self.register_action()
         if self.mousedown_zoomed:
             self.set_zoom(True,
-                min(1, max(0, event.x - 100) / max(1, self.real_width - 200)),
-                min(1, max(0, event.y - 100) / max(1, self.real_height - 200)))
+                min(1, max(0, event.x - 100) / max(1, self.get_width() - 200)),
+                min(1, max(0, event.y - 100) / max(1, self.get_height() - 200)))
             self.update_zoom_scrolling()
         elif self.mousedown_panning:
             ha = self.scroll_window.get_hadjustment()
@@ -572,8 +579,8 @@ class Ojo(Gtk.Window):
                     self.mousedown_zoomed = True
                     self.register_action()
                     self.set_zoom(True,
-                        min(1, max(0, x - 100) / max(1, self.real_width - 200)),
-                        min(1, max(0, y - 100) / max(1, self.real_height - 200)))
+                        min(1, max(0, x - 100) / max(1, self.get_width() - 200)),
+                        min(1, max(0, y - 100) / max(1, self.get_height() - 200)))
                     self.show()
                     self.update_zoomed_views()
                     self.update_cursor()
