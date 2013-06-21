@@ -25,7 +25,7 @@ class Easylog:
     def __init__(self, level):
         self.level = level
 
-    def log(x):
+    def log(self, x):
         print x
 
     def info(self, x):
@@ -69,14 +69,9 @@ class Ojo(Gtk.Window):
         self.box = Gtk.VBox()
         self.box.set_visible(True)
 
-        self.scroll_window = Gtk.ScrolledWindow()
         self.image = Gtk.Image()
         self.image.set_visible(True)
-        self.box.add(self.scroll_window)
-        self.scroll_window.add_with_viewport(self.image)
-        self.make_transparent(self.scroll_window)
-        self.make_transparent(self.scroll_window.get_child())
-        self.scroll_window.set_visible(True)
+        self.box.add(self.image)
         self.add(self.box)
 
         self.set_events(Gdk.EventMask.BUTTON_PRESS_MASK |
@@ -96,7 +91,7 @@ class Ojo(Gtk.Window):
         path = os.path.realpath(sys.argv[-1])
         logging.info("Started with: " + path)
         self.meta_cache = {}
-        self.pix_cache = {}
+        self.pix_cache = {False: {}, True: {}} # keyed by "zoomed" property
         self.current_preparing = None
         if os.path.isfile(path):
             self.mode = 'image'
@@ -140,31 +135,21 @@ class Ojo(Gtk.Window):
     def update_browser(self, file):
         self.js("select('%s')" % file)
 
-    def save_zoom_scrolling(self):
+    def update_zoom_scrolling(self, clear=True):
         if self.zoom:
-            ha = self.scroll_window.get_hadjustment()
-            posh = ha.get_upper() - ha.get_page_size() - ha.get_lower()
-            if posh > 0:
-                self.zoom_x_percent = ha.get_value() / posh
-            va = self.scroll_window.get_vadjustment()
-            posv = va.get_upper() - va.get_page_size() - va.get_lower()
-            if posv > 0:
-                self.zoom_x_percent = va.get_value() / posv
-
-    def update_zoom_scrolling(self):
-        if self.zoom:
-            def _f():
-                if not self.zoom_x_percent is None:
-                    ha = self.scroll_window.get_hadjustment()
-                    ha.set_value(self.zoom_x_percent * (ha.get_upper() - ha.get_page_size() - ha.get_lower()))
+            logging.debug("update_zoom_scrolling _f")
+            if not self.zoom_x_percent is None:
+                ha = self.scroll_window.get_hadjustment()
+                ha.set_value(self.zoom_x_percent * (ha.get_upper() - ha.get_page_size() - ha.get_lower()))
+                if clear:
                     self.zoom_x_percent = None
-                if not self.zoom_y_percent is None:
-                    va = self.scroll_window.get_vadjustment()
-                    va.set_value(self.zoom_y_percent * (va.get_upper() - va.get_page_size() - va.get_lower()))
+            if not self.zoom_y_percent is None:
+                va = self.scroll_window.get_vadjustment()
+                va.set_value(self.zoom_y_percent * (va.get_upper() - va.get_page_size() - va.get_lower()))
+                if clear:
                     self.zoom_y_percent = None
-                self.scroll_h = self.scroll_window.get_hadjustment().get_value()
-                self.scroll_v = self.scroll_window.get_vadjustment().get_value()
-            GObject.idle_add(_f)
+            self.scroll_h = self.scroll_window.get_hadjustment().get_value()
+            self.scroll_v = self.scroll_window.get_vadjustment().get_value()
 
     def show(self, filename=None, orient=False, quick=False):
         if filename:
@@ -176,9 +161,10 @@ class Ojo(Gtk.Window):
         self.set_title(self.current)
         self.pixbuf, oriented = self.get_pixbuf(self.current, orient)
 
-#        self.save_zoom_scrolling()
-        self.image.set_from_pixbuf(self.pixbuf)
-        self.update_zoom_scrolling()
+        if not self.zoom:
+            self.image.set_from_pixbuf(self.pixbuf)
+        else:
+            self.zoomed_image.set_from_pixbuf(self.pixbuf)
 
         if not orient and not oriented:
             def _check_orientation():
@@ -196,6 +182,16 @@ class Ojo(Gtk.Window):
             self.last_action_time = 0
 
     def after_quick_start(self):
+        self.scroll_window = Gtk.ScrolledWindow()
+        self.zoomed_image = Gtk.Image()
+        self.zoomed_image.set_visible(True)
+        self.scroll_window.add_with_viewport(self.zoomed_image)
+        self.make_transparent(self.scroll_window)
+        self.make_transparent(self.scroll_window.get_child())
+        self.scroll_window.set_visible(True)
+        self.scroll_window.set_min_content_width(self.get_max_image_width())
+        self.scroll_window.set_min_content_height(self.get_max_image_height())
+
         self.folder = os.path.dirname(self.current)
         self.images = filter(os.path.isfile, map(lambda f: os.path.join(self.folder, f), sorted(os.listdir(self.folder))))
         self.update_cursor()
@@ -217,13 +213,6 @@ class Ojo(Gtk.Window):
         self.connect("scroll-event", self.scrolled)
         self.connect('motion-notify-event', self.mouse_motion)
 
-#        def _ha(ha):
-#            self.zoom_x_percent = ha.get_value() / (ha.get_upper() - ha.get_page_size() - ha.get_lower())
-#        self.scroll_window.get_hadjustment().connect("value-changed", _ha)
-#        def _va(va):
-#            self.zoom_x_percent = va.get_value() / (va.get_upper() - va.get_page_size() - va.get_lower())
-#        self.scroll_window.get_vadjustment().connect("value-changed", _va)
-#
         GObject.idle_add(self.render_browser)
 
         self.start_cache_thread()
@@ -297,10 +286,12 @@ class Ojo(Gtk.Window):
             if pos + i < 0 or pos + i >= len(self.images):
                 continue
             f = self.images[pos + i]
-            if not f in self.pix_cache:
-                logging.debug("Caching around: " + f)
-                self.cache_queue.append(f)
+            if not f in self.pix_cache[self.zoom]:
+                logging.debug("Caching around: file %s, zoomed %s" % (f, self.zoom))
+                self.cache_queue.append((f, self.zoom))
                 self.cache_queue_event.set()
+        self.cache_queue.append((self.current, not self.zoom))
+        self.cache_queue_event.set()
 
     def start_cache_thread(self):
         import threading
@@ -312,18 +303,20 @@ class Ojo(Gtk.Window):
             logging.info("Starting cache thread")
             while True:
                 self.cache_queue_event.wait()
-                if len(self.pix_cache) > 20:
-                    self.pix_cache = {}
+                if len(self.pix_cache[False]) > 20:   #TODO: Do we want a proper LRU policy, or this is good enough?
+                    self.pix_cache[False] = {}
+                if len(self.pix_cache[True]) > 20:
+                    self.pix_cache[True] = {}
 
                 while self.cache_queue:
-                    file = self.cache_queue[0]
-                    self.cache_queue.remove(file)
-                    if not file in self.pix_cache:
-                        logging.debug("Cache thread loads file " + file)
-                        self.current_preparing = file
+                    file, zoom = self.cache_queue[0]
+                    self.cache_queue.remove((file, zoom))
+                    if not file in self.pix_cache[zoom]:
+                        logging.debug("Cache thread loads file %s, zoomed %s" % (file, zoom))
+                        self.current_preparing = file, zoom
                         try:
                             self.get_meta(file)
-                            self.get_pixbuf(file, orient=True, force=True)
+                            self.get_pixbuf(file, orient=True, force=True, zoom=zoom)
                         except Exception:
                             logging.exception("Could not cache file " + file)
                         finally:
@@ -442,7 +435,7 @@ class Ojo(Gtk.Window):
             full = not self.full
         self.full = full
 
-        self.pix_cache = {}
+        self.pix_cache[False] = {}
 
         if self.full:
             self.fullscreen()
@@ -506,16 +499,16 @@ class Ojo(Gtk.Window):
             GObject.idle_add(lambda: self.go(-1, len(self.images) - 1))
         elif key in ("z", "Z"):
             self.set_zoom(not self.zoom)
-            self.update_size()
             self.show()
+            self.update_zoomed_views()
         elif key in ("1", "0"):
             self.set_zoom(True)
-            self.update_size()
             self.show()
+            self.update_zoomed_views()
         elif key in ("slash", "asterisk"):
             self.set_zoom(False)
-            self.update_size()
             self.show()
+            self.update_zoomed_views()
 
     def set_zoom(self, zoom, x_percent=None, y_percent=None):
         self.zoom = zoom
@@ -523,7 +516,21 @@ class Ojo(Gtk.Window):
         y_percent = y_percent or self.zoom_y_percent
         self.zoom_x_percent = x_percent
         self.zoom_y_percent = y_percent
-        self.pix_cache = {}
+
+    def update_zoomed_views(self):
+        def _f():
+            self.update_zoom_scrolling(False)
+
+            logging.debug("update_zoomed_views _f")
+            if self.zoom and self.image in self.box.get_children():
+                self.box.remove(self.image)
+                self.box.add(self.scroll_window)
+            elif not self.zoom and self.scroll_window in self.box.get_children():
+                self.box.remove(self.scroll_window)
+                self.box.add(self.image)
+
+            GObject.idle_add(self.update_zoom_scrolling)
+        GObject.idle_add(_f)
 
     def mouse_motion(self, widget, event):
         if not self.mousedown_zoomed and not self.mousedown_panning:
@@ -566,6 +573,7 @@ class Ojo(Gtk.Window):
                         min(1, max(0, x - 100) / max(1, self.real_width - 200)),
                         min(1, max(0, y - 100) / max(1, self.real_height - 200)))
                     self.show()
+                    self.update_zoomed_views()
                     self.update_cursor()
             GObject.timeout_add(250, act)
 
@@ -583,6 +591,7 @@ class Ojo(Gtk.Window):
         if self.mousedown_zoomed:
             self.set_zoom(False)
             self.show()
+            self.update_zoomed_views()
         elif self.mousedown_panning and (event.x != self.mousedown_x or event.y != self.mousedown_y):
             self.scroll_h = self.scroll_window.get_hadjustment().get_value()
             self.scroll_v = self.scroll_window.get_vadjustment().get_value()
@@ -619,17 +628,20 @@ class Ojo(Gtk.Window):
     def b64(self, filename, width, height):
         return self.pil_to_base64(self.get_pil(filename, width, height))
 
-    def get_pixbuf(self, filename, orient, width=None, height=None, force=False):
-        use_cache = width is None
-        width = width or self.get_max_image_width()
-        height = height or self.get_max_image_height()
+    def get_pixbuf(self, filename, orient, force=False, zoom=None):
+        use_cache = True
+        if zoom is None:
+            zoom = self.zoom
 
-        while not force and use_cache and self.current_preparing == filename:
+        width = self.get_max_image_width()
+        height = self.get_max_image_height()
+
+        while not force and use_cache and self.current_preparing == (filename, zoom):
             logging.info("Waiting on cache")
             self.preparing_event.wait()
             self.preparing_event.clear()
-        if use_cache and filename in self.pix_cache:
-            cached = self.pix_cache[filename]
+        if use_cache and filename in self.pix_cache[zoom]:
+            cached = self.pix_cache[zoom][filename]
             if cached[2] == width and (not orient or cached[1]):
                 logging.debug("Cache hit: " + filename)
                 return cached[0], cached[1]
@@ -637,12 +649,12 @@ class Ojo(Gtk.Window):
         oriented = filename in self.meta_cache and not self.meta_cache[filename][0]
         if oriented or (not orient and not filename in self.meta_cache):
             try:
-                if not self.zoom:
+                if not zoom:
                     pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(filename, width, height, True)
                 else:
                     pixbuf = GdkPixbuf.Pixbuf.new_from_file(filename)
                 if use_cache:
-                    self.pix_cache[filename] = pixbuf, oriented, width
+                    self.pix_cache[zoom][filename] = pixbuf, oriented, width
                 logging.debug("Loaded directly")
                 return pixbuf, oriented
             except GObject.GError, e:
@@ -652,15 +664,15 @@ class Ojo(Gtk.Window):
                 preview = self.get_meta(filename).previews[-1].data
                 pixbuf = self.pixbuf_from_data(preview, width, height)
                 if use_cache:
-                    self.pix_cache[filename] = pixbuf, oriented, width
+                    self.pix_cache[zoom][filename] = pixbuf, oriented, width
                 logging.debug("Loaded from preview")
                 return pixbuf, oriented
             except Exception, e:
                 pass # below we'll use another method
 
-        pixbuf = self.pil_to_pixbuf(self.get_pil(filename, width, height, self.zoom))
+        pixbuf = self.pil_to_pixbuf(self.get_pil(filename, width, height, zoom))
         if use_cache:
-            self.pix_cache[filename] = pixbuf, True, width
+            self.pix_cache[zoom][filename] = pixbuf, True, width
         logging.debug("Loaded with PIL")
         return pixbuf, True
 
@@ -698,14 +710,6 @@ class Ojo(Gtk.Window):
         pixbuf = loader.get_pixbuf()
         loader.close()
         return pixbuf
-
-#        import array
-#        if pil_image.mode != 'RGB':
-#            pil_image = pil_image.convert('RGB')
-#        arr = array.array('B', pil_image.tostring())
-#        height, width = pil_image.size
-#        return GdkPixbuf.Pixbuf.new_from_data(
-#            arr, GdkPixbuf.Colorspace.RGB, True, 8, width, height, width * 4, None, None)
 
     def needs_orientation(self, meta):
         if 'Exif.Image.Orientation' in meta.keys():
