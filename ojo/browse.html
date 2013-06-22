@@ -82,8 +82,8 @@
 	    $(".item[file='" + file + "']").remove();
     }
 
-    function add_image(file, b64) {
-	    $(".item[file='" + file + "']").html("<img src='data:image/png;base64," + b64 + "'/>");
+    function add_image(file, thumb) {
+	    $(".item[file='" + file + "']").html("<img src='" + thumb + "'/>");
     }
 
     function get_name(file) {

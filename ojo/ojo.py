@@ -282,8 +282,8 @@ class Ojo(Gtk.Window):
                 logging.debug("Caching around: file %s, zoomed %s" % (f, self.zoom))
                 self.cache_queue.append((f, self.zoom))
                 self.cache_queue_event.set()
-        self.cache_queue.append((self.current, not self.zoom))
-        self.cache_queue_event.set()
+#        self.cache_queue.append((self.current, not self.zoom)) # TODO do we want to cache the full-size image?
+#        self.cache_queue_event.set()
 
     def start_cache_thread(self):
         import threading
@@ -319,6 +319,9 @@ class Ojo(Gtk.Window):
         cache_thread.daemon = True
         cache_thread.start()
 
+    def get_thumbs_cache_dir(self, height):
+        return os.path.expanduser('~/.config/ojo/cache/%d' % height)
+
     def start_thumbnail_thread(self):
         import threading
         import time
@@ -332,12 +335,20 @@ class Ojo(Gtk.Window):
             while self.mode == "image" and time.time() - start_time < 2:
                 time.sleep(0.1)
 
+            try:
+                cache_dir = self.get_thumbs_cache_dir(120)
+                if not os.path.exists(cache_dir):
+                    os.makedirs(cache_dir)
+            except Exception:
+                logging.exception("Could not create cache dir %s" % cache_dir)
+
             logging.info("Starting thumbs thread")
             while True:
                 self.thumbs_queue_event.wait()
                 while self.thumbs_queue:
                     while time.time() - self.last_action_time < 2:
                         time.sleep(0.2)
+                    time.sleep(0.02)
                     img = self.thumbs_queue[0]
                     self.thumbs_queue.remove(img)
                     if not img in self.prepared_thumbs:
@@ -351,8 +362,8 @@ class Ojo(Gtk.Window):
 
     def add_thumb(self, img):
         try:
-            b64 = self.b64(img, 500, 120)
-            self.js("add_image('%s', '%s')" % (img, b64))
+            thumb_path = self.prepare_thumbnail(img, 500, 120)
+            self.js("add_image('%s', '%s')" % (img, thumb_path))
             if img == self.current:
                 self.update_browser(img)
         except Exception, e:
@@ -644,8 +655,13 @@ class Ojo(Gtk.Window):
     def pixbuf_to_b64(self, pixbuf):
         return pixbuf.save_to_bufferv('png', [], [])[1].encode("base64").replace('\n', '')
 
-    def b64(self, filename, width, height):
-        return self.pil_to_base64(self.get_pil(filename, width, height))
+    def prepare_thumbnail(self, filename, width, height):
+        import hashlib
+        hash = hashlib.md5(filename).hexdigest()
+        cached = os.path.join(self.get_thumbs_cache_dir(120), hash + '.jpg')
+        if not os.path.exists(cached):
+            self.get_pil(filename, width, height).save(cached, 'JPEG')
+        return cached
 
     def get_pixbuf(self, filename, orient, force=False, zoom=None):
         use_cache = True
