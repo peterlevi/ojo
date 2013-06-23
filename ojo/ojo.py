@@ -43,7 +43,7 @@ class Easylog:
         import logging
         print logging.exception(x)
 
-logging = Easylog(1)
+logging = Easylog(0)
 
 class Ojo(Gtk.Window):
     def __init__(self):
@@ -96,9 +96,11 @@ class Ojo(Gtk.Window):
             GObject.idle_add(self.after_quick_start)
         else:
             self.mode = 'folder'
+            self.selected = path
             self.current = os.path.join(path, 'none')
             self.after_quick_start()
             self.set_mode('folder')
+            self.selected = self.images[0] if self.images else path
             self.show(self.images[0], quick=True)
 
         self.set_visible(True)
@@ -144,10 +146,13 @@ class Ojo(Gtk.Window):
             self.scroll_v = self.scroll_window.get_vadjustment().get_value()
 
     def show(self, filename=None, orient=False, quick=False):
-        if filename:
-            logging.info("Showing " + filename)
-
         filename = filename or self.current
+        logging.info("Showing " + filename)
+
+        if os.path.isdir(filename):
+            self.change_to_folder(filename)
+            return
+
         self.current = filename
         self.selected = self.current
         self.set_title(self.current)
@@ -167,13 +172,29 @@ class Ojo(Gtk.Window):
 
         if not quick:
             import time
+            self.update_cursor()
             self.last_action_time = time.time()
             self.update_browser(self.current)
             self.cache_around()
         else:
             self.last_action_time = 0
 
+    def set_folder(self, path):
+        self.folder = os.path.realpath(path)
+        self.images = filter(os.path.isfile, map(lambda f: os.path.join(self.folder, f), sorted(os.listdir(self.folder))))
+
+    def change_to_folder(self, path):
+        self.priority_thumbs([])
+        self.prepared_thumbs = set()
+        self.set_folder(path)
+        self.selected = self.images[0] if self.images else os.path.realpath(os.path.join(path, '..'))
+        self.set_mode("folder")
+        self.js('clear_all()')
+        self.render_folder_view()
+
     def after_quick_start(self):
+        self.set_folder(os.path.dirname(self.current))
+
         self.scroll_window = Gtk.ScrolledWindow()
         self.zoomed_image = Gtk.Image()
         self.zoomed_image.set_visible(True)
@@ -183,10 +204,7 @@ class Ojo(Gtk.Window):
         self.scroll_window.set_visible(False)
         self.box.add(self.scroll_window)
 
-        self.folder = os.path.dirname(self.current)
-        self.images = filter(os.path.isfile, map(lambda f: os.path.join(self.folder, f), sorted(os.listdir(self.folder))))
         self.update_cursor()
-
         self.from_browser_time = 0
 
         self.browser = Gtk.ScrolledWindow()
@@ -216,6 +234,27 @@ class Ojo(Gtk.Window):
         rgba.parse('rgba(0, 0, 0, 0)')
         widget.override_background_color(Gtk.StateFlags.NORMAL, rgba)
 
+    def on_js_action(self, action, argument):
+        import time
+        import json
+
+        if action in ('ojo', 'ojo-select'):
+            self.selected = argument
+            if action == 'ojo':
+                def _do():
+                    filename = self.selected
+                    if os.path.isfile(filename):
+                        self.show(filename)
+                        self.from_browser_time = time.time()
+                        self.set_mode("image")
+                    else:
+                        self.change_to_folder(filename)
+
+                GObject.idle_add(_do)
+        elif action == 'ojo-priority':
+            files = json.loads(argument)
+            self.priority_thumbs(map(lambda f: f.encode('utf-8'), files))
+
     def render_browser(self):
         from gi.repository import WebKit
 
@@ -226,44 +265,52 @@ class Ojo(Gtk.Window):
         self.web_view.set_transparent(True)
 
         def nav(wv, wf, title):
-            import time
-            import json
-
             title = title[title.index('|') + 1:]
             index = title.index(':')
             action = title[:index]
             argument = title[index + 1:]
-
-            if action in ('ojo', 'ojo-select'):
-                self.selected = argument
-                if action == 'ojo':
-                    def _do():
-                        self.show(self.selected)
-                        self.from_browser_time = time.time()
-                        self.set_mode("image")
-                    GObject.idle_add(_do)
-            elif action == 'ojo-priority':
-                files = json.loads(argument)
-                self.priority_thumbs(map(lambda f: f.encode('utf-8'), files))
+            self.on_js_action(action, argument)
         self.web_view.connect("title-changed", nav)
 
-        self.web_view.connect('document-load-finished', lambda wf, data: self.on_web_view_loaded()) # Load page
+        self.web_view.connect('document-load-finished', lambda wf, data: self.render_folder_view()) # Load page
 
         self.web_view.load_string(html, "text/html", "UTF-8", "file://" + os.path.dirname(__file__) + "/")
         self.web_view.set_visible(True)
         self.make_transparent(self.web_view)
         self.browser.add(self.web_view)
 
-    def on_web_view_loaded(self):
+    def render_folder_view(self):
         self.web_view_loaded = True
 
         import threading
         def _thread():
+            self.js("set_title('%s')" % self.folder)
+            parent_path = os.path.realpath(os.path.join(self.folder, '..'))
+            self.js("add_folder_category('Up', 'up')")
+            self.js("add_folder('up', '%s', '%s')" % (os.path.basename(parent_path), parent_path))
+
+            siblings = [os.path.join(parent_path, f) for f in sorted(os.listdir(parent_path))
+                        if os.path.isdir(os.path.join(parent_path, f))]
+            pos = siblings.index(self.folder)
+            if pos - 1 >= 0:
+                self.js("add_folder_category('Previous', 'prev_sibling')")
+                self.js("add_folder('prev_sibling', '%s', '%s')" % (os.path.basename(siblings[pos - 1]), siblings[pos - 1]))
+            if pos + 1 < len(siblings):
+                self.js("add_folder_category('Next', 'next_sibling')")
+                self.js("add_folder('next_sibling', '%s', '%s')" % (os.path.basename(siblings[pos + 1]), siblings[pos + 1]))
+
+            subfolders = [os.path.join(self.folder, f) for f in sorted(os.listdir(self.folder))
+                          if os.path.isdir(os.path.join(self.folder, f))]
+            if subfolders:
+                self.js("add_folder_category('Subfolders', 'sub')")
+                for sub in subfolders:
+                    self.js("add_folder('sub', '%s', '%s')" % (os.path.basename(sub), sub))
+
             for img in self.images:
-                self.js("add_image_div('%s', %s)" % (img, 'true' if img==self.current else 'false'))
-                if img == self.current:
-                    self.update_browser(img)
-            pos = self.images.index(self.current)
+                self.js("add_image_div('%s', %s)" % (img, 'true' if img==self.selected else 'false'))
+
+            self.update_browser(self.selected)
+            pos = self.images.index(self.selected) if self.selected in self.images else 0
             self.priority_thumbs([x[1] for x in sorted(enumerate(self.images), key=lambda (i,f): abs(i - pos))])
 
         prepare_thread = threading.Thread(target=_thread)
@@ -271,9 +318,9 @@ class Ojo(Gtk.Window):
         prepare_thread.start()
 
     def cache_around(self):
-        if not hasattr(self, "images"):
+        if not hasattr(self, "images") or not self.images:
             return
-        pos = self.images.index(self.current)
+        pos = self.images.index(self.current) if self.current in self.images else 0
         for i in [1, -1]:
             if pos + i < 0 or pos + i >= len(self.images):
                 continue
@@ -364,7 +411,7 @@ class Ojo(Gtk.Window):
         try:
             thumb_path = self.prepare_thumbnail(img, 500, 120)
             self.js("add_image('%s', '%s')" % (img, thumb_path))
-            if img == self.current:
+            if img == self.selected:
                 self.update_browser(img)
         except Exception, e:
             self.js("remove_image_div('%s')" % img)
@@ -372,7 +419,7 @@ class Ojo(Gtk.Window):
 
     def priority_thumbs(self, files):
         logging.debug("Priority thumbs: " + str(files))
-        new_thumbs_queue = [self.current] + [f for f in files if not f in self.prepared_thumbs] + \
+        new_thumbs_queue = [self.selected] + [f for f in files if not f in self.prepared_thumbs] + \
                            [f for f in self.thumbs_queue if not f in files and not f in self.prepared_thumbs]
         self.thumbs_queue = new_thumbs_queue
         self.thumbs_queue_event.set()
@@ -437,7 +484,7 @@ class Ojo(Gtk.Window):
             self.show(filename)
             return
         except Exception, ex:
-            logging.exception("go: Could not show " + filename)
+            logging.exception("go: Could not show %s" % filename)
             GObject.idle_add(lambda: self.go(direction))
 
     def toggle_fullscreen(self, full=None, first_run=False):
@@ -488,8 +535,10 @@ class Ojo(Gtk.Window):
         self.mode = mode
         if self.mode == "image" and self.selected != self.current:
             self.show(self.selected)
-        else:
+        elif self.mode == "folder":
+            self.set_title(self.folder)
             self.last_action_time = 0
+
         self.update_cursor()
         self.scroll_window.set_visible(self.mode == 'image' and self.zoom)
         self.image.set_visible(self.mode == 'image' and not self.zoom)
@@ -508,7 +557,10 @@ class Ojo(Gtk.Window):
             modes = ["image", "folder"]
             self.set_mode(modes[(modes.index(self.mode) + 1) % len(modes)])
         elif self.mode == 'folder':
-            self.js("on_key('%s')" % key)
+            if key == 'BackSpace':
+                self.change_to_folder(os.path.join(self.folder, '..'))
+            else:
+                self.js("on_key('%s')" % key)
         elif key == 'F5':
             self.show()
         elif key in ("Right", "Down", "Page_Down", "space"):

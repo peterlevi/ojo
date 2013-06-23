@@ -6,6 +6,7 @@
         * {
             margin: 0;
             padding: 0;
+            font-family: Ubuntu;
         }
         
         img {
@@ -16,10 +17,50 @@
             background: rgba(0, 0, 0, 0);
         }
 
+        #title {
+            font-family: Ubuntu Light;
+            font-size: x-large;
+            color: #A19C90;
+            margin: 15px;
+        }
+
+        #folders {
+            margin: 10px;
+            background: rgba(105, 101, 93, 0.8);
+            box-shadow: 3px 3px 5px 0px #333;
+            /*border: solid 1px #a9a9a9;*/
+            /*border-radius: 10px;*/
+            padding: 20px;
+            float: left;
+        }
+
+        .folder-category {
+            color: white;
+            padding-bottom: 10px;
+        }
+
+        .folder {
+            padding-left: 20px;
+            padding-right: 20px;
+            color: #A19C90;
+            margin-bottom: 10px;
+        }
+
+        .folder span {
+            cursor: pointer;
+        }
+
+        .folder.selected {
+            margin-bottom: 5px;
+            border-bottom: solid 5px #F07746;
+        }
+
         .item {
             margin: 10px;
             float: left;
             overflow: hidden;
+            cursor: pointer;
+            box-shadow: 3px 3px 5px 0px #333;
         }
 
         .item.selected {
@@ -37,7 +78,6 @@
             background: rgba(57, 55, 49, 0.9);
             padding: 10px;
             color: white;
-            font-family: Ubuntu;
         }
 
 	    span.holder-name {
@@ -56,9 +96,14 @@
 </head>
 
 <body>
-<div id="label"><span id="filename"></span><span id="dimensions" style="float:right; padding-right: 20px"></span></div>
+<div id="title"></div>
+<div id="folders"></div>
 <div id="images"></div>
 <br style="clear: both"><br><br>&nbsp;
+<div id="label">
+    <span id="filename"></span>
+    <span id="dimensions" style="float:right; padding-right: 20px"></span>
+</div>
 </body>
 <script src="lib/jquery-2.0.2.min.js" type="text/javascript"></script>
 <script src="lib/underscore-min.js" type="text/javascript"></script>
@@ -67,8 +112,21 @@
 		document.title = new Date().getTime() + '|' + command;
 	}
 
+    function set_title(title) {
+        $("#title").html(title);
+    }
+
+    function add_folder_category(label, id) {
+        var html = "<div id='" + id + "'><div class='folder-category'>" + label + "</div></div>";
+        $("#folders").append($(html));
+    }
+
+    function add_folder(category_id, label, path) {
+        $("#" + category_id).append($("<div class='folder selectable' file='" + path + "'><span>" + label + "</span></div>"))
+    }
+
     function add_image_div(file, is_current) {
-	    var html = "<div class='item %selected' file='%file'>" +
+	    var html = "<div class='item selectable %selected' file='%file'>" +
 	               "<div class='holder'><span class='holder-name'>%name</span></div>" +
 	               "</div>";
 	    html = html.replace(/%file/g, file);
@@ -79,11 +137,24 @@
     }
 
     function remove_image_div(file) {
-	    $(".item[file='" + file + "']").remove();
+        var to_remove = $(".item[file='" + file + "']");
+        if (to_remove.hasClass('selected')) {
+            var next = $(to_remove).next('.selectable');
+            if (next.length == 0) {
+                next = $('.selectable');
+            }
+            select(next.attr('file'))
+        }
+	    to_remove.remove();
     }
 
     function add_image(file, thumb) {
 	    $(".item[file='" + file + "']").html("<img src='" + thumb + "'/>");
+    }
+
+    function clear_all() {
+        $('#folders').html("");
+        $('#images').html("");
     }
 
     function get_name(file) {
@@ -97,11 +168,11 @@
     var current;
     function select(file, dontScrollTo, animate_duration) {
         current = file;
-        var el = $(".item[file='" + file + "']");
+        var el = $(".selectable[file='" + file + "']");
         $("#filename").html(get_name(file));
         var dim = el.attr('dimensions');
         $("#dimensions").html(dim ? dim : '');
-        $(".item").removeClass('selected');
+        $(".selectable").removeClass('selected');
         el.addClass('selected');
 	    if (!dontScrollTo) {
 		    var scrollTo;
@@ -127,10 +198,10 @@
     }
 
     function get_next_in_direction(elem, direction) {
-	    var applicable = _.filter($(".item"), function(x) {
+        var o2 = elem.offset().top + (direction < 0 ? -10 : elem.height());
+	    var applicable = _.filter($(".selectable"), function(x) {
 		    var o1 = $(x).offset().top;
-		    var o2 = elem.offset().top;
-		    return direction < 0 ? o1 < o2 - 10 : o1 > o2 + 10;
+		    return direction < 0 ? o1 < o2 : o1 > o2;
 	    });
 	    if (applicable.length > 0) {
 		    return $(_.min(applicable, function(el) {
@@ -142,7 +213,7 @@
     }
 
     function goto_first_visible() {
-	    var visible = _.filter($('.item'), function(x) {
+	    var visible = _.filter($('.selectable'), function(x) {
 		    return $(x).offset().top >= $('body').scrollTop() - 5 &&
 		           $(x).offset().top + $(x).height() < $('body').scrollTop() + $(window).height() + 5;
 	    });
@@ -153,13 +224,17 @@
 
     function on_key(key) {
 	    console.log(key);
-	    var sel = $('.item.selected');
+	    var sel = $('.selected');
 	    if (key == 'Up' || key == 'Down') {
 		    goto(get_next_in_direction(sel, key == 'Up' ? -1 : 1), false);
         } else if (key == 'Right') {
-	        goto(sel.next('.item'), false);
+            if (sel.next('.selectable').length) {
+	            goto(sel.next('.selectable'), false);
+            } else {
+                goto(sel.next('.closest'), false);
+            }
 	    } else if (key == 'Left') {
-		    goto(sel.prev('.item'));
+		    goto(sel.prev('.selectable'));
 	    } else if (key == "Page_Up") {
 		    $('body').scrollTop($('body').scrollTop() - $(window).height() + 200);
 		    goto_first_visible();
@@ -167,9 +242,9 @@
 		    $('body').scrollTop($('body').scrollTop() + $(window).height() - 200);
 		    goto_first_visible();
 	    } else if (key == "Home") {
-		    goto($(".item:first"), false);
+		    goto($(".selectable:first"), false);
 	    } else if (key == "End") {
-		    goto($(".item:last"), false);
+		    goto($(".selectable:last"), false);
 	    }
     }
 
@@ -220,7 +295,7 @@
             }, 200);
 	    });
 
-        $(document).on('click', '.item', function() {
+        $(document).on('click', '.selectable', function() {
             python("ojo:" + $(this).attr('file'));
         });
     });
