@@ -21,6 +21,12 @@ from gi.repository import Gtk, Gdk, GdkPixbuf, GObject
 import os
 import sys
 
+killed = False
+
+def kill(*args):
+    global killed
+    killed = True
+
 class Easylog:
     def __init__(self, level):
         self.level = level
@@ -49,7 +55,8 @@ class Ojo(Gtk.Window):
     def __init__(self):
         super(Ojo, self).__init__()
 
-        path = os.path.realpath(sys.argv[-1])
+        path = os.path.realpath(sys.argv[-1]) if len(sys.argv) > 1 and os.path.exists(sys.argv[-1]) \
+            else os.path.expanduser('~/Pictures') # TODO get XDG dir
         logging.info("Started with: " + path)
 
         self.screen = self.get_screen()
@@ -101,9 +108,13 @@ class Ojo(Gtk.Window):
             self.after_quick_start()
             self.set_mode('folder')
             self.selected = self.images[0] if self.images else path
-            self.show(self.images[0], quick=True)
 
         self.set_visible(True)
+
+        import signal
+        signal.signal(signal.SIGINT, kill)
+        signal.signal(signal.SIGTERM, kill)
+        signal.signal(signal.SIGQUIT, kill)
 
         GObject.threads_init()
         Gdk.threads_init()
@@ -192,7 +203,16 @@ class Ojo(Gtk.Window):
         self.js('clear_all()')
         self.render_folder_view()
 
+    def check_kill(self):
+        global killed
+        if killed:
+            logging.info('Killed, quitting...')
+            GObject.idle_add(Gtk.main_quit)
+        else:
+            GObject.timeout_add(500, self.check_kill)
+
     def after_quick_start(self):
+        self.check_kill()
         self.set_folder(os.path.dirname(self.current))
 
         self.scroll_window = Gtk.ScrolledWindow()
@@ -842,6 +862,4 @@ class Ojo(Gtk.Window):
         return result
 
 if __name__ == "__main__":
-    import signal
-    signal.signal(signal.SIGINT, signal.SIG_DFL)
     Ojo()

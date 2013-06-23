@@ -6,7 +6,7 @@
         * {
             margin: 0;
             padding: 0;
-            font-family: Ubuntu;
+            font-family: Ubuntu Light;
         }
         
         img {
@@ -17,8 +17,12 @@
             background: rgba(0, 0, 0, 0);
         }
 
-        #title {
+        #title span {
             font-family: Ubuntu Light;
+            cursor: pointer;
+        }
+
+        #title {
             font-size: x-large;
             color: #A19C90;
             margin: 15px;
@@ -28,8 +32,6 @@
             margin: 10px;
             background: rgba(105, 101, 93, 0.8);
             box-shadow: 3px 3px 5px 0px #333;
-            /*border: solid 1px #a9a9a9;*/
-            /*border-radius: 10px;*/
             padding: 20px;
             float: left;
         }
@@ -51,8 +53,8 @@
         }
 
         .folder.selected {
-            margin-bottom: 5px;
-            border-bottom: solid 5px #F07746;
+            margin-bottom: 7px;
+            border-bottom: solid 3px #F07746;
         }
 
         .item {
@@ -75,7 +77,7 @@
             width: 100%;
             z-index: 100;
             bottom: 0px;
-            background: rgba(57, 55, 49, 0.9);
+            background: rgba(57, 55, 49, 0.7);
             padding: 10px;
             color: white;
         }
@@ -113,7 +115,20 @@
 	}
 
     function set_title(title) {
-        $("#title").html(title);
+        $('#title').html('');
+        var parts = title.split('/')
+        var folder = ''
+        _.map(parts, function(p) {
+            if (p.length) {
+                folder += '/' + p;
+                var current_folder = folder;
+                var elem = $('<span>/' + p + '</span>');
+                elem.click(function() {
+                   python('ojo:' + current_folder);
+                });
+                $("#title").append(elem);
+            }
+        });
     }
 
     function add_folder_category(label, id) {
@@ -167,6 +182,7 @@
 
     var current;
     function select(file, dontScrollTo, animate_duration) {
+        python("ojo-select:" + file);
         current = file;
         var el = $(".selectable[file='" + file + "']");
         $("#filename").html(get_name(file));
@@ -193,7 +209,6 @@
 	    if ($elem && $elem.length > 0) {
 		    var file = $elem.attr('file');
 		    select(file, dontScrollTo, animate_duration);
-		    python("ojo-select:" + file);
 	    }
     }
 
@@ -228,13 +243,11 @@
 	    if (key == 'Up' || key == 'Down') {
 		    goto(get_next_in_direction(sel, key == 'Up' ? -1 : 1), false);
         } else if (key == 'Right') {
-            if (sel.next('.selectable').length) {
-	            goto(sel.next('.selectable'), false);
-            } else {
-                goto(sel.next('.closest'), false);
-            }
+            var next = sel.next('.selectable');
+            goto(next.length ? next : $(".selected").hasClass('folder') ? $(".item:first") : null, false);
 	    } else if (key == 'Left') {
-		    goto(sel.prev('.selectable'));
+            var prev = sel.prev('.selectable');
+            goto(prev.length ? prev : $(".folder:first"));
 	    } else if (key == "Page_Up") {
 		    $('body').scrollTop($('body').scrollTop() - $(window).height() + 200);
 		    goto_first_visible();
@@ -242,9 +255,9 @@
 		    $('body').scrollTop($('body').scrollTop() + $(window).height() - 200);
 		    goto_first_visible();
 	    } else if (key == "Home") {
-		    goto($(".selectable:first"), false);
+		    goto($(".item:first"), false);
 	    } else if (key == "End") {
-		    goto($(".selectable:last"), false);
+		    goto($(".item:last"), false);
 	    }
     }
 
