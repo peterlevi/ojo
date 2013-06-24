@@ -305,19 +305,20 @@ class Ojo(Gtk.Window):
         import threading
         def _thread():
             self.js("set_title('%s')" % self.folder)
-            parent_path = os.path.realpath(os.path.join(self.folder, '..'))
-            self.js("add_folder_category('Up', 'up')")
-            self.js("add_folder('up', '%s', '%s')" % (os.path.basename(parent_path), parent_path))
+            if self.folder != '/':
+                parent_path = os.path.realpath(os.path.join(self.folder, '..'))
+                self.js("add_folder_category('Up', 'up')")
+                self.js("add_folder('up', '%s', '%s')" % (os.path.basename(parent_path) or parent_path, parent_path))
 
-            siblings = [os.path.join(parent_path, f) for f in sorted(os.listdir(parent_path))
-                        if os.path.isdir(os.path.join(parent_path, f))]
-            pos = siblings.index(self.folder)
-            if pos - 1 >= 0:
-                self.js("add_folder_category('Previous', 'prev_sibling')")
-                self.js("add_folder('prev_sibling', '%s', '%s')" % (os.path.basename(siblings[pos - 1]), siblings[pos - 1]))
-            if pos + 1 < len(siblings):
-                self.js("add_folder_category('Next', 'next_sibling')")
-                self.js("add_folder('next_sibling', '%s', '%s')" % (os.path.basename(siblings[pos + 1]), siblings[pos + 1]))
+                siblings = [os.path.join(parent_path, f) for f in sorted(os.listdir(parent_path))
+                            if os.path.isdir(os.path.join(parent_path, f))]
+                pos = siblings.index(self.folder)
+                if pos - 1 >= 0:
+                    self.js("add_folder_category('Previous', 'prev_sibling')")
+                    self.js("add_folder('prev_sibling', '%s', '%s')" % (os.path.basename(siblings[pos - 1]), siblings[pos - 1]))
+                if pos + 1 < len(siblings):
+                    self.js("add_folder_category('Next', 'next_sibling')")
+                    self.js("add_folder('next_sibling', '%s', '%s')" % (os.path.basename(siblings[pos + 1]), siblings[pos + 1]))
 
             subfolders = [os.path.join(self.folder, f) for f in sorted(os.listdir(self.folder))
                           if os.path.isdir(os.path.join(self.folder, f))]
@@ -729,7 +730,9 @@ class Ojo(Gtk.Window):
 
     def prepare_thumbnail(self, filename, width, height):
         import hashlib
-        hash = hashlib.md5(filename).hexdigest()
+        mtime = os.path.getmtime(filename)
+        hash = hashlib.md5(filename + str(mtime)).hexdigest()
+        # we append modification time to ensure we're not using outdated cached images
         cached = os.path.join(self.get_thumbs_cache_dir(120), hash + '.jpg')
         if not os.path.exists(cached):
             self.get_pil(filename, width, height).save(cached, 'JPEG')
