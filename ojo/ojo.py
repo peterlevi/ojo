@@ -104,7 +104,7 @@ class Ojo(Gtk.Window):
         else:
             self.mode = 'folder'
             self.selected = path
-            self.current = os.path.join(path, 'none')
+            self.shown = None
             self.after_quick_start()
             self.set_mode('folder')
             self.selected = self.images[0] if self.images else path
@@ -158,17 +158,17 @@ class Ojo(Gtk.Window):
             self.scroll_v = self.scroll_window.get_vadjustment().get_value()
 
     def show(self, filename=None, orient=False, quick=False):
-        filename = filename or self.current
+        filename = filename or self.selected
         logging.info("Showing " + filename)
 
         if os.path.isdir(filename):
             self.change_to_folder(filename)
             return
 
-        self.current = filename
-        self.selected = self.current
-        self.set_title(self.current)
-        self.pixbuf, oriented = self.get_pixbuf(self.current, orient)
+        self.shown = filename
+        self.selected = self.shown
+        self.set_title(self.shown)
+        self.pixbuf, oriented = self.get_pixbuf(self.shown, orient)
 
         if not self.zoom:
             self.image.set_from_pixbuf(self.pixbuf)
@@ -178,15 +178,15 @@ class Ojo(Gtk.Window):
         if not orient and not oriented:
             def _check_orientation():
                 meta = self.get_meta(filename)
-                if self.current == filename and self.needs_orientation(meta):
-                    self.show(self.current, True)
+                if self.shown == filename and self.needs_orientation(meta):
+                    self.show(self.shown, True)
             GObject.idle_add(_check_orientation)
 
         if not quick:
             import time
             self.update_cursor()
             self.last_action_time = time.time()
-            self.update_browser(self.current)
+            self.update_browser(self.shown)
             self.cache_around()
         else:
             self.last_action_time = 0
@@ -215,7 +215,7 @@ class Ojo(Gtk.Window):
 
     def after_quick_start(self):
         self.check_kill()
-        self.set_folder(os.path.dirname(self.current))
+        self.set_folder(os.path.dirname(self.selected))
 
         self.scroll_window = Gtk.ScrolledWindow()
         self.zoomed_image = Gtk.Image()
@@ -347,7 +347,7 @@ class Ojo(Gtk.Window):
     def cache_around(self):
         if not hasattr(self, "images") or not self.images:
             return
-        pos = self.images.index(self.current) if self.current in self.images else 0
+        pos = self.images.index(self.selected) if self.selected in self.images else 0
         for i in [1, -1]:
             if pos + i < 0 or pos + i >= len(self.images):
                 continue
@@ -505,7 +505,7 @@ class Ojo(Gtk.Window):
     def go(self, direction, start_position=None):
         filename = None
         try:
-            position = start_position - direction if not start_position is None else self.images.index(self.current)
+            position = start_position - direction if not start_position is None else self.images.index(self.selected)
             position = (position + direction + len(self.images)) % len(self.images)
             filename = self.images[position]
             self.show(filename)
@@ -560,7 +560,7 @@ class Ojo(Gtk.Window):
 
     def set_mode(self, mode):
         self.mode = mode
-        if self.mode == "image" and self.selected != self.current:
+        if self.mode == "image" and self.selected != self.shown:
             self.show(self.selected)
         elif self.mode == "folder":
             if hasattr(self, 'web_view'):

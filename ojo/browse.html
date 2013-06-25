@@ -54,7 +54,7 @@
         .folder {
             padding-left: 20px;
             padding-right: 20px;
-            color: white;
+            color: #d3d0c5;
             margin-bottom: 10px;
         }
 
@@ -125,10 +125,11 @@
 <script src="lib/underscore-min.js" type="text/javascript"></script>
 <script type="text/javascript">
     var search = '';
-    var scroll_timeout;
     var current = '';
+    var scroll_timeout;
+    var goto_visible_timeout;
 
-	function python(command) {
+    function python(command) {
         console.log('python command: ' + command);
 		document.title = new Date().getTime() + '|' + command;
 	}
@@ -199,9 +200,8 @@
         clearTimeout(scroll_timeout);
 
         $('#search-field').val('');
-        $('#search').html(search);
-        $('#search').toggle(search.length > 0);
-        $('search').html('');
+        $('#search').html('');
+        $('#search').hide();
         $('#title').html('');
         $('#folders').html('');
         $('#images').html('');
@@ -271,13 +271,16 @@
     }
 
     function goto_first_visible() {
-	    var visible = _.filter($('.selectable:visible'), function(x) {
-		    return $(x).offset().top >= $('body').scrollTop() - 5 &&
-		           $(x).offset().top + $(x).height() < $('body').scrollTop() + $(window).height() + 5;
-	    });
-        var file = $(visible[0]).attr('file');
-        select(file, true);
-        python("ojo-select:" + file);
+	    clearTimeout(goto_visible_timeout);
+	    goto_visible_timeout = setTimeout(function() {
+		    var visible = _.filter($('.selectable:visible'), function(x) {
+			    return $(x).offset().top >= $('body').scrollTop() - 5 &&
+			           $(x).offset().top + $(x).height() < $('body').scrollTop() + $(window).height() + 5;
+		    });
+	        var file = $(visible[0]).attr('file');
+	        select(file, true);
+	        python("ojo-select:" + file);
+	    }, 100);
     }
 
     function on_key(key) {
@@ -296,10 +299,18 @@
 	    } else if (key == "Page_Down") {
 		    goto_first_visible();
 	    } else if (key == "Home") {
-		    goto($(".item:first"), false);
+		    if ($('.selected').hasClass('folder')) {
+			    goto($(".folder:visible:first"));
+		    } else {
+			    goto($(".item:visible:first"));
+		    }
 	    } else if (key == "End") {
-		    goto($(".item:last"), false);
-        } else if (key == 'BackSpace') {
+		    if ($('.selected').hasClass('folder')) {
+			    goto($(".folder:visible:last"));
+		    } else {
+			    goto($(".item:visible:last"));
+		    }
+	    } else if (key == 'BackSpace') {
             if (!search) {
 //                search = search.substring(0, search.length - 1);
 //                on_search();
