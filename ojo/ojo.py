@@ -47,7 +47,7 @@ class Easylog:
 
     def exception(self, x):
         import logging
-        print logging.exception(x)
+        logging.exception(x)
 
 logging = Easylog(0)
 
