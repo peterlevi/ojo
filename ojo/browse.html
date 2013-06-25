@@ -28,6 +28,16 @@
             margin: 15px;
         }
 
+        #search {
+            position: fixed;
+            top: 15px;
+            right: 20px;
+            color: white;
+            background-color: #F07746;
+            padding: 10px;
+            border-radius: 10px;
+        }
+
         #folders {
             margin: 10px;
             background: rgba(105, 101, 93, 0.8);
@@ -37,14 +47,14 @@
         }
 
         .folder-category {
-            color: white;
+            color: #A19C90;
             padding-bottom: 10px;
         }
 
         .folder {
             padding-left: 20px;
             padding-right: 20px;
-            color: #A19C90;
+            color: white;
             margin-bottom: 10px;
         }
 
@@ -98,6 +108,10 @@
 </head>
 
 <body>
+<div style="position: absolute; opacity: 0; z-index: -1">
+    <input type="search" id="search-field">
+</div>
+<div id="search"></div>
 <div id="title"></div>
 <div id="folders"></div>
 <div id="images"></div>
@@ -110,14 +124,19 @@
 <script src="lib/jquery-2.0.2.min.js" type="text/javascript"></script>
 <script src="lib/underscore-min.js" type="text/javascript"></script>
 <script type="text/javascript">
+    var search = '';
+    var scroll_timeout;
+    var current = '';
+
 	function python(command) {
+        console.log('python command: ' + command);
 		document.title = new Date().getTime() + '|' + command;
 	}
 
     function set_title(title) {
         $('#title').html('');
-        var parts = title.split('/')
-        var folder = ''
+        var parts = title.split('/');
+        var folder = '';
         _.map(parts, function(p) {
             if (p.length) {
                 folder += '/' + p;
@@ -158,18 +177,34 @@
             if (next.length == 0) {
                 next = $('.selectable');
             }
-            select(next.attr('file'))
+            select(next.attr('file'));
         }
 	    to_remove.remove();
     }
 
     function add_image(file, thumb) {
-	    $(".item[file='" + file + "']").html("<img src='" + thumb + "'/>");
+        var item = $(".item[file='" + file + "']");
+        if (item.length) {
+            item.html("<img src='" + thumb + "'/>");
+        } else {
+            setTimeout(function () {add_image(file, thumb)}, 200);
+        }
     }
 
     function clear_all() {
-        $('#folders').html("");
-        $('#images').html("");
+        console.log('Clearing');
+
+        current = '';
+        search = '';
+        clearTimeout(scroll_timeout);
+
+        $('#search-field').val('');
+        $('#search').html(search);
+        $('#search').toggle(search.length > 0);
+        $('search').html('');
+        $('#title').html('');
+        $('#folders').html('');
+        $('#images').html('');
     }
 
     function get_name(file) {
@@ -180,8 +215,8 @@
         $(".item[file='" + file + "']").attr('dimensions', dimensions);
     }
 
-    var current;
     function select(file, dontScrollTo, animate_duration) {
+        console.log("Selecting " + file);
         python("ojo-select:" + file);
         current = file;
         var el = $(".selectable[file='" + file + "']");
@@ -191,18 +226,26 @@
         $(".selectable").removeClass('selected');
         el.addClass('selected');
 	    if (!dontScrollTo) {
-		    var scrollTo;
-		    if (el.offset().top > $('body').scrollTop() + $(window).height() - 250) {
-		        scrollTo = el.offset().top - $(window).height() + 250;
-	        } else if (el.offset().top < $('body').scrollTop() + 150) {
-		        scrollTo = el.offset().top - 150;
-	        }
-		    if (animate_duration) {
-			    $('body').animate({scrollTop: scrollTo}, {duration: animate_duration, queue: false});
-		    } else {
-		        $('body').scrollTop(scrollTo);
-		    }
+            scroll_to_selected(animate_duration);
 	    }
+    }
+
+    function scroll_to_selected(animate_duration) {
+        console.log('scroll to selected');
+        var el = $('.selected');
+        if (el.length) {
+            var scrollTo;
+            if (el.offset().top > $('body').scrollTop() + $(window).height() - 250) {
+                scrollTo = el.offset().top - $(window).height() + 250;
+            } else if (el.offset().top < $('body').scrollTop() + 150) {
+                scrollTo = el.offset().top - 150;
+            }
+            if (animate_duration) {
+                $('body').animate({scrollTop: scrollTo}, {duration: animate_duration, queue: false});
+            } else {
+                $('body').scrollTop(scrollTo);
+            }
+        }
     }
 
     function goto($elem, dontScrollTo, animate_duration) {
@@ -214,7 +257,7 @@
 
     function get_next_in_direction(elem, direction) {
         var o2 = elem.offset().top + (direction < 0 ? -10 : elem.height());
-	    var applicable = _.filter($(".selectable"), function(x) {
+	    var applicable = _.filter($(".selectable:visible"), function(x) {
 		    var o1 = $(x).offset().top;
 		    return direction < 0 ? o1 < o2 : o1 > o2;
 	    });
@@ -228,7 +271,7 @@
     }
 
     function goto_first_visible() {
-	    var visible = _.filter($('.selectable'), function(x) {
+	    var visible = _.filter($('.selectable:visible'), function(x) {
 		    return $(x).offset().top >= $('body').scrollTop() - 5 &&
 		           $(x).offset().top + $(x).height() < $('body').scrollTop() + $(window).height() + 5;
 	    });
@@ -243,27 +286,60 @@
 	    if (key == 'Up' || key == 'Down') {
 		    goto(get_next_in_direction(sel, key == 'Up' ? -1 : 1), false);
         } else if (key == 'Right') {
-            var next = sel.next('.selectable');
+            var next = sel.next('.selectable:visible');
             goto(next.length ? next : $(".selected").hasClass('folder') ? $(".item:first") : null, false);
 	    } else if (key == 'Left') {
-            var prev = sel.prev('.selectable');
+            var prev = sel.prev('.selectable:visible');
             goto(prev.length ? prev : $(".folder:first"));
 	    } else if (key == "Page_Up") {
-		    $('body').scrollTop($('body').scrollTop() - $(window).height() + 200);
 		    goto_first_visible();
 	    } else if (key == "Page_Down") {
-		    $('body').scrollTop($('body').scrollTop() + $(window).height() - 200);
 		    goto_first_visible();
 	    } else if (key == "Home") {
 		    goto($(".item:first"), false);
 	    } else if (key == "End") {
 		    goto($(".item:last"), false);
-	    }
+        } else if (key == 'BackSpace') {
+            if (!search) {
+//                search = search.substring(0, search.length - 1);
+//                on_search();
+//            } else {
+                python('ojo-handle-key:' + key)
+            }
+        } else if (key == 'Escape') {
+            if (search) {
+                search = '';
+                on_search();
+            } else {
+                python('ojo-handle-key:' + key)
+            }
+        }
+    }
+
+    function on_search() {
+        console.log('Searching for ' + search);
+        $('#search').html(search);
+        $('#search').toggle(search.length > 0);
+        var s = search.toLowerCase();
+        var ismatch = function(elem) {
+            return basename(elem.attr('file')).toLowerCase().indexOf(s) >= 0
+        };
+        $('.selectable').filter(function() {return !ismatch($(this))}).hide();
+        var matches = $('.selectable').filter(function() {return ismatch($(this))});
+        matches.show();
+        var sel = $('.selected');
+        if (matches.length && (sel.length == 0 || !_.contains(matches, sel[0]))) {
+            select($(matches[0]).attr('file'));
+        } else {
+            scroll_to_selected();
+        }
+        clearTimeout(scroll_timeout);
+        scroll_timeout = setTimeout(prioritize_visible, 200);
     }
 
     function distance(el1, el2) {
-        dy = $(el1).offset().top - $(el2).offset().top;
-        dx = $(el1).offset().left - $(el2).offset().left;
+        var dy = $(el1).offset().top - $(el2).offset().top;
+        var dx = $(el1).offset().left - $(el2).offset().left;
         return dx*dx + dy*dy
     }
 
@@ -274,15 +350,27 @@
 	    select(0, 0);
     }
 
+    function basename(file) {
+        return file.substring(file.lastIndexOf('/') + 1);
+    }
+
+    function prioritize_visible() {
+        var files = _.map(_.filter($('.item:visible'), function(x) {
+            return $(x).offset().top + $(x).height() >= $('body').scrollTop();
+        }), function(x) { return $(x).attr('file') });
+
+        python('ojo-priority:' + JSON.stringify(files));
+    }
+
     $(function() {
-	    var scroll_timeout;
+        clear_all();
 
         $(document).contextmenu(function(event) {
             event.preventDefault();
         });
 
         $(document).keydown(function(event) {
-            event.preventDefault();
+            $('#search-field').focus();
         });
 
         $(window).resize(function() {
@@ -299,17 +387,19 @@
             lastScrollTop = $('body').scrollTop();
 
             clearTimeout(scroll_timeout);
-            var files = _.map(_.filter($('.item'), function(x) {
-                return $(x).offset().top + $(x).height() >= $('body').scrollTop();
-            }), function(x) { return $(x).attr('file') });
-
-            scroll_timeout = setTimeout(function() {
-                python('ojo-priority:' + JSON.stringify(files));
-            }, 200);
+            scroll_timeout = setTimeout(prioritize_visible, 200);
 	    });
 
         $(document).on('click', '.selectable', function() {
             python("ojo:" + $(this).attr('file'));
+        });
+
+        $('#search-field').focus();
+        $('#search-field').keyup(function() {
+            if ($(this).val() != search) {
+                search = $(this).val();
+                on_search();
+            }
         });
     });
 </script>

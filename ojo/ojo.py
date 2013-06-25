@@ -135,6 +135,7 @@ class Ojo(Gtk.Window):
         cr.set_operator(cairo.OPERATOR_OVER)
 
     def js(self, command):
+        logging.debug('js(%s)' % command)
         if hasattr(self, "web_view_loaded"):
             GObject.idle_add(lambda: self.web_view.execute_script(command))
         else:
@@ -191,6 +192,7 @@ class Ojo(Gtk.Window):
             self.last_action_time = 0
 
     def set_folder(self, path):
+        logging.info("Setting folder %s" % path)
         self.folder = os.path.realpath(path)
         self.images = filter(os.path.isfile, map(lambda f: os.path.join(self.folder, f), sorted(os.listdir(self.folder))))
 
@@ -274,6 +276,8 @@ class Ojo(Gtk.Window):
         elif action == 'ojo-priority':
             files = json.loads(argument)
             self.priority_thumbs(map(lambda f: f.encode('utf-8'), files))
+        elif action == 'ojo-handle-key':
+            self.process_key(key=argument, skip_browser=True)
 
     def render_browser(self):
         from gi.repository import WebKit
@@ -283,6 +287,7 @@ class Ojo(Gtk.Window):
 
         self.web_view = WebKit.WebView()
         self.web_view.set_transparent(True)
+        self.web_view.set_can_focus(True)
 
         def nav(wv, wf, title):
             title = title[title.index('|') + 1:]
@@ -295,9 +300,10 @@ class Ojo(Gtk.Window):
         self.web_view.connect('document-load-finished', lambda wf, data: self.render_folder_view()) # Load page
 
         self.web_view.load_string(html, "text/html", "UTF-8", "file://" + os.path.dirname(__file__) + "/")
-        self.web_view.set_visible(True)
         self.make_transparent(self.web_view)
+        self.web_view.set_visible(True)
         self.browser.add(self.web_view)
+        self.web_view.grab_focus()
 
     def render_folder_view(self):
         self.web_view_loaded = True
@@ -347,7 +353,7 @@ class Ojo(Gtk.Window):
                 continue
             f = self.images[pos + i]
             if not f in self.pix_cache[self.zoom]:
-                logging.debug("Caching around: file %s, zoomed %s" % (f, self.zoom))
+                logging.info("Caching around: file %s, zoomed %s" % (f, self.zoom))
                 self.cache_queue.append((f, self.zoom))
                 self.cache_queue_event.set()
 #        self.cache_queue.append((self.current, not self.zoom)) # TODO do we want to cache the full-size image?
@@ -557,6 +563,8 @@ class Ojo(Gtk.Window):
         if self.mode == "image" and self.selected != self.current:
             self.show(self.selected)
         elif self.mode == "folder":
+            if hasattr(self, 'web_view'):
+                self.web_view.grab_focus()
             self.set_title(self.folder)
             self.last_action_time = 0
 
@@ -566,22 +574,22 @@ class Ojo(Gtk.Window):
         self.browser.set_visible(self.mode == 'folder')
         self.update_margins()
 
-    def process_key(self, widget, event):
-        key = Gdk.keyval_name(event.keyval)
-        logging.debug("Pressed key " + key)
-        if key == 'Escape':
+    def process_key(self, widget=None, event=None, key=None, skip_browser=False):
+        key = key or Gdk.keyval_name(event.keyval)
+        if key == 'Escape' and (self.mode == 'image' or skip_browser):
             Gtk.main_quit()
-        elif key in ("f", "F", "F11"):
+        elif key in ("F11",) or (self.mode == 'image' and key in ('f', 'F')):
             self.toggle_fullscreen()
             self.show()
         elif key == 'Return':
             modes = ["image", "folder"]
             self.set_mode(modes[(modes.index(self.mode) + 1) % len(modes)])
         elif self.mode == 'folder':
-            if key == 'BackSpace':
-                self.change_to_folder(os.path.join(self.folder, '..'))
-            else:
+            if not skip_browser:
                 self.js("on_key('%s')" % key)
+            else:
+                if key == 'BackSpace':
+                    self.change_to_folder(os.path.join(self.folder, '..'))
         elif key == 'F5':
             self.show()
         elif key in ("Right", "Down", "Page_Down", "space"):
