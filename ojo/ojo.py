@@ -102,6 +102,8 @@ class Ojo(Gtk.Window):
                 self.update_size(from_image=not self.full)
             GObject.idle_add(self.after_quick_start)
         else:
+            if not path.endswith('/'):
+                path += '/'
             self.mode = 'folder'
             self.selected = path
             self.shown = None

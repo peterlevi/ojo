@@ -25,10 +25,11 @@
         #title {
             font-size: x-large;
             color: #A19C90;
-            margin: 15px;
+            margin: 15px 10px 10px;
         }
 
         #search {
+            display: none;
             position: fixed;
             top: 15px;
             right: 20px;
@@ -270,14 +271,14 @@
 	    }
     }
 
-    function goto_first_visible() {
+    function goto_visible(first_or_last) {
 	    clearTimeout(goto_visible_timeout);
 	    goto_visible_timeout = setTimeout(function() {
 		    var visible = _.filter($('.selectable:visible'), function(x) {
 			    return $(x).offset().top >= $('body').scrollTop() - 5 &&
 			           $(x).offset().top + $(x).height() < $('body').scrollTop() + $(window).height() + 5;
 		    });
-	        var file = $(visible[0]).attr('file');
+	        var file = $(first_or_last ? _.first(visible) : _.last(visible)).attr('file');
 	        select(file, true);
 	        python("ojo-select:" + file);
 	    }, 100);
@@ -295,9 +296,9 @@
             var prev = sel.prev('.selectable:visible');
             goto(prev.length ? prev : $(".folder:first"));
 	    } else if (key == "Page_Up") {
-		    goto_first_visible();
+		    goto_visible(true);
 	    } else if (key == "Page_Down") {
-		    goto_first_visible();
+		    goto_visible($('body').scrollTop() < $('body').height() - $(window).height() - 5);
 	    } else if (key == "Home") {
 		    if ($('.selected').hasClass('folder')) {
 			    goto($(".folder:visible:first"));
