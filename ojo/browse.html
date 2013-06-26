@@ -216,7 +216,7 @@
         $(".item[file='" + file + "']").attr('dimensions', dimensions);
     }
 
-    function select(file, dontScrollTo, animate_duration) {
+    function select(file, dontScrollTo) {
         console.log("Selecting " + file);
         python("ojo-select:" + file);
         current = file;
@@ -227,13 +227,13 @@
         $(".selectable").removeClass('selected');
         el.addClass('selected');
 	    if (!dontScrollTo) {
-            scroll_to_selected(animate_duration);
+            scroll_to_selected(el);
 	    }
     }
 
-    function scroll_to_selected(animate_duration) {
+    function scroll_to_selected(el) {
         console.log('scroll to selected');
-        var el = $('.selected');
+        el = el || $('.selected');
         if (el.length) {
             var scrollTo;
             if (el.offset().top > $('body').scrollTop() + $(window).height() - 250) {
@@ -241,18 +241,16 @@
             } else if (el.offset().top < $('body').scrollTop() + 150) {
                 scrollTo = el.offset().top - 150;
             }
-            if (animate_duration) {
-                $('body').animate({scrollTop: scrollTo}, {duration: animate_duration, queue: false});
-            } else {
+            if (!_.isUndefined(scrollTo)) {
                 $('body').scrollTop(scrollTo);
             }
         }
     }
 
-    function goto($elem, dontScrollTo, animate_duration) {
+    function goto($elem, dontScrollTo) {
 	    if ($elem && $elem.length > 0) {
 		    var file = $elem.attr('file');
-		    select(file, dontScrollTo, animate_duration);
+		    select(file, dontScrollTo);
 	    }
     }
 

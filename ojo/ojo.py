@@ -574,8 +574,6 @@ class Ojo(Gtk.Window):
         if self.mode == "image" and self.selected != self.shown:
             self.show(self.selected)
         elif self.mode == "folder":
-            if hasattr(self, 'web_view'):
-                self.web_view.grab_focus()
             self.set_title(self.folder)
             self.last_action_time = 0
 
@@ -596,6 +594,8 @@ class Ojo(Gtk.Window):
             modes = ["image", "folder"]
             self.set_mode(modes[(modes.index(self.mode) + 1) % len(modes)])
         elif self.mode == 'folder':
+            if hasattr(self, 'web_view'):
+                self.web_view.grab_focus()
             if not skip_browser:
                 self.js("on_key('%s')" % key)
             else:
