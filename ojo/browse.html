@@ -290,11 +290,11 @@
 	    if (key == 'Up' || key == 'Down') {
 		    goto(get_next_in_direction(sel, key == 'Up' ? -1 : 1), false);
         } else if (key == 'Right') {
-            var next = sel.next('.selectable:visible');
-            goto(next.length ? next : $(".selected").hasClass('folder') ? $(".item:first") : null, false);
+            var next = sel.nextAll('.selectable:visible');
+            goto(next.length ? $(next[0]) : $(".selected").hasClass('folder') ? $(".item:visible:first") : null, false);
 	    } else if (key == 'Left') {
-            var prev = sel.prev('.selectable:visible');
-            goto(prev.length ? prev : $(".folder:first"));
+            var prev = sel.prevAll('.selectable:visible');
+            goto(prev.length ? $(prev[0]) : $(".folder:visible:first"));
 	    } else if (key == "Page_Up") {
 		    goto_visible(true);
 	    } else if (key == "Page_Down") {
