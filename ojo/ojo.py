@@ -199,8 +199,9 @@ class Ojo(Gtk.Window):
         self.images = filter(os.path.isfile, map(lambda f: os.path.join(self.folder, f), sorted(os.listdir(self.folder))))
 
     def change_to_folder(self, path):
-        self.priority_thumbs([])
-        self.prepared_thumbs = set()
+        with self.thumbs_queue_lock:
+            self.thumbs_queue = []
+            self.prepared_thumbs = set()
         self.set_folder(path)
         self.selected = self.images[0] if self.images else os.path.realpath(os.path.join(path, '..'))
         self.set_mode("folder")
@@ -356,29 +357,27 @@ class Ojo(Gtk.Window):
             f = self.images[pos + i]
             if not f in self.pix_cache[self.zoom]:
                 logging.info("Caching around: file %s, zoomed %s" % (f, self.zoom))
-                self.cache_queue.append((f, self.zoom))
-                self.cache_queue_event.set()
+                self.cache_queue.put((f, self.zoom))
 #        self.cache_queue.append((self.current, not self.zoom)) # TODO do we want to cache the full-size image?
 #        self.cache_queue_event.set()
 
     def start_cache_thread(self):
         import threading
-        self.cache_queue = []
-        self.cache_queue_event = threading.Event()
+        import Queue
+        self.cache_queue = Queue.Queue()
         self.preparing_event = threading.Event()
 
         def _queue_thread():
             logging.info("Starting cache thread")
             while True:
-                self.cache_queue_event.wait()
                 if len(self.pix_cache[False]) > 20:   #TODO: Do we want a proper LRU policy, or this is good enough?
                     self.pix_cache[False] = {}
                 if len(self.pix_cache[True]) > 20:
                     self.pix_cache[True] = {}
 
-                while self.cache_queue:
-                    file, zoom = self.cache_queue[0]
-                    self.cache_queue.remove((file, zoom))
+                file, zoom = self.cache_queue.get()
+
+                try:
                     if not file in self.pix_cache[zoom]:
                         logging.debug("Cache thread loads file %s, zoomed %s" % (file, zoom))
                         self.current_preparing = file, zoom
@@ -390,7 +389,8 @@ class Ojo(Gtk.Window):
                         finally:
                             self.current_preparing = None
                             self.preparing_event.set()
-                self.cache_queue_event.clear()
+                except Exception:
+                    logging.exception("Exception in cache thread:")
         cache_thread = threading.Thread(target=_queue_thread)
         cache_thread.daemon = True
         cache_thread.start()
@@ -404,6 +404,7 @@ class Ojo(Gtk.Window):
         self.prepared_thumbs = set()
         self.thumbs_queue = []
         self.thumbs_queue_event = threading.Event()
+        self.thumbs_queue_lock = threading.Lock()
 
         def _thumbs_thread():
             # delay the start to give the caching thread some time to prepare next images
@@ -422,15 +423,22 @@ class Ojo(Gtk.Window):
             while True:
                 self.thumbs_queue_event.wait()
                 while self.thumbs_queue:
+                    # pause thumbnailing while the user is actively cycling images:
                     while time.time() - self.last_action_time < 2:
                         time.sleep(0.2)
                     time.sleep(0.02)
-                    img = self.thumbs_queue[0]
-                    self.thumbs_queue.remove(img)
-                    if not img in self.prepared_thumbs:
-                        self.prepared_thumbs.add(img)
-                        logging.debug("Thumbs thread loads file " + img)
-                        self.add_thumb(img)
+                    try:
+                        with self.thumbs_queue_lock:
+                            if not self.thumbs_queue:
+                                continue
+                            img = self.thumbs_queue[0]
+                            self.thumbs_queue.remove(img)
+                        if not img in self.prepared_thumbs:
+                            self.prepared_thumbs.add(img)
+                            logging.debug("Thumbs thread loads file " + img)
+                            self.add_thumb(img)
+                    except Exception:
+                        logging.exception("Exception in thumbs thread:")
                 self.thumbs_queue_event.clear()
         thumbs_thread = threading.Thread(target=_thumbs_thread)
         thumbs_thread.daemon = True
@@ -450,8 +458,9 @@ class Ojo(Gtk.Window):
         logging.debug("Priority thumbs: " + str(files))
         new_thumbs_queue = [self.selected] + [f for f in files if not f in self.prepared_thumbs] + \
                            [f for f in self.thumbs_queue if not f in files and not f in self.prepared_thumbs]
-        self.thumbs_queue = new_thumbs_queue
-        self.thumbs_queue_event.set()
+        with self.thumbs_queue_lock:
+            self.thumbs_queue = new_thumbs_queue
+            self.thumbs_queue_event.set()
 
     def get_meta(self, filename):
         from pyexiv2 import ImageMetadata
@@ -763,7 +772,7 @@ class Ojo(Gtk.Window):
         if use_cache and filename in self.pix_cache[zoom]:
             cached = self.pix_cache[zoom][filename]
             if cached[2] == width and (not orient or cached[1]):
-                logging.debug("Cache hit: " + filename)
+                logging.info("Cache hit: " + filename)
                 return cached[0], cached[1]
 
         oriented = filename in self.meta_cache and not self.meta_cache[filename][0]
