@@ -129,6 +129,7 @@
     var current = '';
     var scroll_timeout;
     var goto_visible_timeout;
+    var delayed_thumbs = [];
 
     function python(command) {
         console.log('python command: ' + command);
@@ -187,7 +188,11 @@
     function add_image(file, thumb) {
         var item = $(".item[file='" + file + "']");
         if (item.length) {
-            item.html("<img src='" + thumb + "'/>");
+            if (item.offset().top + item.height() < $('body').scrollTop()) {
+                delayed_thumbs.push({item: item, thumb: thumb});
+            } else {
+                item.html("<img src='" + thumb + "'/>");
+            }
         } else {
             setTimeout(function () {add_image(file, thumb)}, 200);
         }
@@ -198,6 +203,7 @@
 
         current = '';
         search = '';
+        delayed_thumbs = [];
         clearTimeout(scroll_timeout);
 
         $('#search-field').val('');
@@ -344,7 +350,7 @@
             scroll_to_selected();
         }
         clearTimeout(scroll_timeout);
-        scroll_timeout = setTimeout(prioritize_visible, 200);
+        scroll_timeout = setTimeout(on_scroll, 200);
     }
 
     function distance(el1, el2) {
@@ -364,7 +370,16 @@
         return file.substring(file.lastIndexOf('/') + 1);
     }
 
-    function prioritize_visible() {
+    function on_scroll() {
+        var added = [];
+        _.map(delayed_thumbs, function(p) {
+            if (p.item.offset().top + p.item.height() > $('body').scrollTop()) {
+                setTimeout(function() {p.item.html("<img src='" + p.thumb + "'/>")}, 0);
+                added.push(p);
+            }
+        });
+        delayed_thumbs = _.difference(delayed_thumbs, added);
+
         var files = _.map(_.filter($('.item:visible'), function(x) {
             return $(x).offset().top + $(x).height() >= $('body').scrollTop();
         }), function(x) { return $(x).attr('file') });
@@ -397,7 +412,7 @@
             lastScrollTop = $('body').scrollTop();
 
             clearTimeout(scroll_timeout);
-            scroll_timeout = setTimeout(prioritize_visible, 200);
+            scroll_timeout = setTimeout(on_scroll, 200);
 	    });
 
         $(document).on('click', '.selectable', function() {
