@@ -813,8 +813,10 @@ class Ojo(Gtk.Window):
             pil_image = Image.open(filename)
         except IOError:
             pil_image = Image.open(cStringIO.StringIO(meta.previews[-1].data))
-        pil_image = self.auto_rotate(meta, pil_image)
         if not zoomed_in:
+            pil_image.thumbnail((width, height), Image.ANTIALIAS)
+        pil_image = self.auto_rotate(meta, pil_image)
+        if pil_image.size[0] > width or pil_image.size[1] > height:
             pil_image.thumbnail((width, height), Image.ANTIALIAS)
         return pil_image
 
