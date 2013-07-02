@@ -86,6 +86,7 @@ class Ojo(Gtk.Window):
         if '-m' in sys.argv or '--maximize' in sys.argv:
             self.maximize()
         self.full = '-f' in sys.argv or '--fullscreen' in sys.argv
+        self.fit_only_large = '--fit-only-large' in sys.argv
 
         self.meta_cache = {}
         self.pix_cache = {False: {}, True: {}} # keyed by "zoomed" property
@@ -426,7 +427,7 @@ class Ojo(Gtk.Window):
                     # pause thumbnailing while the user is actively cycling images:
                     while time.time() - self.last_action_time < 2:
                         time.sleep(0.2)
-                    time.sleep(0.02)
+                    time.sleep(0.03)
                     try:
                         with self.thumbs_queue_lock:
                             if not self.thumbs_queue:
@@ -775,11 +776,23 @@ class Ojo(Gtk.Window):
                 logging.info("Cache hit: " + filename)
                 return cached[0], cached[1]
 
-        oriented = filename in self.meta_cache and not self.meta_cache[filename][0]
+        oriented = False
+        image_width = image_height = None
+        if filename in self.meta_cache:
+            meta = self.meta_cache[filename]
+            oriented = not meta[0]
+            image_width, image_height = meta[1], meta[2]
+
         if oriented or (not orient and not filename in self.meta_cache):
             try:
+                if not image_width and self.fit_only_large:
+                    format, image_width, image_height = GdkPixbuf.Pixbuf.get_file_info(filename)
                 if not zoom:
-                    pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(filename, width, height, True)
+                    pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(
+                        filename,
+                        min(width, image_width if self.fit_only_large else width),
+                        min(height, image_height if self.fit_only_large else height),
+                        True)
                 else:
                     pixbuf = GdkPixbuf.Pixbuf.new_from_file(filename)
                 if use_cache:
@@ -791,7 +804,13 @@ class Ojo(Gtk.Window):
 
             try:
                 preview = self.get_meta(filename).previews[-1].data
-                pixbuf = self.pixbuf_from_data(preview, width, height)
+                meta = self.meta_cache[filename]
+                oriented = not meta[0]
+                image_width, image_height = meta[1], meta[2]
+                pixbuf = self.pixbuf_from_data(
+                    preview,
+                    min(width, image_width if self.fit_only_large else width),
+                    min(height, image_height if self.fit_only_large else height))
                 if use_cache:
                     self.pix_cache[zoom][filename] = pixbuf, oriented, width
                 logging.debug("Loaded from preview")
@@ -816,7 +835,7 @@ class Ojo(Gtk.Window):
         if not zoomed_in:
             pil_image.thumbnail((width, height), Image.ANTIALIAS)
         pil_image = self.auto_rotate(meta, pil_image)
-        if pil_image.size[0] > width or pil_image.size[1] > height:
+        if not zoomed_in and (pil_image.size[0] > width or pil_image.size[1] > height):
             pil_image.thumbnail((width, height), Image.ANTIALIAS)
         return pil_image
 
