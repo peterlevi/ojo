@@ -16,14 +16,12 @@ def get_texture(img):
                         Clutter.TextureFlags.NONE)
     return t
 
-showing = 0
+global current
+global t
 current = None
 t = None
 
 if __name__ == '__main__':
-    global current
-    global t
-
     Clutter.init(sys.argv)
     stage = Clutter.Stage()     # Create the Stage
     stage.set_size(800, 600)
