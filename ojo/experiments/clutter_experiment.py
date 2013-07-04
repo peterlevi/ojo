@@ -6,8 +6,9 @@ import sys
 import os
 
 def get_texture(img):
-    t = Clutter.Texture()
     pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(img, 800, 600, True)
+
+    t = Clutter.Texture()
     t.set_from_rgb_data(pixbuf.get_pixels(),
                         pixbuf.get_has_alpha(),
                         pixbuf.get_width(),
@@ -16,6 +17,10 @@ def get_texture(img):
                         4 if pixbuf.get_has_alpha() else 3,
                         Clutter.TextureFlags.NONE)
     return t
+
+#    image = Gtk.Image()
+#    image.set_from_pixbuf(pixbuf)
+#    return GtkClutter.Actor.new_with_contents(image)
 
 def make_transparent(widget):
     rgba = Gdk.RGBA()
@@ -64,19 +69,19 @@ class Cl:
         stage = embed.get_stage()
     #    stage = Clutter.Stage()     # Create the Stage
         color = Clutter.Color.new(77, 75, 69, 0.9 * 255)
+        stage.set_use_alpha(True)
         stage.set_color(color)
         #stage.set_opacity(128)
-        stage.set_use_alpha(True)
         stage.set_size(800, 600)
         stage.set_title("Clutter tests stage")          # Window's title
         #stage.set_fullscreen(True)
 
-        layout = Clutter.BinLayout()
-        stage.set_layout_manager(layout)
-
-        folder = '/media/data/Pics/Wallpapers/Favorites/'
+#        layout = Clutter.BinLayout()
+#        stage.set_layout_manager(layout)
+#
+        folder = '/d/Pics/Wallpapers/Favorites/'
         images = [os.path.join(folder, f) for f in os.listdir(folder) if f.endswith('.jpg')]
-        self.current = images[0]
+        self.current = images[1]
 
         self.current_texture = get_texture(self.current)
         stage.add_actor(self.current_texture)
@@ -85,9 +90,13 @@ class Cl:
         web_view.set_transparent(True)
         make_transparent(web_view)
         web_view.set_can_focus(True)
-        web_view.load_string("<html><body style='background: rgba(0, 0, 0, 0)'>AAAAAAAAAAA</body></html>", "text/html", "UTF-8", "file://" + os.path.dirname(__file__) + "/")
+        web_view.load_string("<html><body style='background: rgba(0, 0, 0, 0); color: white;'>AAAAAAAAAAA</body></html>", "text/html", "UTF-8", "file://" + os.path.dirname(__file__) + "/")
         web_view_actor = GtkClutter.Actor.new_with_contents(web_view)
-        layout.add(web_view_actor, Clutter.BinAlignment.CENTER, Clutter.BinAlignment.END)
+        web_view_actor.set_width(800)
+        make_transparent(web_view_actor.get_widget())
+        stage.add_actor(web_view_actor)#, Clutter.BinAlignment.CENTER, Clutter.BinAlignment.END)
+#        web_view_actor.set_opacity(0)
+#        web_view_actor.animatev(Clutter.AnimationMode.EASE_OUT_SINE, 1000, ["opacity"], [255])
 
         #    stage.show_all()
         window.show_all()
@@ -95,16 +104,17 @@ class Cl:
         def go(*args):
             self.current = images[(images.index(self.current) + 1) % len(images)]
             nextt = get_texture(self.current)
-            nextt.set_opacity(0)
-            stage.add_actor(nextt)
+            nextt.set_opacity(100)
             nextt.set_x((stage.get_width() - nextt.get_width()) / 2)
             nextt.set_y((stage.get_height() - nextt.get_height()) / 2)
+            stage.add_actor(nextt)
             def a():
-                self.current_texture.animatev(Clutter.AnimationMode.EASE_OUT_SINE, 500, ["opacity"], [0])
-                nextt.animatev(Clutter.AnimationMode.EASE_OUT_SINE, 500, ["opacity"], [255])
+                self.current_texture.animatev(Clutter.AnimationMode.EASE_OUT_SINE, 250, ["opacity"], [0])
+                nextt.animatev(Clutter.AnimationMode.EASE_OUT_SINE, 250, ["opacity"], [255])
                 previoust = self.current_texture
                 self.current_texture = nextt
                 GObject.timeout_add(1000, lambda: previoust.destroy())
+                stage.raise_child(web_view_actor, None)
             GObject.idle_add(a)
 
         stage.connect('button-press-event', go)
