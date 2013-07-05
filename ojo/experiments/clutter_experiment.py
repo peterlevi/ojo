@@ -104,7 +104,7 @@ class Cl:
         def go(*args):
             self.current = images[(images.index(self.current) + 1) % len(images)]
             nextt = get_texture(self.current)
-            nextt.set_opacity(100)
+            nextt.set_opacity(0)
             nextt.set_x((stage.get_width() - nextt.get_width()) / 2)
             nextt.set_y((stage.get_height() - nextt.get_height()) / 2)
             stage.add_actor(nextt)
