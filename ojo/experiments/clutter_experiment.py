@@ -76,8 +76,8 @@ class Cl:
         stage.set_title("Clutter tests stage")          # Window's title
         #stage.set_fullscreen(True)
 
-#        layout = Clutter.BinLayout()
-#        stage.set_layout_manager(layout)
+        layout = Clutter.BinLayout()
+        stage.set_layout_manager(layout)
 #
         folder = '/d/Pics/Wallpapers/Favorites/'
         images = [os.path.join(folder, f) for f in os.listdir(folder) if f.endswith('.jpg')]
@@ -90,11 +90,11 @@ class Cl:
         web_view.set_transparent(True)
         make_transparent(web_view)
         web_view.set_can_focus(True)
-        web_view.load_string("<html><body style='background: rgba(0, 0, 0, 0); color: white;'>AAAAAAAAAAA</body></html>", "text/html", "UTF-8", "file://" + os.path.dirname(__file__) + "/")
+        web_view.load_string("<html><body style='background: rgba(100, 0, 0, 0.5); color: white;'>AAAAAAAAAAA</body></html>", "text/html", "UTF-8", "file://" + os.path.dirname(__file__) + "/")
         web_view_actor = GtkClutter.Actor.new_with_contents(web_view)
-        web_view_actor.set_width(800)
+#        web_view_actor.set_width(800)
         make_transparent(web_view_actor.get_widget())
-        stage.add_actor(web_view_actor)#, Clutter.BinAlignment.CENTER, Clutter.BinAlignment.END)
+        layout.add(web_view_actor, Clutter.BinAlignment.FILL, Clutter.BinAlignment.END)
 #        web_view_actor.set_opacity(0)
 #        web_view_actor.animatev(Clutter.AnimationMode.EASE_OUT_SINE, 1000, ["opacity"], [255])
 
@@ -109,11 +109,11 @@ class Cl:
             nextt.set_y((stage.get_height() - nextt.get_height()) / 2)
             stage.add_actor(nextt)
             def a():
-                self.current_texture.animatev(Clutter.AnimationMode.EASE_OUT_SINE, 250, ["opacity"], [0])
+                a1 = self.current_texture.animatev(Clutter.AnimationMode.EASE_OUT_SINE, 250, ["opacity"], [0])
                 nextt.animatev(Clutter.AnimationMode.EASE_OUT_SINE, 250, ["opacity"], [255])
                 previoust = self.current_texture
                 self.current_texture = nextt
-                GObject.timeout_add(1000, lambda: previoust.destroy())
+                a1.connect('completed', lambda x: previoust.destroy())
                 stage.raise_child(web_view_actor, None)
             GObject.idle_add(a)
 
