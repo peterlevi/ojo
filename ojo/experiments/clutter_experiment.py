@@ -54,17 +54,17 @@ class Cl:
         window.set_app_paintable(True)
         window.connect("draw", area_draw)
 
-        box = Gtk.VBox()
-        box.set_margin_top(30)
-        box.set_margin_bottom(30)
-        box.set_margin_left(30)
-        box.set_margin_right(30)
-        make_transparent(box)
-        window.add(box)
-
+#        box = Gtk.VBox()
+#        box.set_margin_top(30)
+#        box.set_margin_bottom(30)
+#        box.set_margin_left(30)
+#        box.set_margin_right(30)
+#        make_transparent(box)
+#        window.add(box)
+#
         embed = GtkClutter.Embed()
         make_transparent(embed)
-        box.add(embed)
+        window.add(embed)
 
         stage = embed.get_stage()
     #    stage = Clutter.Stage()     # Create the Stage

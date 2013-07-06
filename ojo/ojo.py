@@ -17,7 +17,7 @@
 
 
 import cairo
-from gi.repository import Gtk, Gdk, GdkPixbuf, GObject
+from gi.repository import Gtk, Gdk, GdkPixbuf, GObject, GtkClutter, Clutter, Cogl
 import os
 import sys
 
@@ -53,6 +53,9 @@ logging = Easylog(0)
 
 class Ojo(Gtk.Window):
     def __init__(self):
+        Gtk.init(sys.argv)
+        GtkClutter.init(sys.argv)
+
         super(Ojo, self).__init__()
 
         path = os.path.realpath(sys.argv[-1]) if len(sys.argv) > 1 and os.path.exists(sys.argv[-1]) \
@@ -65,19 +68,22 @@ class Ojo(Gtk.Window):
         if self.visual and self.screen.is_composited():
             self.set_visual(self.visual)
         self.set_app_paintable(True)
-        self.connect("draw", self.area_draw)
+        #self.connect("draw", self.area_draw)
 
-        self.box = Gtk.VBox()
-        self.box.set_visible(True)
-        self.image = Gtk.Image()
-        self.image.set_visible(True)
-        self.box.add(self.image)
-        self.add(self.box)
+        self.embed = GtkClutter.Embed()
+        self.make_transparent(self.embed)
+        self.add(self.embed)
 
-        self.set_events(Gdk.EventMask.BUTTON_PRESS_MASK |
-                        Gdk.EventMask.BUTTON_RELEASE_MASK |
-                        Gdk.EventMask.SCROLL_MASK |
-                        Gdk.EventMask.POINTER_MOTION_MASK)
+        self.stage = self.embed.get_stage()
+        self.stage.set_use_alpha(True)
+        color = Clutter.Color.new(77, 75, 69, 0.9 * 255)
+        self.stage.set_color(color)
+
+        self.layout = Clutter.BinLayout()
+        self.stage.set_layout_manager(self.layout)
+
+        self.texture = Clutter.Texture()
+        self.layout.add(self.texture, Clutter.BinAlignment.CENTER, Clutter.BinAlignment.CENTER)
 
         self.mousedown_zoomed = False
         self.mousedown_panning = False
@@ -95,6 +101,8 @@ class Ojo(Gtk.Window):
         self.set_zoom(False, 0.5, 0.5)
         self.toggle_fullscreen(self.full, first_run=True)
         self.update_size()
+
+        self.embed.set_visible(True)
 
         if os.path.isfile(path):
             self.mode = 'image'
@@ -160,6 +168,15 @@ class Ojo(Gtk.Window):
             self.scroll_h = self.scroll_window.get_hadjustment().get_value()
             self.scroll_v = self.scroll_window.get_vadjustment().get_value()
 
+    def update_texture(self, pixbuf):
+        self.texture.set_from_rgb_data(pixbuf.get_pixels(),
+            pixbuf.get_has_alpha(),
+            pixbuf.get_width(),
+            pixbuf.get_height(),
+            pixbuf.get_rowstride(),
+            4 if pixbuf.get_has_alpha() else 3,
+            Clutter.TextureFlags.NONE)
+
     def show(self, filename=None, orient=False, quick=False):
         filename = filename or self.selected
         logging.info("Showing " + filename)
@@ -174,7 +191,7 @@ class Ojo(Gtk.Window):
         self.pixbuf, oriented = self.get_pixbuf(self.shown, orient)
 
         if not self.zoom:
-            self.image.set_from_pixbuf(self.pixbuf)
+            self.update_texture(self.pixbuf)
         else:
             self.zoomed_image.set_from_pixbuf(self.pixbuf)
 
@@ -227,26 +244,32 @@ class Ojo(Gtk.Window):
         self.scroll_window.add_with_viewport(self.zoomed_image)
         self.make_transparent(self.scroll_window)
         self.make_transparent(self.scroll_window.get_child())
-        self.scroll_window.set_visible(False)
-        self.box.add(self.scroll_window)
+        self.scroll_window.set_visible(True)
+        self.scroll_actor = GtkClutter.Actor.new_with_contents(self.scroll_window)
+        self.scroll_actor.hide()
+        self.make_transparent(self.scroll_actor.get_widget())
+        self.layout.add(self.scroll_actor, Clutter.BinAlignment.FILL, Clutter.BinAlignment.FILL)
 
         self.update_cursor()
         self.from_browser_time = 0
 
         self.browser = Gtk.ScrolledWindow()
-        self.browser.set_visible(False)
+        self.browser.set_visible(True)
         self.make_transparent(self.browser)
-        self.box.add(self.browser)
+        self.browser_actor = GtkClutter.Actor.new_with_contents(self.browser)
+        self.make_transparent(self.browser_actor.get_widget())
+        self.browser_actor.hide()
+        self.layout.add(self.browser_actor, Clutter.BinAlignment.FILL, Clutter.BinAlignment.FILL)
 
         self.connect("delete-event", Gtk.main_quit)
         self.connect("key-press-event", self.process_key)
         if "--quit-on-focus-out" in sys.argv:
             self.connect("focus-out-event", Gtk.main_quit)
-        self.connect("button-press-event", self.mousedown)
+        self.stage.connect("button-press-event", self.mousedown)
         self.last_mouseup_time = 0
-        self.connect("button-release-event", self.mouseup)
-        self.connect("scroll-event", self.scrolled)
-        self.connect('motion-notify-event', self.mouse_motion)
+        self.stage.connect("button-release-event", self.mouseup)
+        self.stage.connect("scroll-event", self.scrolled)
+        self.stage.connect('motion-event', self.mouse_motion)
 
         GObject.idle_add(self.render_browser)
 
@@ -477,10 +500,10 @@ class Ojo(Gtk.Window):
 
         self.margin = margin
         def _f():
-            self.box.set_margin_right(margin)
-            self.box.set_margin_left(margin)
-            self.box.set_margin_bottom(margin)
-            self.box.set_margin_top(margin)
+            self.texture.set_margin_right(margin)
+            self.texture.set_margin_left(margin)
+            self.texture.set_margin_bottom(margin)
+            self.texture.set_margin_top(margin)
         GObject.idle_add(_f)
 
     def get_recommended_size(self):
@@ -530,6 +553,7 @@ class Ojo(Gtk.Window):
         if full is None:
             full = not self.full
         self.full = full
+        self.stage.queue_relayout()
 
         self.pix_cache[False] = {}
 
@@ -550,10 +574,21 @@ class Ojo(Gtk.Window):
             self.show()
 
     def update_margins(self):
-        if self.full:
-            self.set_margins(0)
+        if not self.full:
+            color = Clutter.Color.new(77, 75, 69, 0.9 * 255)
         else:
-            self.set_margins(30)
+            if self.mode == 'folder':
+                color = Clutter.Color.new(77, 75, 69, 255)
+            else:
+                color = Clutter.Color.new(0, 0, 0, 255)
+        self.stage.set_color(color)
+
+        if self.full:
+            self.margin = 0
+#            self.set_margins(0)
+        else:
+            self.margin = 30
+#            self.set_margins(30)
 
     def update_cursor(self):
         if self.mousedown_zoomed:
@@ -579,9 +614,9 @@ class Ojo(Gtk.Window):
             self.last_action_time = 0
 
         self.update_cursor()
-        self.scroll_window.set_visible(self.mode == 'image' and self.zoom)
-        self.image.set_visible(self.mode == 'image' and not self.zoom)
-        self.browser.set_visible(self.mode == 'folder')
+        self.scroll_actor.show() if self.mode == 'image' and self.zoom else self.scroll_actor.hide()
+        self.texture.show() if self.mode == 'image' and not self.zoom else self.texture.hide()
+        self.browser_actor.show() if self.mode == 'folder' else self.browser_actor.hide()
         self.update_margins()
 
     def process_key(self, widget=None, event=None, key=None, skip_browser=False):
@@ -642,12 +677,12 @@ class Ojo(Gtk.Window):
 
         self.update_zoom_scrolling()
 
-        if self.zoom and self.image.get_visible():
-            self.image.set_visible(False)
-            self.scroll_window.set_visible(True)
-        elif not self.zoom and self.scroll_window.get_visible():
-            self.scroll_window.set_visible(False)
-            self.image.set_visible(True)
+        if self.zoom:
+            self.texture.hide()
+            self.scroll_actor.show()
+        else:
+            self.scroll_actor.hide()
+            self.texture.show()
 
     def get_width(self):
         return self.get_window().get_width()
