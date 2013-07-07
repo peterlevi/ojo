@@ -125,6 +125,8 @@
 <script src="lib/jquery-2.0.2.min.js" type="text/javascript"></script>
 <script src="lib/underscore-min.js" type="text/javascript"></script>
 <script type="text/javascript">
+    var folder = '';
+
     var search = '';
     var current = '';
     var scroll_timeout;
@@ -163,6 +165,10 @@
     }
 
     function add_image_div(file, is_current, width) {
+        if (file.indexOf(folder) != 0) {
+            return;
+        }
+
 	    var html = "<div class='item selectable %selected' file='%file'>" +
 	               "<div class='holder' style='width: %widthpx'><span class='holder-name'>%name</span></div>" +
 	               "</div>";
@@ -190,6 +196,10 @@
     }
 
     function add_image(file, thumb) {
+        if (file.indexOf(folder) != 0) {
+            return;
+        }
+
         clearTimeout(pending_add_timeouts[file]);
         var item = $(".item[file='" + file + "']");
         if (item.length) {
@@ -199,9 +209,10 @@
         }
     }
 
-    function clear_all() {
-        console.log('Clearing');
+    function change_folder(new_folder) {
+        console.log('Changing to folder ' + new_folder);
 
+        folder = new_folder;
         current = '';
         search = '';
         clearTimeout(scroll_timeout);
@@ -380,7 +391,7 @@
     }
 
     $(function() {
-        clear_all();
+        change_folder('');
 
         $(document).contextmenu(function(event) {
             event.preventDefault();

@@ -188,9 +188,32 @@ class Ojo(Gtk.Window):
             self.last_action_time = 0
 
     def set_folder(self, path):
+        path = os.path.realpath(path)
         logging.info("Setting folder %s" % path)
-        self.folder = os.path.realpath(path)
+        if hasattr(self, "folder") and not path in self.folder_history:
+            self.folder_history = self.folder_history[self.folder_history.index(self.folder):]
+        self.folder = path
+        if not path in self.folder_history:
+            self.folder_history.insert(0, self.folder)
         self.images = filter(os.path.isfile, map(lambda f: os.path.join(self.folder, f), sorted(os.listdir(self.folder))))
+
+    def get_back_folder(self):
+        i = self.folder_history.index(self.folder)
+        if i < len(self.folder_history) - 1:
+            return self.folder_history[i + 1]
+
+    def folder_history_back(self):
+        if self.get_back_folder():
+            self.change_to_folder(self.get_back_folder())
+
+    def get_forward_folder(self):
+        i = self.folder_history.index(self.folder)
+        if i > 0:
+            return self.folder_history[i - 1]
+
+    def folder_history_forward(self):
+        if self.get_forward_folder():
+            self.change_to_folder(self.get_forward_folder())
 
     def change_to_folder(self, path):
         with self.thumbs_queue_lock:
@@ -199,7 +222,6 @@ class Ojo(Gtk.Window):
         self.set_folder(path)
         self.selected = self.images[0] if self.images else os.path.realpath(os.path.join(path, '..'))
         self.set_mode("folder")
-        self.js('clear_all()')
         self.render_folder_view()
 
     def check_kill(self):
@@ -212,6 +234,7 @@ class Ojo(Gtk.Window):
 
     def after_quick_start(self):
         self.check_kill()
+        self.folder_history = []
         self.set_folder(os.path.dirname(self.selected))
 
         self.scroll_window = Gtk.ScrolledWindow()
@@ -305,6 +328,7 @@ class Ojo(Gtk.Window):
     def render_folder_view(self):
         self.web_view_loaded = True
         folder = self.folder
+        self.js("change_folder('%s')" % self.folder)
 
         import threading
         def _thread():
@@ -608,7 +632,11 @@ class Ojo(Gtk.Window):
         elif self.mode == 'folder':
             if hasattr(self, 'web_view'):
                 self.web_view.grab_focus()
-            if not skip_browser:
+            if key == 'Left' and event and (event.state & (Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.MOD1_MASK)):
+                self.folder_history_back()
+            elif key == 'Right' and event and (event.state & (Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.MOD1_MASK)):
+                self.folder_history_forward()
+            elif not skip_browser:
                 self.js("on_key('%s')" % key)
             else:
                 if key == 'BackSpace':
