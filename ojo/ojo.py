@@ -144,7 +144,7 @@ class Ojo(Gtk.Window):
         else:
             GObject.timeout_add(100, lambda: self.js(command))
 
-    def update_browser(self, file):
+    def select_in_browser(self, file):
         self.js("select('%s')" % file)
 
     def update_zoom_scrolling(self):
@@ -189,7 +189,7 @@ class Ojo(Gtk.Window):
             import time
             self.update_cursor()
             self.last_action_time = time.time()
-            self.update_browser(self.shown)
+            self.select_in_browser(self.shown)
             self.cache_around()
         else:
             self.last_action_time = 0
@@ -340,6 +340,8 @@ class Ojo(Gtk.Window):
                         return
                     self.js("add_folder('sub', '%s', '%s')" % (os.path.basename(sub), sub))
 
+            self.select_in_browser(self.selected)
+
             for img in self.images:
                 if folder != self.folder:
                     return
@@ -357,7 +359,7 @@ class Ojo(Gtk.Window):
                 if os.path.exists(cached):
                     self.add_thumb(img, use_cached=cached)
 
-            self.update_browser(self.selected)
+            self.select_in_browser(self.selected)
             pos = self.images.index(self.selected) if self.selected in self.images else 0
             self.priority_thumbs([x[1] for x in sorted(enumerate(self.images), key=lambda (i,f): abs(i - pos))])
 
@@ -466,7 +468,7 @@ class Ojo(Gtk.Window):
             thumb_path = use_cached or self.prepare_thumbnail(img, 500, 120)
             self.js("add_image('%s', '%s')" % (img, thumb_path))
             if img == self.selected:
-                self.update_browser(img)
+                self.select_in_browser(img)
             self.prepared_thumbs.add(img)
         except Exception, e:
             self.js("remove_image_div('%s')" % img)
