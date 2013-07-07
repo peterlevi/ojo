@@ -193,7 +193,7 @@
         if (item.length) {
             item.html("<img src='" + thumb + "'/>");
         } else {
-            setTimeout(function () {add_image(file, thumb)}, 200);
+            setTimeout(function () {add_image(file, thumb)}, 200);  // TODO we need to save and clear these timeouts, they might run forever
         }
     }
 

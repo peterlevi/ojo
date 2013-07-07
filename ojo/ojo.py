@@ -335,6 +335,9 @@ class Ojo(Gtk.Window):
 
             self.select_in_browser(self.selected)
 
+            pos = self.images.index(self.selected) if self.selected in self.images else 0
+            self.priority_thumbs([x[1] for x in sorted(enumerate(self.images), key=lambda (i,f): abs(i - pos))])
+
             for img in self.images:
                 if folder != self.folder:
                     return
@@ -353,8 +356,6 @@ class Ojo(Gtk.Window):
                     self.add_thumb(img, use_cached=cached)
 
             self.select_in_browser(self.selected)
-            pos = self.images.index(self.selected) if self.selected in self.images else 0
-            self.priority_thumbs([x[1] for x in sorted(enumerate(self.images), key=lambda (i,f): abs(i - pos))])
 
         prepare_thread = threading.Thread(target=_thread)
         prepare_thread.daemon = True
