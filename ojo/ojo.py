@@ -160,7 +160,7 @@ class Ojo(Gtk.Window):
             self.scroll_h = self.scroll_window.get_hadjustment().get_value()
             self.scroll_v = self.scroll_window.get_vadjustment().get_value()
 
-    def show(self, filename=None, orient=False, quick=False):
+    def show(self, filename=None, quick=False):
         filename = filename or self.selected
         logging.info("Showing " + filename)
 
@@ -171,19 +171,12 @@ class Ojo(Gtk.Window):
         self.shown = filename
         self.selected = self.shown
         self.set_title(self.shown)
-        self.pixbuf, oriented = self.get_pixbuf(self.shown, orient)
+        self.pixbuf = self.get_pixbuf(self.shown)
 
         if not self.zoom:
             self.image.set_from_pixbuf(self.pixbuf)
         else:
             self.zoomed_image.set_from_pixbuf(self.pixbuf)
-
-        if not orient and not oriented:
-            def _check_orientation():
-                meta = self.get_meta(filename)
-                if self.shown == filename and self.needs_orientation(meta):
-                    self.show(self.shown, True)
-            GObject.idle_add(_check_orientation)
 
         if not quick:
             import time
@@ -378,8 +371,6 @@ class Ojo(Gtk.Window):
             if not f in self.pix_cache[self.zoom]:
                 logging.info("Caching around: file %s, zoomed %s" % (f, self.zoom))
                 self.cache_queue.put((f, self.zoom))
-#        self.cache_queue.append((self.current, not self.zoom)) # TODO do we want to cache the full-size image?
-#        self.cache_queue_event.set()
 
     def start_cache_thread(self):
         import threading
@@ -403,7 +394,7 @@ class Ojo(Gtk.Window):
                         self.current_preparing = file, zoom
                         try:
                             self.get_meta(file)
-                            self.get_pixbuf(file, orient=True, force=True, zoom=zoom)
+                            self.get_pixbuf(file, force=True, zoom=zoom)
                         except Exception:
                             logging.exception("Could not cache file " + file)
                         finally:
@@ -541,7 +532,7 @@ class Ojo(Gtk.Window):
             filename = self.images[position]
             self.show(filename)
             return
-        except Exception, ex:
+        except Exception:
             logging.exception("go: Could not show %s" % filename)
             GObject.idle_add(lambda: self.go(direction))
 
@@ -558,9 +549,9 @@ class Ojo(Gtk.Window):
             else:
                 self.saved_width, self.saved_height = self.get_width(), self.get_height()
             self.fullscreen()
-        else:
-            if not first_run:
-                self.unfullscreen()
+        elif not first_run:
+            self.unfullscreen()
+
         self.update_margins()
 
         if not first_run and not self.full:
@@ -780,7 +771,7 @@ class Ojo(Gtk.Window):
             self.get_pil(filename, width, height).save(cached, 'JPEG')
         return cached
 
-    def get_pixbuf(self, filename, orient, force=False, zoom=None):
+    def get_pixbuf(self, filename, force=False, zoom=None):
         use_cache = True
         if zoom is None:
             zoom = self.zoom
@@ -794,18 +785,18 @@ class Ojo(Gtk.Window):
             self.preparing_event.clear()
         if use_cache and filename in self.pix_cache[zoom]:
             cached = self.pix_cache[zoom][filename]
-            if cached[2] == width and (not orient or cached[1]):
+            if cached[1] == width:
                 logging.info("Cache hit: " + filename)
-                return cached[0], cached[1]
+                return cached[0]
 
-        oriented = False
-        image_width = image_height = None
-        if filename in self.meta_cache:
-            meta = self.meta_cache[filename]
-            oriented = not meta[0]
-            image_width, image_height = meta[1], meta[2]
+        full_meta = None
+        if not filename in self.meta_cache:
+            full_meta = self.get_meta(filename)
+        meta = self.meta_cache[filename]
+        oriented = not meta[0]
+        image_width, image_height = meta[1], meta[2]
 
-        if oriented or (not orient and not filename in self.meta_cache):
+        if oriented:
             try:
                 if not image_width and self.fit_only_large:
                     format, image_width, image_height = GdkPixbuf.Pixbuf.get_file_info(filename)
@@ -818,33 +809,32 @@ class Ojo(Gtk.Window):
                 else:
                     pixbuf = GdkPixbuf.Pixbuf.new_from_file(filename)
                 if use_cache:
-                    self.pix_cache[zoom][filename] = pixbuf, oriented, width
+                    self.pix_cache[zoom][filename] = pixbuf, width
                 logging.debug("Loaded directly")
-                return pixbuf, oriented
+                return pixbuf
             except GObject.GError, e:
                 pass # below we'll use another method
 
             try:
-                preview = self.get_meta(filename).previews[-1].data
-                meta = self.meta_cache[filename]
-                oriented = not meta[0]
-                image_width, image_height = meta[1], meta[2]
+                if not full_meta:
+                    full_meta = self.get_meta(filename)
+                preview = full_meta.previews[-1].data
                 pixbuf = self.pixbuf_from_data(
                     preview,
                     min(width, image_width if self.fit_only_large else width),
                     min(height, image_height if self.fit_only_large else height))
                 if use_cache:
-                    self.pix_cache[zoom][filename] = pixbuf, oriented, width
+                    self.pix_cache[zoom][filename] = pixbuf, width
                 logging.debug("Loaded from preview")
-                return pixbuf, oriented
+                return pixbuf
             except Exception, e:
                 pass # below we'll use another method
 
         pixbuf = self.pil_to_pixbuf(self.get_pil(filename, width, height, zoom))
         if use_cache:
-            self.pix_cache[zoom][filename] = pixbuf, True, width
+            self.pix_cache[zoom][filename] = pixbuf, width
         logging.debug("Loaded with PIL")
-        return pixbuf, True
+        return pixbuf
 
     def get_pil(self, filename, width, height, zoomed_in=False):
         from PIL import Image
@@ -855,7 +845,7 @@ class Ojo(Gtk.Window):
         except IOError:
             pil_image = Image.open(cStringIO.StringIO(meta.previews[-1].data))
         if not zoomed_in:
-            pil_image.thumbnail((width, height), Image.ANTIALIAS)
+            pil_image.thumbnail((max(width, height), max(width, height)), Image.ANTIALIAS)
         pil_image = self.auto_rotate(meta, pil_image)
         if not zoomed_in and (pil_image.size[0] > width or pil_image.size[1] > height):
             pil_image.thumbnail((width, height), Image.ANTIALIAS)
