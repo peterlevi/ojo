@@ -129,6 +129,7 @@
     var current = '';
     var scroll_timeout;
     var goto_visible_timeout;
+    var pending_add_timeouts = {};
 
     function python(command) {
         console.log('python command: ' + command);
@@ -189,11 +190,12 @@
     }
 
     function add_image(file, thumb) {
+        clearTimeout(pending_add_timeouts[file]);
         var item = $(".item[file='" + file + "']");
         if (item.length) {
             item.html("<img src='" + thumb + "'/>");
         } else {
-            setTimeout(function () {add_image(file, thumb)}, 200);  // TODO we need to save and clear these timeouts, they might run forever
+            pending_add_timeouts[file] = setTimeout(function () {add_image(file, thumb)}, 200);
         }
     }
 
@@ -203,6 +205,10 @@
         current = '';
         search = '';
         clearTimeout(scroll_timeout);
+        clearTimeout(goto_visible_timeout);
+
+        _.map(_.values(pending_add_timeouts), clearTimeout);
+        pending_add_timeouts = {};
 
         $('#search-field').val('');
         $('#search').html('');
