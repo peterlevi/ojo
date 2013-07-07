@@ -118,6 +118,9 @@ class Cl:
             GObject.idle_add(a)
 
         stage.connect('button-press-event', go)
+        def key(stage, event):
+            print event.keyval
+        stage.connect('key-press-event', go)
 
     #    Clutter.main()                   # Start the application
         Gtk.main()                   # Start the application
