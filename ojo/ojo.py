@@ -15,9 +15,10 @@
 # with this program.  If not, see <http://www.gnu.org/licenses/>.
 ### END LICENSE
 
-
-import cairo
-from gi.repository import Gtk, Gdk, GdkPixbuf, GObject, GtkClutter, Clutter, Cogl
+import sys
+from gi.repository import GtkClutter
+GtkClutter.init(sys.argv)
+from gi.repository import Gtk, Gdk, GdkPixbuf, GObject, Clutter, Cogl
 import os
 import sys
 
@@ -54,7 +55,6 @@ logging = Easylog(0)
 class Ojo(Gtk.Window):
     def __init__(self):
         Gtk.init(sys.argv)
-        GtkClutter.init(sys.argv)
 
         super(Ojo, self).__init__()
 
@@ -67,8 +67,6 @@ class Ojo(Gtk.Window):
         self.visual = self.screen.get_rgba_visual()
         if self.visual and self.screen.is_composited():
             self.set_visual(self.visual)
-        self.set_app_paintable(True)
-        #self.connect("draw", self.area_draw)
 
         self.embed = GtkClutter.Embed()
         self.make_transparent(self.embed)
@@ -132,18 +130,6 @@ class Ojo(Gtk.Window):
         Gdk.threads_enter()
         Gtk.main()
         Gdk.threads_leave()
-
-    def area_draw(self, widget, cr):
-        if self.full:
-            if self.mode == 'folder':
-                cr.set_source_rgba(77.0/255, 75.0/255, 69.0/255, 1)
-            else:
-                cr.set_source_rgba(0, 0, 0, 1.0)
-        else:
-            cr.set_source_rgba(77.0/255, 75.0/255, 69.0/255, 0.9)
-        cr.set_operator(cairo.OPERATOR_SOURCE)
-        cr.paint()
-        cr.set_operator(cairo.OPERATOR_OVER)
 
     def js(self, command):
         logging.debug('js(%s)' % command)
@@ -495,16 +481,13 @@ class Ojo(Gtk.Window):
         return meta
 
     def set_margins(self, margin):
-        if margin == getattr(self, "margin", -1):
-            return
-
         self.margin = margin
-        def _f():
-            self.texture.set_margin_right(margin)
-            self.texture.set_margin_left(margin)
-            self.texture.set_margin_bottom(margin)
-            self.texture.set_margin_top(margin)
-        GObject.idle_add(_f)
+        for actor in [getattr(self, "texture", None), getattr(self, "scroll_actor", None), getattr(self, "browser_actor", None)]:
+            if actor:
+                actor.set_margin_right(margin)
+                actor.set_margin_left(margin)
+                actor.set_margin_bottom(margin)
+                actor.set_margin_top(margin)
 
     def get_recommended_size(self):
         width = self.screen.get_width() - 150
@@ -553,7 +536,7 @@ class Ojo(Gtk.Window):
         if full is None:
             full = not self.full
         self.full = full
-        self.stage.queue_relayout()
+        GObject.idle_add(self.stage.queue_relayout)
 
         self.pix_cache[False] = {}
 
@@ -566,6 +549,7 @@ class Ojo(Gtk.Window):
         else:
             if not first_run:
                 self.unfullscreen()
+
         self.update_margins()
 
         if not first_run and not self.full:
@@ -584,11 +568,9 @@ class Ojo(Gtk.Window):
         self.stage.set_color(color)
 
         if self.full:
-            self.margin = 0
-#            self.set_margins(0)
+            self.set_margins(0)
         else:
-            self.margin = 30
-#            self.set_margins(30)
+            self.set_margins(30)
 
     def update_cursor(self):
         if self.mousedown_zoomed:
