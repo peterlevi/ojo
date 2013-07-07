@@ -536,7 +536,6 @@ class Ojo(Gtk.Window):
         if full is None:
             full = not self.full
         self.full = full
-        GObject.idle_add(self.stage.queue_relayout)
 
         self.pix_cache[False] = {}
 
@@ -571,6 +570,8 @@ class Ojo(Gtk.Window):
             self.set_margins(0)
         else:
             self.set_margins(30)
+
+        GObject.idle_add(self.stage.queue_relayout)
 
     def update_cursor(self):
         if self.mousedown_zoomed:
