@@ -351,7 +351,7 @@ class Ojo(Gtk.Window):
                 self.js("add_image_div('%s', %s, %d)" % (img, 'true' if img==self.selected else 'false', thumb_width))
                 if w and h:
                     self.js("set_dimensions('%s', '%d x %d')" % (img, w, h))
-                cached = self.get_cached_thumbnail(img)
+                cached = self.get_cached_thumbnail_path(img)
                 if os.path.exists(cached):
                     self.add_thumb(img, use_cached=cached)
 
@@ -457,7 +457,7 @@ class Ojo(Gtk.Window):
 
     def add_thumb(self, img, use_cached=None):
         try:
-            thumb_path = use_cached or self.prepare_thumbnail(img, 500, 120)
+            thumb_path = use_cached or self.prepare_thumbnail(img, 360, 120)
             self.js("add_image('%s', '%s')" % (img, thumb_path))
             if img == self.selected:
                 self.select_in_browser(img)
@@ -759,15 +759,16 @@ class Ojo(Gtk.Window):
     def pixbuf_to_b64(self, pixbuf):
         return pixbuf.save_to_bufferv('png', [], [])[1].encode("base64").replace('\n', '')
 
-    def get_cached_thumbnail(self, filename):
+    def get_cached_thumbnail_path(self, filename):
         import hashlib
+        import re
         # we append modification time to ensure we're not using outdated cached images
         mtime = os.path.getmtime(filename)
         hash = hashlib.md5(filename + str(mtime)).hexdigest()
-        return os.path.join(self.get_thumbs_cache_dir(120), hash + '.jpg')
+        return os.path.join(self.get_thumbs_cache_dir(120), re.sub('[\W_]+', '_', filename) + '_' + hash + '.jpg')
 
     def prepare_thumbnail(self, filename, width, height):
-        cached = self.get_cached_thumbnail(filename)
+        cached = self.get_cached_thumbnail_path(filename)
         if not os.path.exists(cached):
             self.get_pil(filename, width, height).save(cached, 'JPEG')
         return cached
@@ -846,7 +847,7 @@ class Ojo(Gtk.Window):
         except IOError:
             pil_image = Image.open(cStringIO.StringIO(meta.previews[-1].data))
         if not zoomed_in:
-            pil_image.thumbnail((max(width, height), max(width, height)), Image.ANTIALIAS)
+            pil_image.thumbnail((width, height), Image.ANTIALIAS)
         pil_image = self.auto_rotate(meta, pil_image)
         if not zoomed_in and (pil_image.size[0] > width or pil_image.size[1] > height):
             pil_image.thumbnail((width, height), Image.ANTIALIAS)
