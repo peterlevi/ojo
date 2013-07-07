@@ -129,7 +129,6 @@
     var current = '';
     var scroll_timeout;
     var goto_visible_timeout;
-    var delayed_thumbs = [];
 
     function python(command) {
         console.log('python command: ' + command);
@@ -162,15 +161,19 @@
         $("#" + category_id).append($("<div class='folder selectable' file='" + path + "'><span>" + label + "</span></div>"))
     }
 
-    function add_image_div(file, is_current) {
+    function add_image_div(file, is_current, width) {
 	    var html = "<div class='item selectable %selected' file='%file'>" +
-	               "<div class='holder'><span class='holder-name'>%name</span></div>" +
+	               "<div class='holder' style='width: %widthpx'><span class='holder-name'>%name</span></div>" +
 	               "</div>";
 	    html = html.replace(/%file/g, file);
 	    html = html.replace(/%name/g, get_name(file));
 	    html = html.replace('%selected', is_current ? 'selected' : '');
+	    html = html.replace('%width', width);
 	    var elem = $(html);
-	    $('#images').append(elem);
+        if (search && !basename(file).toLowerCase().indexOf(search) >= 0) {
+            elem.hide();
+        }
+        $('#images').append(elem);
     }
 
     function remove_image_div(file) {
@@ -188,11 +191,7 @@
     function add_image(file, thumb) {
         var item = $(".item[file='" + file + "']");
         if (item.length) {
-            if (item.offset().top + item.height() < $('body').scrollTop()) {
-                delayed_thumbs.push({item: item, thumb: thumb});
-            } else {
-                item.html("<img src='" + thumb + "'/>");
-            }
+            item.html("<img src='" + thumb + "'/>");
         } else {
             setTimeout(function () {add_image(file, thumb)}, 200);
         }
@@ -203,7 +202,6 @@
 
         current = '';
         search = '';
-        delayed_thumbs = [];
         clearTimeout(scroll_timeout);
 
         $('#search-field').val('');
@@ -317,9 +315,6 @@
 		    }
 	    } else if (key == 'BackSpace') {
             if (!search) {
-//                search = search.substring(0, search.length - 1);
-//                on_search();
-//            } else {
                 python('ojo-handle-key:' + key)
             }
         } else if (key == 'Escape') {
@@ -371,15 +366,6 @@
     }
 
     function on_scroll() {
-        var added = [];
-        _.map(delayed_thumbs, function(p) {
-            if (p.item.offset().top + p.item.height() > $('body').scrollTop()) {
-                setTimeout(function() {p.item.html("<img src='" + p.thumb + "'/>")}, 0);
-                added.push(p);
-            }
-        });
-        delayed_thumbs = _.difference(delayed_thumbs, added);
-
         var files = _.map(_.filter($('.item:visible'), function(x) {
             return $(x).offset().top + $(x).height() >= $('body').scrollTop();
         }), function(x) { return $(x).attr('file') });

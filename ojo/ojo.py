@@ -311,6 +311,7 @@ class Ojo(Gtk.Window):
 
     def render_folder_view(self):
         self.web_view_loaded = True
+        folder = self.folder
 
         import threading
         def _thread():
@@ -335,10 +336,26 @@ class Ojo(Gtk.Window):
             if subfolders:
                 self.js("add_folder_category('Subfolders', 'sub')")
                 for sub in subfolders:
+                    if folder != self.folder:
+                        return
                     self.js("add_folder('sub', '%s', '%s')" % (os.path.basename(sub), sub))
 
             for img in self.images:
-                self.js("add_image_div('%s', %s)" % (img, 'true' if img==self.selected else 'false'))
+                if folder != self.folder:
+                    return
+                w = h = None
+                try:
+                    meta = self.get_meta(img)
+                    w, h = meta.dimensions
+                    thumb_width = int(h * 120 / w) if self.needs_rotation(meta) else int(w * 120 / h)
+                except Exception:
+                    thumb_width = 180
+                self.js("add_image_div('%s', %s, %d)" % (img, 'true' if img==self.selected else 'false', thumb_width))
+                if w and h:
+                    self.js("set_dimensions('%s', '%d x %d')" % (img, w, h))
+                cached = self.get_cached_thumbnail(img)
+                if os.path.exists(cached):
+                    self.add_thumb(img, use_cached=cached)
 
             self.update_browser(self.selected)
             pos = self.images.index(self.selected) if self.selected in self.images else 0
@@ -435,7 +452,6 @@ class Ojo(Gtk.Window):
                             img = self.thumbs_queue[0]
                             self.thumbs_queue.remove(img)
                         if not img in self.prepared_thumbs:
-                            self.prepared_thumbs.add(img)
                             logging.debug("Thumbs thread loads file " + img)
                             self.add_thumb(img)
                     except Exception:
@@ -445,12 +461,13 @@ class Ojo(Gtk.Window):
         thumbs_thread.daemon = True
         thumbs_thread.start()
 
-    def add_thumb(self, img):
+    def add_thumb(self, img, use_cached=None):
         try:
-            thumb_path = self.prepare_thumbnail(img, 500, 120)
+            thumb_path = use_cached or self.prepare_thumbnail(img, 500, 120)
             self.js("add_image('%s', '%s')" % (img, thumb_path))
             if img == self.selected:
                 self.update_browser(img)
+            self.prepared_thumbs.add(img)
         except Exception, e:
             self.js("remove_image_div('%s')" % img)
             logging.warning("Could not add thumb for " + img)
@@ -748,12 +765,15 @@ class Ojo(Gtk.Window):
     def pixbuf_to_b64(self, pixbuf):
         return pixbuf.save_to_bufferv('png', [], [])[1].encode("base64").replace('\n', '')
 
-    def prepare_thumbnail(self, filename, width, height):
+    def get_cached_thumbnail(self, filename):
         import hashlib
+        # we append modification time to ensure we're not using outdated cached images
         mtime = os.path.getmtime(filename)
         hash = hashlib.md5(filename + str(mtime)).hexdigest()
-        # we append modification time to ensure we're not using outdated cached images
-        cached = os.path.join(self.get_thumbs_cache_dir(120), hash + '.jpg')
+        return os.path.join(self.get_thumbs_cache_dir(120), hash + '.jpg')
+
+    def prepare_thumbnail(self, filename, width, height):
+        cached = self.get_cached_thumbnail(filename)
         if not os.path.exists(cached):
             self.get_pil(filename, width, height).save(cached, 'JPEG')
         return cached
@@ -862,10 +882,10 @@ class Ojo(Gtk.Window):
         return pixbuf
 
     def needs_orientation(self, meta):
-        if 'Exif.Image.Orientation' in meta.keys():
-            return meta['Exif.Image.Orientation'].value != 1
-        else:
-            return False
+        return 'Exif.Image.Orientation' in meta.keys() and meta['Exif.Image.Orientation'].value != 1
+
+    def needs_rotation(self, meta):
+        return 'Exif.Image.Orientation' in meta.keys() and meta['Exif.Image.Orientation'].value in (5, 6, 7, 8)
 
     def auto_rotate(self, meta, im):
         from PIL import Image
