@@ -233,8 +233,11 @@
 	    return file.substring(file.lastIndexOf('/') + 1);
     }
 
-    function set_dimensions(file, dimensions) {
+    function set_dimensions(file, dimensions, thumb_width) {
         $(".item[file='" + file + "']").attr('dimensions', dimensions);
+        if (thumb_width) {
+            $(".item[file='" + file + "'] .holder").css('width', thumb_width);
+        }
     }
 
     function select(file, dontScrollTo) {

@@ -365,19 +365,19 @@ class Ojo(Gtk.Window):
             for img in self.images:
                 if folder != self.folder:
                     return
-                w = h = None
-                try:
-                    meta = self.get_meta(img)
-                    w, h = meta.dimensions
-                    thumb_width = int(h * 120 / w) if self.needs_rotation(meta) else int(w * 120 / h)
-                except Exception:
-                    thumb_width = 180
-                self.js("add_image_div('%s', %s, %d)" % (img, 'true' if img==self.selected else 'false', thumb_width))
-                if w and h:
-                    self.js("set_dimensions('%s', '%d x %d')" % (img, w, h))
+                self.js("add_image_div('%s', %s, %d)" % (img, 'true' if img==self.selected else 'false', 180))
                 cached = self.get_cached_thumbnail_path(img)
                 if os.path.exists(cached):
                     self.add_thumb(img, use_cached=cached)
+                else:
+                    try:
+                        meta = self.get_meta(img)
+                        w, h = meta.dimensions
+                        thumb_width = int(h * 120 / w) if self.needs_rotation(meta) else int(w * 120 / h)
+                        if w and h:
+                            self.js("set_dimensions('%s', '%d x %d', %d)" % (img, w, h, thumb_width))
+                    except Exception:
+                        pass
 
             self.select_in_browser(self.selected)
 
