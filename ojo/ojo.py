@@ -16,6 +16,7 @@
 ### END LICENSE
 
 
+# We import here only the things necessary to start and show an image. The rest are imported lazily so they do not slow startup
 import cairo
 from gi.repository import Gtk, Gdk, GdkPixbuf, GObject
 import os
@@ -49,7 +50,7 @@ class Easylog:
         import logging
         logging.exception(x)
 
-logging = Easylog(0)
+logging = Easylog(1 if "-v" in sys.argv or "--verbose" in sys.argv else 0)
 
 class Ojo(Gtk.Window):
     def __init__(self):
@@ -113,11 +114,6 @@ class Ojo(Gtk.Window):
             self.selected = self.images[0] if self.images else path
 
         self.set_visible(True)
-
-        import signal
-        signal.signal(signal.SIGINT, kill)
-        signal.signal(signal.SIGTERM, kill)
-        signal.signal(signal.SIGQUIT, kill)
 
         GObject.threads_init()
         Gdk.threads_init()
@@ -187,6 +183,35 @@ class Ojo(Gtk.Window):
         else:
             self.last_action_time = 0
 
+    def get_supported_image_extensions(self):
+        if not hasattr(self, "image_formats"):
+            # supported by PIL, as per http://infohost.nmt.edu/tcc/help/pubs/pil/formats.html:
+            self.image_formats = {"bmp", "dib", "dcx", "eps", "ps", "gif", "im", "jpg", "jpe", "jpeg", "pcd",
+                                  "pcx", "pdf", "png", "pbm", "pgm", "ppm", "psd", "tif", "tiff", "xbm", "xpm"}
+
+            # RAW formats, as per https://en.wikipedia.org/wiki/Raw_image_format#Annotated_list_of_file_extensions, we rely on pyexiv2 previews for these:
+            self.image_formats = self.image_formats.union(
+                    {"3fr", "ari", "arw", "srf", "sr2", "bay", "crw", "cr2", "cap", "iiq",
+                     "eip", "dcs", "dcr", "drf", "k25", "kdc", "dng", "erf", "fff", "mef", "mos", "mrw",
+                     "nef", "nrw", "orf", "pef", "ptx", "pxn", "r3d", "raf", "raw", "rw2", "raw", "rwl",
+                     "dng", "rwz", "srw", "x3f"})
+
+            # supported by GdkPixbuf:
+            for l in [f.get_extensions() for f in GdkPixbuf.Pixbuf.get_formats()]:
+                self.image_formats = self.image_formats.union(map(lambda e: e.lower(), l))
+
+        return self.image_formats
+
+    def is_image(self, filename):
+        """Decide if something might be a supported image based on extension"""
+        try:
+            return os.path.isfile(filename) and os.path.splitext(filename)[1].lower()[1:] in self.get_supported_image_extensions()
+        except Exception:
+            return False
+
+    def get_image_list(self):
+        return filter(self.is_image, map(lambda f: os.path.join(self.folder, f), sorted(os.listdir(self.folder))))
+
     def set_folder(self, path):
         path = os.path.realpath(path)
         logging.info("Setting folder %s" % path)
@@ -195,7 +220,7 @@ class Ojo(Gtk.Window):
         self.folder = path
         if not path in self.folder_history:
             self.folder_history.insert(0, self.folder)
-        self.images = filter(os.path.isfile, map(lambda f: os.path.join(self.folder, f), sorted(os.listdir(self.folder))))
+        self.images = self.get_image_list()
 
     def get_back_folder(self):
         i = self.folder_history.index(self.folder)
@@ -233,6 +258,11 @@ class Ojo(Gtk.Window):
             GObject.timeout_add(500, self.check_kill)
 
     def after_quick_start(self):
+        import signal
+        signal.signal(signal.SIGINT, kill)
+        signal.signal(signal.SIGTERM, kill)
+        signal.signal(signal.SIGQUIT, kill)
+
         self.check_kill()
         self.folder_history = []
         self.set_folder(os.path.dirname(self.selected))
