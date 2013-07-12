@@ -167,12 +167,17 @@ class Ojo(Gtk.Window):
         self.shown = filename
         self.selected = self.shown
         self.set_title(self.shown)
-        self.pixbuf = self.get_pixbuf(self.shown)
 
-        if not self.zoom:
-            self.image.set_from_pixbuf(self.pixbuf)
+        self.pixbuf = self.get_pixbuf(self.shown)
+        target_image = self.image if not self.zoom else self.zoomed_image
+        if os.path.splitext(filename)[1].lower() in ('.gif', '.mng', '.png'):
+            anim = GdkPixbuf.PixbufAnimation.new_from_file(filename)
+            if anim.is_static_image():
+                target_image.set_from_pixbuf(self.pixbuf)
+            else:
+                target_image.set_from_animation(anim)
         else:
-            self.zoomed_image.set_from_pixbuf(self.pixbuf)
+            target_image.set_from_pixbuf(self.pixbuf)
 
         if not quick:
             import time
