@@ -529,6 +529,7 @@ class Ojo(Gtk.Window):
         logging.debug("Priority thumbs: " + str(files))
         new_thumbs_queue = [self.selected] + [f for f in files if not f in self.prepared_thumbs] + \
                            [f for f in self.thumbs_queue if not f in files and not f in self.prepared_thumbs]
+        new_thumbs_queue = filter(self.is_image, new_thumbs_queue)
         with self.thumbs_queue_lock:
             self.thumbs_queue = new_thumbs_queue
             self.thumbs_queue_event.set()
@@ -828,12 +829,21 @@ class Ojo(Gtk.Window):
         # we append modification time to ensure we're not using outdated cached images
         mtime = os.path.getmtime(filename)
         hash = hashlib.md5(filename + str(mtime)).hexdigest()
-        return os.path.join(self.get_thumbs_cache_dir(120), re.sub('[\W_]+', '_', filename) + '_' + hash + '.jpg')
+        return os.path.join(self.get_thumbs_cache_dir(120), re.sub('[\W_]+', '_', filename) + '_' + hash + ".jpg")
 
     def prepare_thumbnail(self, filename, width, height):
         cached = self.get_cached_thumbnail_path(filename)
         if not os.path.exists(cached):
-            self.get_pil(filename, width, height).save(cached, 'JPEG')
+            pil = self.get_pil(filename, width, height)
+            for format in ('JPEG', 'GIF', 'PNG'):
+                try:
+                    pil.save(cached, format)
+                    if os.path.getsize(cached):
+                        break
+                except Exception:
+                    pass
+            if not os.path.isfile(cached) or not os.path.getsize(cached):
+                raise IOError('Could not create thumbnail')
         return cached
 
     def get_pixbuf(self, filename, force=False, zoom=None):
