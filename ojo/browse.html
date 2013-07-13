@@ -203,7 +203,7 @@
         clearTimeout(pending_add_timeouts[file]);
         var item = $(".item[file='" + file + "']");
         if (item.length) {
-            item.html("<img src='" + thumb + "'/>");
+            item.html("<img height='120' src='" + thumb + "'/>");
         } else {
             pending_add_timeouts[file] = setTimeout(function () {add_image(file, thumb)}, 200);
         }

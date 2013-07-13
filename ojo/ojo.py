@@ -107,7 +107,6 @@ class Ojo(Gtk.Window):
         if os.path.isfile(path):
             self.mode = 'image'
             self.last_automatic_resize = time.time()
-            self.resize(1, 1)
             self.show(path, quick=True)
             GObject.idle_add(self.after_quick_start)
         else:
@@ -201,7 +200,7 @@ class Ojo(Gtk.Window):
         if not hasattr(self, "image_formats"):
             # supported by PIL, as per http://infohost.nmt.edu/tcc/help/pubs/pil/formats.html:
             self.image_formats = {"bmp", "dib", "dcx", "eps", "ps", "gif", "im", "jpg", "jpe", "jpeg", "pcd",
-                                  "pcx", "pdf", "png", "pbm", "pgm", "ppm", "psd", "tif", "tiff", "xbm", "xpm"}
+                                  "pcx", "png", "pbm", "pgm", "ppm", "psd", "tif", "tiff", "xbm", "xpm"}
 
             # RAW formats, as per https://en.wikipedia.org/wiki/Raw_image_format#Annotated_list_of_file_extensions, we rely on pyexiv2 previews for these:
             self.image_formats = self.image_formats.union(
@@ -272,7 +271,6 @@ class Ojo(Gtk.Window):
             GObject.timeout_add(500, self.check_kill)
 
     def resized(self, widget, event):
-        print "resized"
         last_width = getattr(self, "last_width", 0)
         last_height = getattr(self, "last_height", 0)
         last_x = getattr(self, "last_x", 0)
@@ -553,12 +551,16 @@ class Ojo(Gtk.Window):
             self.thumbs_queue_event.set()
 
     def get_meta(self, filename):
-        from pyexiv2 import ImageMetadata
-        meta = ImageMetadata(filename)
-        meta.read()
-        self.meta_cache[filename] = self.needs_orientation(meta), meta.dimensions[0], meta.dimensions[1]
-        self.js("set_dimensions('%s', '%d x %d')" % (filename, meta.dimensions[0], meta.dimensions[1]))
-        return meta
+        try:
+            from pyexiv2 import ImageMetadata
+            meta = ImageMetadata(filename)
+            meta.read()
+            self.meta_cache[filename] = self.needs_orientation(meta), meta.dimensions[0], meta.dimensions[1]
+            self.js("set_dimensions('%s', '%d x %d')" % (filename, meta.dimensions[0], meta.dimensions[1]))
+            return meta
+        except Exception:
+            logging.exception("Could not parse meta-info for %s" % filename)
+            return None
 
     def set_margins(self, margin):
         if margin == getattr(self, "margin", -1):
@@ -832,6 +834,10 @@ class Ojo(Gtk.Window):
         return pixbuf.save_to_bufferv('png', [], [])[1].encode("base64").replace('\n', '')
 
     def get_cached_thumbnail_path(self, filename):
+        # Use "smaller" types of images directly - webkit will handle transparency, animated gifs, etc.
+        if os.path.splitext(filename)[1].lower() in (('.gif', '.png', '.svg')):
+            return filename
+
         import hashlib
         import re
         # we append modification time to ensure we're not using outdated cached images
@@ -842,24 +848,28 @@ class Ojo(Gtk.Window):
     def prepare_thumbnail(self, filename, width, height):
         cached = self.get_cached_thumbnail_path(filename)
         if not os.path.exists(cached):
-            pil = self.get_pil(filename, width, height)
-            for format in ('JPEG', 'GIF', 'PNG'):
-                try:
-                    pil.save(cached, format)
-                    if os.path.getsize(cached):
-                        break
-                except Exception:
-                    pass
-            if not os.path.isfile(cached) or not os.path.getsize(cached):
-                raise IOError('Could not create thumbnail')
+            try:
+                pil = self.get_pil(filename, width, height)
+                for format in ('JPEG', 'GIF', 'PNG'):
+                    try:
+                        pil.save(cached, format)
+                        if os.path.getsize(cached):
+                            break
+                    except Exception:
+                        pass
+            except Exception:
+                pixbuf = self.get_pixbuf(filename, True, False, 360, 120)
+                pixbuf.savev(cached, 'jpeg', [], [])
+        if not os.path.isfile(cached) or not os.path.getsize(cached):
+            raise IOError('Could not create thumbnail')
         return cached
 
-    def get_pixbuf(self, filename, force=False, zoom=None):
+    def get_pixbuf(self, filename, force=False, zoom=None, width=None, height=None):
         if zoom is None:
             zoom = self.zoom
 
-        width = self.get_max_image_width()
-        height = self.get_max_image_height()
+        width = width or self.get_max_image_width()
+        height = height or self.get_max_image_height()
 
         while not force and self.current_preparing == (filename, zoom):
             logging.info("Waiting on cache")
@@ -874,9 +884,13 @@ class Ojo(Gtk.Window):
         full_meta = None
         if not filename in self.meta_cache:
             full_meta = self.get_meta(filename)
-        meta = self.meta_cache[filename]
-        oriented = not meta[0]
-        image_width, image_height = meta[1], meta[2]
+        if filename in self.meta_cache:
+            meta = self.meta_cache[filename]
+            oriented = not meta[0]
+            image_width, image_height = meta[1], meta[2]
+        else:
+            oriented = True
+            image_width = image_height = None
 
         if oriented:
             try:
@@ -925,7 +939,10 @@ class Ojo(Gtk.Window):
             pil_image = Image.open(cStringIO.StringIO(meta.previews[-1].data))
         if not zoomed_in:
             pil_image.thumbnail((width, height), Image.ANTIALIAS)
-        pil_image = self.auto_rotate(meta, pil_image)
+        try:
+            pil_image = self.auto_rotate(meta, pil_image)
+        except Exception:
+            logging.exception('Auto-rotation failed for %s' % filename)
         if not zoomed_in and (pil_image.size[0] > width or pil_image.size[1] > height):
             pil_image.thumbnail((width, height), Image.ANTIALIAS)
         return pil_image
