@@ -377,6 +377,14 @@ class Ojo(Gtk.Window):
         self.browser.add(self.web_view)
         self.web_view.grab_focus()
 
+    def add_folder(self, category, path):
+        import util
+        self.js("add_folder('%s', '%s', '%s', '%s')" % (
+            category,
+            os.path.basename(path) or path,
+            path,
+            util.get_folder_icon(path, 24)))
+
     def render_folder_view(self):
         self.web_view_loaded = True
         folder = self.folder
@@ -388,17 +396,17 @@ class Ojo(Gtk.Window):
             if self.folder != '/':
                 parent_path = os.path.realpath(os.path.join(self.folder, '..'))
                 self.js("add_folder_category('Up', 'up')")
-                self.js("add_folder('up', '%s', '%s')" % (os.path.basename(parent_path) or parent_path, parent_path))
+                self.add_folder('up', parent_path)
 
                 siblings = [os.path.join(parent_path, f) for f in sorted(os.listdir(parent_path))
                             if os.path.isdir(os.path.join(parent_path, f))]
                 pos = siblings.index(self.folder)
                 if pos - 1 >= 0:
                     self.js("add_folder_category('Previous', 'prev_sibling')")
-                    self.js("add_folder('prev_sibling', '%s', '%s')" % (os.path.basename(siblings[pos - 1]), siblings[pos - 1]))
+                    self.add_folder('prev_sibling', siblings[pos - 1])
                 if pos + 1 < len(siblings):
                     self.js("add_folder_category('Next', 'next_sibling')")
-                    self.js("add_folder('next_sibling', '%s', '%s')" % (os.path.basename(siblings[pos + 1]), siblings[pos + 1]))
+                    self.add_folder('next_sibling', siblings[pos + 1])
 
             subfolders = [os.path.join(self.folder, f) for f in sorted(os.listdir(self.folder))
                           if os.path.isdir(os.path.join(self.folder, f))]
@@ -407,7 +415,7 @@ class Ojo(Gtk.Window):
                 for sub in subfolders:
                     if folder != self.folder:
                         return
-                    self.js("add_folder('sub', '%s', '%s')" % (os.path.basename(sub), sub))
+                    self.add_folder('sub', sub)
 
             self.select_in_browser(self.selected)
 
@@ -835,7 +843,7 @@ class Ojo(Gtk.Window):
 
     def get_cached_thumbnail_path(self, filename):
         # Use "smaller" types of images directly - webkit will handle transparency, animated gifs, etc.
-        if os.path.splitext(filename)[1].lower() in (('.gif', '.png', '.svg')):
+        if os.path.splitext(filename)[1].lower() in (('.gif', '.svg')):
             return filename
 
         import hashlib
@@ -850,7 +858,9 @@ class Ojo(Gtk.Window):
         if not os.path.exists(cached):
             try:
                 pil = self.get_pil(filename, width, height)
-                for format in ('JPEG', 'GIF', 'PNG'):
+                ext = os.path.splitext(filename)[1].lower()
+                format = {".gif": "GIF", ".png" : "PNG"}.get(ext, 'JPEG')
+                for format in (format, 'JPEG', 'GIF', 'PNG'):
                     try:
                         pil.save(cached, format)
                         if os.path.getsize(cached):

@@ -57,10 +57,14 @@
             padding-right: 20px;
             color: #d3d0c5;
             margin-bottom: 10px;
+            cursor: pointer;
+            height: 24px;
         }
 
-        .folder span {
-            cursor: pointer;
+        .folder-icon {
+            padding-right: 3px;
+            vertical-align: text-bottom;
+            display: inline;
         }
 
         .folder.selected {
@@ -160,8 +164,9 @@
         $("#folders").append($(html));
     }
 
-    function add_folder(category_id, label, path) {
-        $("#" + category_id).append($("<div class='folder selectable' file='" + path + "'><span>" + label + "</span></div>"))
+    function add_folder(category_id, label, path, icon) {
+        $("#" + category_id).append($("<div class='folder selectable' file='" + path + "'>" +
+                "<img class='folder-icon' src='" + icon + "'/>" + label + "</div>"))
     }
 
     function add_image_div(file, is_current, width) {
