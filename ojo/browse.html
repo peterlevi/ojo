@@ -20,10 +20,10 @@
         #title span {
             font-family: Ubuntu Light;
             cursor: pointer;
+            font-size: x-large;
         }
 
         #title {
-            font-size: x-large;
             color: #A19C90;
             margin: 15px 10px 10px;
         }
@@ -58,7 +58,6 @@
             color: #d3d0c5;
             margin-bottom: 10px;
             cursor: pointer;
-            height: 24px;
         }
 
         .folder-icon {
@@ -243,16 +242,25 @@
         if (thumb_width) {
             $(".item[file='" + file + "'] .holder").css('width', thumb_width);
         }
+        if (file == current) {
+            $("#filename").html(get_name(file));
+            $("#dimensions").html(dimensions);
+        }
     }
 
     function select(file, dontScrollTo) {
-        console.log("Selecting " + file);
-        python("ojo-select:" + file);
-        current = file;
+        if (current == file) {
+            return;
+        }
+
         var el = $(".selectable[file='" + file + "']");
         $("#filename").html(get_name(file));
         var dim = el.attr('dimensions');
         $("#dimensions").html(dim ? dim : '');
+
+        console.log("Selecting " + file);
+        python("ojo-select:" + file);
+        current = file;
         $(".selectable").removeClass('selected');
         el.addClass('selected');
 	    if (!dontScrollTo) {

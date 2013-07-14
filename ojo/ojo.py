@@ -257,6 +257,9 @@ class Ojo(Gtk.Window):
         with self.thumbs_queue_lock:
             self.thumbs_queue = []
             self.prepared_thumbs = set()
+        self.pix_cache[False].clear()
+        self.pix_cache[True].clear()
+        self.meta_cache.clear()
         self.set_folder(path)
         self.selected = self.images[0] if self.images else os.path.realpath(os.path.join(path, '..'))
         self.set_mode("folder")
@@ -329,11 +332,22 @@ class Ojo(Gtk.Window):
         rgba.parse('rgba(0, 0, 0, 0)')
         widget.override_background_color(Gtk.StateFlags.NORMAL, rgba)
 
+    def update_selected_info(self, filename):
+        if self.selected != filename or not os.path.isfile(filename):
+            return
+        if not filename in self.meta_cache:
+            self.get_meta(filename)
+        if filename in self.meta_cache:    # get_meta() might have failed
+            meta = self.meta_cache[filename]
+            rok = not meta[1]
+            self.js("set_dimensions('%s', '%d x %d')" % (filename, meta[2 if rok else 3], meta[3 if rok else 2]))
+
     def on_js_action(self, action, argument):
         import json
 
         if action in ('ojo', 'ojo-select'):
             self.selected = argument
+            GObject.idle_add(lambda: self.update_selected_info(self.selected))
             if action == 'ojo':
                 def _do():
                     filename = self.selected
@@ -415,6 +429,7 @@ class Ojo(Gtk.Window):
                 for sub in subfolders:
                     if folder != self.folder:
                         return
+                    time.sleep(0.01)
                     self.add_folder('sub', sub)
 
             self.select_in_browser(self.selected)
@@ -426,6 +441,7 @@ class Ojo(Gtk.Window):
                 if folder != self.folder:
                     return
                 self.js("add_image_div('%s', %s, %d)" % (img, 'true' if img==self.selected else 'false', 180))
+                time.sleep(0.01)
                 cached = self.get_cached_thumbnail_path(img)
                 if os.path.exists(cached):
                     self.add_thumb(img, use_cached=cached)
@@ -433,9 +449,10 @@ class Ojo(Gtk.Window):
                     try:
                         meta = self.get_meta(img)
                         w, h = meta.dimensions
-                        thumb_width = int(h * 120 / w) if self.needs_rotation(meta) else int(w * 120 / h)
+                        rok = not self.needs_rotation(meta)
+                        thumb_width = int(w * 120 / h) if rok else int(h * 120 / w)
                         if w and h:
-                            self.js("set_dimensions('%s', '%d x %d', %d)" % (img, w, h, thumb_width))
+                            self.js("set_dimensions('%s', '%d x %d', %d)" % (img, w if rok else h, h if rok else w, thumb_width))
                     except Exception:
                         pass
 
@@ -478,7 +495,6 @@ class Ojo(Gtk.Window):
                         logging.debug("Cache thread loads file %s, zoomed %s" % (file, zoom))
                         self.current_preparing = file, zoom
                         try:
-                            self.get_meta(file)
                             self.get_pixbuf(file, force=True, zoom=zoom)
                         except Exception:
                             logging.exception("Could not cache file " + file)
@@ -521,7 +537,7 @@ class Ojo(Gtk.Window):
                     # pause thumbnailing while the user is actively cycling images:
                     while time.time() - self.last_action_time < 2:
                         time.sleep(0.2)
-                    time.sleep(0.03)
+                    time.sleep(0.05)
                     try:
                         with self.thumbs_queue_lock:
                             if not self.thumbs_queue:
@@ -551,7 +567,7 @@ class Ojo(Gtk.Window):
 
     def priority_thumbs(self, files):
         logging.debug("Priority thumbs: " + str(files))
-        new_thumbs_queue = [self.selected] + [f for f in files if not f in self.prepared_thumbs] + \
+        new_thumbs_queue = [f for f in files if not f in self.prepared_thumbs] + \
                            [f for f in self.thumbs_queue if not f in files and not f in self.prepared_thumbs]
         new_thumbs_queue = filter(self.is_image, new_thumbs_queue)
         with self.thumbs_queue_lock:
@@ -563,8 +579,7 @@ class Ojo(Gtk.Window):
             from pyexiv2 import ImageMetadata
             meta = ImageMetadata(filename)
             meta.read()
-            self.meta_cache[filename] = self.needs_orientation(meta), meta.dimensions[0], meta.dimensions[1]
-            self.js("set_dimensions('%s', '%d x %d')" % (filename, meta.dimensions[0], meta.dimensions[1]))
+            self.meta_cache[filename] = self.needs_orientation(meta), self.needs_rotation(meta), meta.dimensions[0], meta.dimensions[1]
             return meta
         except Exception:
             logging.exception("Could not parse meta-info for %s" % filename)
@@ -897,7 +912,7 @@ class Ojo(Gtk.Window):
         if filename in self.meta_cache:
             meta = self.meta_cache[filename]
             oriented = not meta[0]
-            image_width, image_height = meta[1], meta[2]
+            image_width, image_height = meta[2], meta[3]
         else:
             oriented = True
             image_width = image_height = None
@@ -941,20 +956,28 @@ class Ojo(Gtk.Window):
 
     def get_pil(self, filename, width, height, zoomed_in=False):
         from PIL import Image
-        import cStringIO
-        meta = self.get_meta(filename)
+
+        meta = None
+
         try:
             pil_image = Image.open(filename)
         except IOError:
+            import cStringIO
+            meta = self.get_meta(filename)
             pil_image = Image.open(cStringIO.StringIO(meta.previews[-1].data))
+
         if not zoomed_in:
             pil_image.thumbnail((width, height), Image.ANTIALIAS)
-        try:
-            pil_image = self.auto_rotate(meta, pil_image)
-        except Exception:
-            logging.exception('Auto-rotation failed for %s' % filename)
+
+        if filename not in self.meta_cache or self.meta_cache[filename][0]: # needs orientation
+            try:
+                pil_image = self.auto_rotate(meta or self.get_meta(filename), pil_image)
+            except Exception:
+                logging.exception('Auto-rotation failed for %s' % filename)
+
         if not zoomed_in and (pil_image.size[0] > width or pil_image.size[1] > height):
             pil_image.thumbnail((width, height), Image.ANTIALIAS)
+
         return pil_image
 
     def pil_to_base64(self, pil_image):
