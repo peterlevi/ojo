@@ -94,7 +94,7 @@ class Ojo(Gtk.Window):
         if '-m' in sys.argv or '--maximize' in sys.argv:
             self.maximize()
         self.full = '-f' in sys.argv or '--fullscreen' in sys.argv
-        self.fit_only_large = '--fit-only-large' in sys.argv
+        self.enlarge_smaller = '--enlarge-smaller' in sys.argv
 
         self.meta_cache = {}
         self.pix_cache = {False: {}, True: {}} # keyed by "zoomed" property
@@ -926,13 +926,13 @@ class Ojo(Gtk.Window):
 
         if oriented:
             try:
-                if not image_width and self.fit_only_large:
+                if not image_width and not self.enlarge_smaller:
                     format, image_width, image_height = GdkPixbuf.Pixbuf.get_file_info(filename)
                 if not zoom:
                     pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(
                         filename,
-                        min(width, image_width if self.fit_only_large else width),
-                        min(height, image_height if self.fit_only_large else height),
+                        min(width, image_width if not self.enlarge_smaller else width),
+                        min(height, image_height if not self.enlarge_smaller else height),
                         True)
                 else:
                     pixbuf = GdkPixbuf.Pixbuf.new_from_file(filename)
@@ -948,8 +948,8 @@ class Ojo(Gtk.Window):
                 preview = full_meta.previews[-1].data
                 pixbuf = self.pixbuf_from_data(
                     preview,
-                    min(width, image_width if self.fit_only_large else width),
-                    min(height, image_height if self.fit_only_large else height))
+                    min(width, image_width if not self.enlarge_smaller else width),
+                    min(height, image_height if not self.enlarge_smaller else height))
                 self.pix_cache[zoom][filename] = pixbuf, width
                 logging.debug("Loaded from preview")
                 return pixbuf
