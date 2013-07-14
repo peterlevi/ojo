@@ -102,17 +102,16 @@ class Ojo(Gtk.Window):
         self.manually_resized = False
 
         self.set_zoom(False, 0.5, 0.5)
+        self.mode = 'image' if os.path.isfile(path) else 'folder'
         self.toggle_fullscreen(self.full, first_run=True)
 
         if os.path.isfile(path):
-            self.mode = 'image'
             self.last_automatic_resize = time.time()
             self.show(path, quick=True)
             GObject.idle_add(self.after_quick_start)
         else:
             if not path.endswith('/'):
                 path += '/'
-            self.mode = 'folder'
             self.selected = path
             self.shown = None
             self.after_quick_start()
@@ -260,6 +259,11 @@ class Ojo(Gtk.Window):
         self.pix_cache[False].clear()
         self.pix_cache[True].clear()
         self.meta_cache.clear()
+
+        import gc
+        collected = gc.collect()
+        logging.debug("GC collected: %d" % collected)
+
         self.set_folder(path)
         self.selected = self.images[0] if self.images else os.path.realpath(os.path.join(path, '..'))
         self.set_mode("folder")
@@ -636,15 +640,17 @@ class Ojo(Gtk.Window):
 
     def go(self, direction, start_position=None):
         filename = None
-        try:
-            position = start_position - direction if not start_position is None else self.images.index(self.selected)
-            position = (position + direction + len(self.images)) % len(self.images)
-            filename = self.images[position]
-            self.show(filename)
-            return
-        except Exception:
-            logging.exception("go: Could not show %s" % filename)
-            GObject.idle_add(lambda: self.go(direction))
+        position = start_position - direction if not start_position is None else self.images.index(self.selected)
+        position = (position + direction + len(self.images)) % len(self.images)
+        filename = self.images[position]
+
+        def _f():
+            try:
+                self.show(filename)
+            except Exception:
+                logging.exception("go: Could not show %s" % filename)
+                GObject.idle_add(lambda: self.go(direction))
+        GObject.idle_add(_f)
 
     def toggle_fullscreen(self, full=None, first_run=False):
         if full is None:
@@ -698,6 +704,7 @@ class Ojo(Gtk.Window):
         self.image.set_visible(self.mode == 'image')
         self.browser.set_visible(self.mode == 'folder')
         self.update_margins()
+        self.js("set_mode('%s')" % self.mode)
 
     def process_key(self, widget=None, event=None, key=None, skip_browser=False):
         key = key or Gdk.keyval_name(event.keyval)

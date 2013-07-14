@@ -130,6 +130,8 @@
 <script type="text/javascript">
     var folder = '';
 
+    var mode = 'image';
+
     var search = '';
     var current = '';
     var scroll_timeout;
@@ -140,6 +142,10 @@
         console.log('python command: ' + command);
 		document.title = new Date().getTime() + '|' + command;
 	}
+
+    function set_mode(new_mode) {
+        mode = new_mode;
+    }
 
     function set_title(title) {
         $('#title').html('');
@@ -295,7 +301,7 @@
         var o2 = elem.offset().top + (direction < 0 ? -10 : elem.height());
 	    var applicable = _.filter($(".selectable:visible"), function(x) {
 		    var o1 = $(x).offset().top;
-		    return direction < 0 ? o1 < o2 : o1 > o2;
+		    return direction < 0 ? o1 < o2 && o1 > o2 - 2*120 : o1 > o2 && o1 < o2 + 2*120;
 	    });
 	    if (applicable.length > 0) {
 		    return $(_.min(applicable, function(el) {
@@ -414,6 +420,10 @@
         });
 
         $(document).keydown(function(event) {
+            if (mode != 'folder') {
+                event.preventDefault();
+                return;
+            }
             $('#search-field').focus();
         });
 
@@ -434,7 +444,11 @@
             scroll_timeout = setTimeout(on_scroll, 200);
 	    });
 
-        $(document).on('click', '.selectable', function() {
+        $(document).on('click', '.selectable', function(event) {
+            if (mode != 'folder') {
+                event.preventDefault();
+                return;
+            }
             python("ojo:" + $(this).attr('file'));
         });
 
