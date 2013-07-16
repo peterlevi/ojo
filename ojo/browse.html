@@ -151,17 +151,14 @@
         $('#title').html('');
         var parts = title.split('/');
         var folder = '';
-        _.map(parts, function(p) {
-            if (p.length) {
-                folder += '/' + p;
-                var current_folder = folder;
-                var elem = $('<span>/' + p + '</span>');
-                elem.click(function() {
-                   python('ojo:' + current_folder);
-                });
-                $("#title").append(elem);
-            }
-        });
+        for (var i=0; i < parts.length; i++) {
+	        var p = parts[i];
+	        var name = (i!=1 ? '/' : '') + p;
+	        folder += name;
+            $('<span>' + name + '</span>').click(
+		        _.bind(function(f) { python('ojo:' + f); }, undefined, folder)
+            ).appendTo($("#title"));
+        }
     }
 
     function add_folder_category(label, id) {
