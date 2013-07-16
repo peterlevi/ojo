@@ -238,6 +238,8 @@ class Ojo(Gtk.Window):
         i = self.folder_history.index(self.folder)
         if i < len(self.folder_history) - 1:
             return self.folder_history[i + 1]
+        else:
+            return None
 
     def folder_history_back(self):
         if self.get_back_folder():
@@ -247,6 +249,8 @@ class Ojo(Gtk.Window):
         i = self.folder_history.index(self.folder)
         if i > 0:
             return self.folder_history[i - 1]
+        else:
+            return None
 
     def folder_history_forward(self):
         if self.get_forward_folder():
@@ -395,13 +399,13 @@ class Ojo(Gtk.Window):
         self.browser.add(self.web_view)
         self.web_view.grab_focus()
 
-    def add_folder(self, category, path):
+    def get_folder_item(self, path):
         import util
-        self.js("add_folder('%s', '%s', '%s', '%s')" % (
-            category,
-            os.path.basename(path) or path,
-            path,
-            util.get_folder_icon(path, 24)))
+        return {'label': os.path.basename(path) or path, 'path': path, 'icon': util.get_folder_icon(path, 24)}
+
+    def get_navigation_item(self, path, icon):
+        import util
+        return {'label': '', 'path': path, 'icon': util.get_icon_path(icon, 24)}
 
     def render_folder_view(self):
         self.web_view_loaded = True
@@ -409,32 +413,41 @@ class Ojo(Gtk.Window):
         self.js("change_folder('%s')" % self.folder)
 
         import threading
+        import json
         def _thread():
             self.js("set_title('%s')" % self.folder)
-            if self.folder != '/':
-                parent_path = os.path.realpath(os.path.join(self.folder, '..'))
-                self.js("add_folder_category('Up', 'up')")
-                self.add_folder('up', parent_path)
+            categories = []
 
-                siblings = [os.path.join(parent_path, f) for f in sorted(os.listdir(parent_path))
-                            if os.path.isdir(os.path.join(parent_path, f))]
-                pos = siblings.index(self.folder)
-                if pos - 1 >= 0:
-                    self.js("add_folder_category('Previous', 'prev_sibling')")
-                    self.add_folder('prev_sibling', siblings[pos - 1])
-                if pos + 1 < len(siblings):
-                    self.js("add_folder_category('Next', 'next_sibling')")
-                    self.add_folder('next_sibling', siblings[pos + 1])
+            # Navigation buttons:
+            parent_path = os.path.realpath(os.path.join(self.folder, '..'))
+            if parent_path == self.folder:
+                parent_path = None
+            categories.append({'label': 'Navigation', 'no_labels': True, 'items': [
+                self.get_navigation_item(self.get_back_folder(), 'back'),
+                self.get_navigation_item(self.get_forward_folder(), 'forward'),
+                self.get_navigation_item(parent_path, 'up')
+            ]})
 
+#                siblings = [os.path.join(parent_path, f) for f in sorted(os.listdir(parent_path))
+#                            if os.path.isdir(os.path.join(parent_path, f))]
+#                pos = siblings.index(self.folder)
+#                if pos - 1 >= 0:
+#                    self.js("add_folder_category('Previous', 'prev_sibling')")
+#                    self.add_folder('prev_sibling', siblings[pos - 1])
+#                if pos + 1 < len(siblings):
+#                    self.js("add_folder_category('Next', 'next_sibling')")
+#                    self.add_folder('next_sibling', siblings[pos + 1])
+
+            # Subfolders
             subfolders = [os.path.join(self.folder, f) for f in sorted(os.listdir(self.folder))
                           if os.path.isdir(os.path.join(self.folder, f))]
             if subfolders:
-                self.js("add_folder_category('Subfolders', 'sub')")
-                for sub in subfolders:
-                    if folder != self.folder:
-                        return
-                    time.sleep(0.01)
-                    self.add_folder('sub', sub)
+                categories.append({
+                    'label': 'Subfolders',
+                    'items': [self.get_folder_item(sub) for sub in subfolders]
+                })
+
+            self.js("render_folders('%s')" % json.dumps(categories))    # TODO we may need escaping here -PL
 
             self.select_in_browser(self.selected)
 

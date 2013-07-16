@@ -57,7 +57,6 @@
             padding-right: 20px;
             color: #d3d0c5;
             margin-bottom: 10px;
-            cursor: pointer;
         }
 
         .folder-icon {
@@ -66,7 +65,7 @@
             display: inline;
         }
 
-        .folder.selected {
+        .folder.selected, .folder-nolabel.selected {
             margin-bottom: 7px;
             border-bottom: solid 3px #F07746;
         }
@@ -84,6 +83,14 @@
             border: solid 10px #F07746;
             overflow: hidden;
             border-radius: 10px;
+        }
+
+        .selectable {
+	        cursor: pointer;
+        }
+
+        .disabled img {
+	        opacity: 0.2;
         }
 
         #label {
@@ -161,14 +168,35 @@
         }
     }
 
-    function add_folder_category(label, id) {
-        var html = "<div id='" + id + "'><div class='folder-category'>" + label + "</div></div>";
+    function render_folders(json) {
+	    var data = JSON.parse(json);
+	    _.map(data, function(category) {
+		    add_folder_category(category.label);
+		    var first = true;
+		    _.map(category.items, function(item) {
+			    var style = '';
+			    if (category.no_labels) {
+				    style = 'display: inline; ' + (first ? 'padding-right: 0px' : 'padding: 0px;')
+			    }
+			    add_folder(category.label, item.label, item.path, item.icon, style);
+			    first = false;
+		    });
+		    if (category.no_labels) {
+			    $("#" + category.label).append($('<div></div>'));
+		    }
+	    });
+    }
+
+    function add_folder_category(label) {
+        var html = "<div id='" + label + "'><div class='folder-category'>" + label + "</div></div>";
         $("#folders").append($(html));
     }
 
-    function add_folder(category_id, label, path, icon) {
-        $("#" + category_id).append($("<div class='folder selectable' file='" + path + "'>" +
-                "<img class='folder-icon' src='" + icon + "'/>" + label + "</div>"))
+    function add_folder(category_id, label, path, icon, style) {
+	    var elem = $("<div class='folder " + (path ? 'selectable' : 'disabled') + "' file='" + path + "'>" +
+	                                  "<img class='folder-icon' src='" + icon + "'/>" + label + "</div>");
+	    elem.attr('style', style);
+	    $("#" + category_id).append(elem);
     }
 
     function add_image_div(file, is_current, width) {
@@ -329,10 +357,10 @@
 		    goto(get_next_in_direction(sel, key == 'Up' ? -1 : 1), false);
         } else if (key == 'Right') {
             var next = sel.nextAll('.selectable:visible');
-            goto(next.length ? $(next[0]) : $(".selected").hasClass('folder') ? $(".item:visible:first") : null, false);
+            goto(next.length ? $(next[0]) : $(".selected").hasClass('folder') ? $(".item.selectable:visible:first") : null, false);
 	    } else if (key == 'Left') {
             var prev = sel.prevAll('.selectable:visible');
-            goto(prev.length ? $(prev[0]) : $(".folder:visible:first"));
+            goto(prev.length ? $(prev[0]) : $(".folder.selectable:visible:first"));
 	    } else if (key == "Page_Up") {
 		    goto_visible(true);
 	    } else if (key == "Page_Down") {
