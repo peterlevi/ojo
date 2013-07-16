@@ -289,7 +289,7 @@ class Ojo(Gtk.Window):
         old_folder = self.folder
         self.set_folder(path, modify_history_position)
         self.selected = old_folder if self.folder == util.get_parent(old_folder) else \
-            self.images[0] if self.images else os.path.realpath(os.path.join(path, '..'))
+            self.images[0] if self.images else 'navigate:back'
         self.set_mode("folder")
         self.render_folder_view()
 
@@ -490,7 +490,7 @@ class Ojo(Gtk.Window):
                         meta = self.get_meta(img)
                         w, h = meta.dimensions
                         rok = not self.needs_rotation(meta)
-                        thumb_width = int(w * 120 / h) if rok else int(h * 120 / w)
+                        thumb_width = round(w * 120 / h) if rok else round(h * 120 / w)
                         if w and h:
                             self.js("set_dimensions('%s', '%d x %d', %d)" % (img, w if rok else h, h if rok else w, thumb_width))
                     except Exception:
