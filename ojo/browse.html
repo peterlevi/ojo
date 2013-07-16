@@ -48,6 +48,10 @@
         }
 
         .folder-category {
+            margin-bottom: 10px;
+        }
+
+        .folder-category-label {
             color: #A19C90;
             padding-bottom: 10px;
         }
@@ -65,7 +69,7 @@
             display: inline;
         }
 
-        .folder.selected, .folder-nolabel.selected {
+        .folder.selected {
             margin-bottom: 7px;
             border-bottom: solid 3px #F07746;
         }
@@ -185,10 +189,11 @@
 			    $("#" + category.label).append($('<div></div>'));
 		    }
 	    });
+        $('#folders').show();
     }
 
     function add_folder_category(label) {
-        var html = "<div id='" + label + "'><div class='folder-category'>" + label + "</div></div>";
+        var html = "<div class='folder-category' id='" + label + "'><div class='folder-category-label'>" + label + "</div></div>";
         $("#folders").append($(html));
     }
 
@@ -260,6 +265,7 @@
         $('#search').html('');
         $('#search').hide();
         $('#title').html('');
+        $('#folders').hide();
         $('#folders').html('');
         $('#images').html('');
     }
@@ -285,7 +291,7 @@
         }
 
         var el = $(".selectable[file='" + file + "']");
-        $("#filename").html(get_name(file));
+        $("#filename").html(get_name(file)); //TODO use a dedicated 'status' field
         var dim = el.attr('dimensions');
         $("#dimensions").html(dim ? dim : '');
 

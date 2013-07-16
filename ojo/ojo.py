@@ -167,7 +167,10 @@ class Ojo(Gtk.Window):
         filename = filename or self.selected
         logging.info("Showing " + filename)
 
-        if os.path.isdir(filename):
+        if filename.startswith('navigate:'):
+            self.navigate(self.selected[self.selected.index(':') + 1:])
+            return
+        elif os.path.isdir(filename):
             self.change_to_folder(filename)
             return
 
@@ -255,6 +258,16 @@ class Ojo(Gtk.Window):
     def folder_history_forward(self):
         if self.get_forward_folder():
             self.change_to_folder(self.get_forward_folder())
+
+    def get_parent_folder(self):
+        parent_path = os.path.realpath(os.path.join(self.folder, '..'))
+        if parent_path == self.folder:
+            parent_path = None
+        return parent_path
+
+    def folder_parent(self):
+        if self.get_parent_folder():
+            self.change_to_folder(self.get_parent_folder())
 
     def change_to_folder(self, path):
         with self.thumbs_queue_lock:
@@ -358,14 +371,10 @@ class Ojo(Gtk.Window):
             GObject.idle_add(lambda: self.update_selected_info(self.selected))
             if action == 'ojo':
                 def _do():
-                    filename = self.selected
-                    if os.path.isfile(filename):
-                        self.show(filename)
-                        self.from_browser_time = time.time()
-                        self.set_mode("image")
-                    else:
-                        self.change_to_folder(filename)
-
+                    self.from_browser_time = time.time()
+                    self.show()
+                    if os.path.isfile(argument):
+                        self.set_mode('image')
                 GObject.idle_add(_do)
         elif action == 'ojo-priority':
             files = json.loads(argument)
@@ -407,6 +416,14 @@ class Ojo(Gtk.Window):
         import util
         return {'label': '', 'path': path, 'icon': util.get_icon_path(icon, 24)}
 
+    def get_navigation_folder(self, key):
+        m = {'back': self.get_back_folder, 'forward': self.get_forward_folder, 'up': self.get_parent_folder}
+        return m[key]()
+
+    def navigate(self, key):
+        m = {'back': self.folder_history_back, 'forward': self.folder_history_forward, 'up': self.folder_parent}
+        m[key]()
+
     def render_folder_view(self):
         self.web_view_loaded = True
         folder = self.folder
@@ -414,18 +431,16 @@ class Ojo(Gtk.Window):
 
         import threading
         import json
+
         def _thread():
             self.js("set_title('%s')" % self.folder)
             categories = []
 
             # Navigation buttons:
-            parent_path = os.path.realpath(os.path.join(self.folder, '..'))
-            if parent_path == self.folder:
-                parent_path = None
-            categories.append({'label': 'Navigation', 'no_labels': True, 'items': [
-                self.get_navigation_item(self.get_back_folder(), 'back'),
-                self.get_navigation_item(self.get_forward_folder(), 'forward'),
-                self.get_navigation_item(parent_path, 'up')
+            categories.append({'label': 'Navigate', 'no_labels': True, 'items': [
+                self.get_navigation_item('navigate:back' if self.get_back_folder() else None, 'back'),
+                self.get_navigation_item('navigate:forward' if self.get_forward_folder() else None, 'forward'),
+                self.get_navigation_item('navigate:up' if self.get_parent_folder() else None, 'up')
             ]})
 
 #                siblings = [os.path.join(parent_path, f) for f in sorted(os.listdir(parent_path))
@@ -736,11 +751,13 @@ class Ojo(Gtk.Window):
                 self.folder_history_back()
             elif key == 'Right' and event and (event.state & (Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.MOD1_MASK)):
                 self.folder_history_forward()
+            elif key == 'Up' and event and (event.state & (Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.MOD1_MASK)):
+                self.folder_parent()
             elif not skip_browser:
                 self.js("on_key('%s')" % key)
             else:
                 if key == 'BackSpace':
-                    self.change_to_folder(os.path.join(self.folder, '..'))
+                    self.folder_parent()
         elif key == 'F5':
             self.show()
         elif key in ("Right", "Down", "Page_Down", "space"):
