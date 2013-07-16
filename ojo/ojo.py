@@ -227,40 +227,43 @@ class Ojo(Gtk.Window):
     def get_image_list(self):
         return filter(self.is_image, map(lambda f: os.path.join(self.folder, f), sorted(os.listdir(self.folder))))
 
-    def set_folder(self, path):
+    def set_folder(self, path, modify_history_position=None):
         path = os.path.realpath(path)
         logging.info("Setting folder %s" % path)
-        if hasattr(self, "folder") and not path in self.folder_history:
-            self.folder_history = self.folder_history[self.folder_history.index(self.folder):]
         self.folder = path
-        if not path in self.folder_history:
+        if modify_history_position is None:
+            self.folder_history = self.folder_history[self.folder_history_position:]
             self.folder_history.insert(0, self.folder)
+            self.folder_history_position = 0
+        else:
+            self.folder_history_position = modify_history_position
         self.images = self.get_image_list()
 
     def get_back_folder(self):
-        i = self.folder_history.index(self.folder)
+        i = self.folder_history_position
         if i < len(self.folder_history) - 1:
             return self.folder_history[i + 1]
         else:
             return None
 
     def folder_history_back(self):
-        if self.get_back_folder():
-            self.change_to_folder(self.get_back_folder())
+        if self.folder_history_position < len(self.folder_history) - 1:
+            self.change_to_folder(self.get_back_folder(), modify_history_position=self.folder_history_position + 1)
 
     def get_forward_folder(self):
-        i = self.folder_history.index(self.folder)
+        i = self.folder_history_position
         if i > 0:
             return self.folder_history[i - 1]
         else:
             return None
 
     def folder_history_forward(self):
-        if self.get_forward_folder():
-            self.change_to_folder(self.get_forward_folder())
+        if self.folder_history_position > 0:
+            self.change_to_folder(self.get_forward_folder(), modify_history_position=self.folder_history_position - 1)
 
     def get_parent_folder(self):
-        parent_path = os.path.realpath(os.path.join(self.folder, '..'))
+        import util
+        parent_path = util.get_parent(self.folder)
         if parent_path == self.folder:
             parent_path = None
         return parent_path
@@ -269,7 +272,10 @@ class Ojo(Gtk.Window):
         if self.get_parent_folder():
             self.change_to_folder(self.get_parent_folder())
 
-    def change_to_folder(self, path):
+    def change_to_folder(self, path, modify_history_position=None):
+        import gc
+        import util
+
         with self.thumbs_queue_lock:
             self.thumbs_queue = []
             self.prepared_thumbs = set()
@@ -277,12 +283,13 @@ class Ojo(Gtk.Window):
         self.pix_cache[True].clear()
         self.meta_cache.clear()
 
-        import gc
         collected = gc.collect()
         logging.debug("GC collected: %d" % collected)
 
-        self.set_folder(path)
-        self.selected = self.images[0] if self.images else os.path.realpath(os.path.join(path, '..'))
+        old_folder = self.folder
+        self.set_folder(path, modify_history_position)
+        self.selected = old_folder if self.folder == util.get_parent(old_folder) else \
+            self.images[0] if self.images else os.path.realpath(os.path.join(path, '..'))
         self.set_mode("folder")
         self.render_folder_view()
 
@@ -319,6 +326,7 @@ class Ojo(Gtk.Window):
 
         self.check_kill()
         self.folder_history = []
+        self.folder_history_position = 0
         self.set_folder(os.path.dirname(self.selected))
 
         self.update_cursor()
