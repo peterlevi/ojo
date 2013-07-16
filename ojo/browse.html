@@ -379,15 +379,15 @@
 		    goto_visible($('body').scrollTop() < $('body').height() - $(window).height() - 5);
 	    } else if (key == "Home") {
 		    if ($('.selected').hasClass('folder')) {
-			    goto($(".folder:visible:first"));
+			    goto($(".folder.selectable:visible:first"));
 		    } else {
-			    goto($(".item:visible:first"));
+			    goto($(".item.selectable:visible:first"));
 		    }
 	    } else if (key == "End") {
 		    if ($('.selected').hasClass('folder')) {
-			    goto($(".folder:visible:last"));
+			    goto($(".folder.selectable:visible:last"));
 		    } else {
-			    goto($(".item:visible:last"));
+			    goto($(".item.selectable:visible:last"));
 		    }
 	    } else if (key == 'BackSpace') {
             if (!search) {
