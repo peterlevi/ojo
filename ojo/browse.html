@@ -156,6 +156,9 @@
 
     function set_mode(new_mode) {
         mode = new_mode;
+        if (mode == 'folder') {
+            scroll_to_selected();
+        }
     }
 
     function set_title(title) {
@@ -309,6 +312,8 @@
         console.log('scroll to selected');
         el = el || $('.selected');
         if (el.length) {
+            console.log(el.offset().top)
+            console.log($(window).height())
             var scrollTo;
             if (el.offset().top > $('body').scrollTop() + $(window).height() - 250) {
                 scrollTo = el.offset().top - $(window).height() + 250;
@@ -316,6 +321,7 @@
                 scrollTo = el.offset().top - 150;
             }
             if (!_.isUndefined(scrollTo)) {
+                console.log('SCROLLING TO ' + scrollTo);
                 $('body').scrollTop(scrollTo);
             }
         }

@@ -408,9 +408,9 @@ class Ojo(Gtk.Window):
             self.on_js_action(action, argument)
         self.web_view.connect("title-changed", nav)
 
-        self.web_view.connect('document-load-finished', lambda wf, data: self.render_folder_view()) # Load page
-
+        self.web_view.connect('document-load-finished', lambda wf, data: self.render_folder_view())
         self.web_view.load_string(html, "text/html", "UTF-8", "file://" + os.path.dirname(__file__) + "/")
+
         self.make_transparent(self.web_view)
         self.web_view.set_visible(True)
         self.browser.add(self.web_view)
