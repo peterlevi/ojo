@@ -161,31 +161,18 @@
         }
     }
 
-    function set_title(title) {
-        $('#title').html('');
-        var parts = title.split('/');
-        var folder = '';
-        for (var i=0; i < parts.length; i++) {
-	        var p = parts[i];
-	        var name = (i!=1 ? '/' : '') + p;
-	        folder += name;
-            $('<span>' + name + '</span>').click(
-		        _.bind(function(f) { python('ojo:' + f); }, undefined, folder)
-            ).appendTo($("#title"));
-        }
-    }
+    function render_folders(data) {
+        set_title(data.crumbs);
 
-    function render_folders(json) {
-	    var data = JSON.parse(json);
-	    _.map(data, function(category) {
+	    _.map(data.categories, function(category) {
 		    add_folder_category(category.label);
 		    var first = true;
 		    _.map(category.items, function(item) {
 			    var style = '';
 			    if (category.no_labels) {
-				    style = 'display: inline; ' + (first ? 'padding-right: 0px' : 'padding: 0px;')
+				    style = 'display: inline; ' + (first ? 'padding-right: 0px' : 'padding: 0px;')  //TODO we don't want inlined CSS
 			    }
-			    add_folder(category.label, item.label, item.path, item.icon, style);
+			    add_folder(category.label, item.label, item.path, item.filename, item.icon, style);
 			    first = false;
 		    });
 		    if (category.no_labels) {
@@ -195,19 +182,28 @@
         $('#folders').show();
     }
 
+    function set_title(crumbs) {
+        $('#title').html('');
+        _.map(crumbs, function(part) {
+            $('<span>' + part.name + '</span>').click(
+                    _.bind(function(f) { python('ojo:' + f); }, undefined, part.path)
+            ).appendTo($("#title"));
+        });
+    }
+
     function add_folder_category(label) {
         var html = "<div class='folder-category' id='" + label + "'><div class='folder-category-label'>" + label + "</div></div>";
         $("#folders").append($(html));
     }
 
-    function add_folder(category_id, label, path, icon, style) {
-	    var elem = $("<div class='folder " + (path ? 'selectable' : 'disabled') + "' file='" + path + "'>" +
-	                                  "<img class='folder-icon' src='" + icon + "'/>" + label + "</div>");
+    function add_folder(category_id, label, path, filename, icon, style) {
+	    var elem = $("<div class='folder " + (path ? 'selectable' : 'disabled') + "' file='" + path + "' filename='" + filename + "'>" +
+	                                  "<img class='folder-icon' src='" + icon + "'/>" + label + "</div>");  //TODO use _.template() -PL
 	    elem.attr('style', style);
 	    $("#" + category_id).append(elem);
     }
 
-    function add_image_div(file, is_current, width) {
+    function add_image_div(file, name, is_current, width) {
         if (file.indexOf(folder) != 0) {
             return;
         }
@@ -216,7 +212,7 @@
 	               "<div class='holder' style='width: %widthpx'><span class='holder-name'>%name</span></div>" +
 	               "</div>";
 	    html = html.replace(/%file/g, file);
-	    html = html.replace(/%name/g, get_name(file));
+	    html = html.replace(/%name/g, name);
 	    html = html.replace('%selected', is_current ? 'selected' : '');
 	    html = html.replace('%width', width);
 	    var elem = $(html);
@@ -273,17 +269,13 @@
         $('#images').html('');
     }
 
-    function get_name(file) {
-	    return file.substring(file.lastIndexOf('/') + 1);
-    }
-
-    function set_dimensions(file, dimensions, thumb_width) {
-        $(".item[file='" + file + "']").attr('dimensions', dimensions);
+    function set_dimensions(file, filename, dimensions, thumb_width) {
+        $(".item[file='" + file + "']").attr('dimensions', dimensions).attr('filename', filename);
         if (thumb_width) {
             $(".item[file='" + file + "'] .holder").css('width', thumb_width);
         }
         if (file == current) {
-            $("#filename").html(get_name(file));
+            $("#filename").html(filename);
             $("#dimensions").html(dimensions);
         }
     }
@@ -294,9 +286,8 @@
         }
 
         var el = $(".selectable[file='" + file + "']");
-        $("#filename").html(get_name(file)); //TODO use a dedicated 'status' field
-        var dim = el.attr('dimensions');
-        $("#dimensions").html(dim ? dim : '');
+        $("#filename").html(el.attr('filename') ? el.attr('filename') : '&nbsp;'); //TODO use a dedicated 'status' field
+        $("#dimensions").html(el.attr('dimensions') ? el.attr('dimensions') : '&nbsp;');
 
         console.log("Selecting " + file);
         python("ojo-select:" + file);

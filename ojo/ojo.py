@@ -263,10 +263,7 @@ class Ojo(Gtk.Window):
 
     def get_parent_folder(self):
         import util
-        parent_path = util.get_parent(self.folder)
-        if parent_path == self.folder:
-            parent_path = None
-        return parent_path
+        return util.get_parent(self.folder)
 
     def folder_parent(self):
         if self.get_parent_folder():
@@ -369,7 +366,8 @@ class Ojo(Gtk.Window):
         if filename in self.meta_cache:    # get_meta() might have failed
             meta = self.meta_cache[filename]
             rok = not meta[1]
-            self.js("set_dimensions('%s', '%d x %d')" % (filename, meta[2 if rok else 3], meta[3 if rok else 2]))
+            self.js("set_dimensions('%s', '%s', '%d x %d')" % (
+                filename, os.path.basename(filename), meta[2 if rok else 3], meta[3 if rok else 2]))
 
     def on_js_action(self, action, argument):
         import json
@@ -418,11 +416,21 @@ class Ojo(Gtk.Window):
 
     def get_folder_item(self, path):
         import util
-        return {'label': os.path.basename(path) or path, 'path': path, 'icon': util.get_folder_icon(path, 24)}
+        return {
+            'label': os.path.basename(path) or path,
+            'path': path,
+            'filename': os.path.basename(path) or path,
+            'icon': util.get_folder_icon(path, 24)
+        }
 
-    def get_navigation_item(self, path, icon):
+    def get_navigation_item(self, command, path, icon):
         import util
-        return {'label': '', 'path': path, 'icon': util.get_icon_path(icon, 24)}
+        return {
+            'label': '',
+            'path': command,
+            'filename': os.path.basename(path) if path else '',
+            'icon': util.get_icon_path(icon, 24)
+        }
 
     def get_navigation_folder(self, key):
         m = {'back': self.get_back_folder, 'forward': self.get_forward_folder, 'up': self.get_parent_folder}
@@ -431,6 +439,17 @@ class Ojo(Gtk.Window):
     def navigate(self, key):
         m = {'back': self.folder_history_back, 'forward': self.folder_history_forward, 'up': self.folder_parent}
         m[key]()
+
+    def get_crumbs(self):
+        import util
+        folder = self.folder
+        crumbs = []
+        while folder:
+            crumbs.insert(0, {"path": folder, "name": "/" + os.path.basename(folder)})
+            folder = util.get_parent(folder)
+        if len(crumbs) > 1:
+            crumbs[1]["name"] = crumbs[1]["name"][1:]
+        return crumbs
 
     def render_folder_view(self):
         self.web_view_loaded = True
@@ -441,25 +460,11 @@ class Ojo(Gtk.Window):
         import json
 
         def _thread():
-            self.js("set_title('%s')" % self.folder)
-            categories = []
-
-            # Navigation buttons:
-            categories.append({'label': 'Navigate', 'no_labels': True, 'items': [
-                self.get_navigation_item('navigate:back' if self.get_back_folder() else None, 'back'),
-                self.get_navigation_item('navigate:forward' if self.get_forward_folder() else None, 'forward'),
-                self.get_navigation_item('navigate:up' if self.get_parent_folder() else None, 'up')
-            ]})
-
-#                siblings = [os.path.join(parent_path, f) for f in sorted(os.listdir(parent_path))
-#                            if os.path.isdir(os.path.join(parent_path, f))]
-#                pos = siblings.index(self.folder)
-#                if pos - 1 >= 0:
-#                    self.js("add_folder_category('Previous', 'prev_sibling')")
-#                    self.add_folder('prev_sibling', siblings[pos - 1])
-#                if pos + 1 < len(siblings):
-#                    self.js("add_folder_category('Next', 'next_sibling')")
-#                    self.add_folder('next_sibling', siblings[pos + 1])
+            categories = [{'label': 'Navigate', 'no_labels': True, 'items': [
+                self.get_navigation_item('navigate:back' if self.get_back_folder() else None, self.get_back_folder(), 'back'),
+                self.get_navigation_item('navigate:forward' if self.get_forward_folder() else None, self.get_forward_folder(), 'forward'),
+                self.get_navigation_item('navigate:up' if self.get_parent_folder() else None, self.get_parent_folder(), 'up')
+            ]}]
 
             # Subfolders
             subfolders = [os.path.join(self.folder, f) for f in sorted(os.listdir(self.folder))
@@ -470,7 +475,8 @@ class Ojo(Gtk.Window):
                     'items': [self.get_folder_item(sub) for sub in subfolders]
                 })
 
-            self.js("render_folders('%s')" % json.dumps(categories))    # TODO we may need escaping here -PL
+            folder_info = {"crumbs": self.get_crumbs(), "categories": categories}
+            self.js("render_folders(%s)" % json.dumps(folder_info))    # TODO we may need some escaping here -PL
 
             self.select_in_browser(self.selected)
 
@@ -480,7 +486,8 @@ class Ojo(Gtk.Window):
             for img in self.images:
                 if folder != self.folder:
                     return
-                self.js("add_image_div('%s', %s, %d)" % (img, 'true' if img==self.selected else 'false', 180))
+                self.js("add_image_div('%s', '%s', %s, %d)" % (
+                    img, os.path.basename(img), 'true' if img==self.selected else 'false', 180))
                 time.sleep(0.01)
                 cached = self.get_cached_thumbnail_path(img)
                 if os.path.exists(cached):
@@ -492,7 +499,8 @@ class Ojo(Gtk.Window):
                         rok = not self.needs_rotation(meta)
                         thumb_width = round(w * 120 / h) if rok else round(h * 120 / w)
                         if w and h:
-                            self.js("set_dimensions('%s', '%d x %d', %d)" % (img, w if rok else h, h if rok else w, thumb_width))
+                            self.js("set_dimensions('%s', '%s', '%d x %d', %d)" % (
+                                img, os.path.basename(img), w if rok else h, h if rok else w, thumb_width))
                     except Exception:
                         pass
 
@@ -911,7 +919,7 @@ class Ojo(Gtk.Window):
         # we append modification time to ensure we're not using outdated cached images
         mtime = os.path.getmtime(filename)
         hash = hashlib.md5(filename + str(mtime)).hexdigest()
-        return os.path.join(self.get_thumbs_cache_dir(120), re.sub('[\W_]+', '_', filename) + '_' + hash + ".jpg")
+        return os.path.join(self.get_thumbs_cache_dir(120), re.sub('[\W_]+', '_', filename)[:80] + '_' + hash + ".jpg")
 
     def prepare_thumbnail(self, filename, width, height):
         cached = self.get_cached_thumbnail_path(filename)
@@ -925,8 +933,8 @@ class Ojo(Gtk.Window):
                         pil.save(cached, format)
                         if os.path.getsize(cached):
                             break
-                    except Exception:
-                        pass
+                    except Exception, e:
+                        logging.exception('Could not save thumbnail in format %s:' % format)
             except Exception:
                 pixbuf = self.get_pixbuf(filename, True, False, 360, 120)
                 pixbuf.savev(cached, 'jpeg', [], [])

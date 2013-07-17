@@ -22,7 +22,8 @@ def get_icon_path(icon_name, size):
     return Gtk.IconTheme.get_default().lookup_icon(icon_name, size, 0).get_filename()
 
 def get_parent(file):
-    return os.path.realpath(os.path.join(file, '..'))
+    parent = os.path.realpath(os.path.join(file, '..'))
+    return parent if parent != file else None
 
 if __name__ == "__main__":
     print get_folder_icon('/', 24)
