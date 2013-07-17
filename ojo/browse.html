@@ -48,7 +48,7 @@
         }
 
         .folder-category {
-            margin-bottom: 10px;
+            padding-bottom: 10px;
         }
 
         .folder-category-label {
@@ -165,6 +165,8 @@
         set_title(data.crumbs);
 
 	    _.map(data.categories, function(category) {
+            console.log(category.label)
+            console.log(category.items)
 		    add_folder_category(category.label);
 		    var first = true;
 		    _.map(category.items, function(item) {
@@ -191,16 +193,21 @@
         });
     }
 
+    function get_id(s) {
+        return s.replace(/[^a-z0-9]/gi,'')
+    }
+
     function add_folder_category(label) {
-        var html = "<div class='folder-category' id='" + label + "'><div class='folder-category-label'>" + label + "</div></div>";
+        var html = "<div class='folder-category' id='" + get_id(label) + "'><div class='folder-category-label'>" + label + "</div></div>";
         $("#folders").append($(html));
     }
 
-    function add_folder(category_id, label, path, filename, icon, style) {
-	    var elem = $("<div class='folder " + (path ? 'selectable' : 'disabled') + "' file='" + path + "' filename='" + filename + "'>" +
-	                                  "<img class='folder-icon' src='" + icon + "'/>" + label + "</div>");  //TODO use _.template() -PL
+    function add_folder(category_label, label, path, filename, icon, style) {
+	    var elem = $("<div class='folder " +
+            (path ? 'selectable' : 'disabled') + "' file='" + path + "' filename='" + filename + "'>" +
+            (icon ? "<img class='folder-icon' src='" + icon + "'/>" : "") + label + "</div>");  //TODO use _.template() -PL
 	    elem.attr('style', style);
-	    $("#" + category_id).append(elem);
+	    $("#" + get_id(category_label)).append(elem);
     }
 
     function add_image_div(file, name, is_current, width) {

@@ -423,10 +423,10 @@ class Ojo(Gtk.Window):
             'icon': util.get_folder_icon(path, 24)
         }
 
-    def get_navigation_item(self, command, path, icon):
+    def get_navigation_item(self, command, path, icon, label = ''):
         import util
         return {
-            'label': '',
+            'label': label,
             'path': command,
             'filename': os.path.basename(path) if path else '',
             'icon': util.get_icon_path(icon, 24)
@@ -460,11 +460,23 @@ class Ojo(Gtk.Window):
         import json
 
         def _thread():
-            categories = [{'label': 'Navigate', 'no_labels': True, 'items': [
+            parent_folder = self.get_parent_folder()
+
+            nav_items = [
                 self.get_navigation_item('navigate:back' if self.get_back_folder() else None, self.get_back_folder(), 'back'),
                 self.get_navigation_item('navigate:forward' if self.get_forward_folder() else None, self.get_forward_folder(), 'forward'),
-                self.get_navigation_item('navigate:up' if self.get_parent_folder() else None, self.get_parent_folder(), 'up')
-            ]}]
+                self.get_navigation_item('navigate:up' if parent_folder else None, parent_folder, 'up')
+            ]
+
+            categories = [{'label': 'Navigate', 'no_labels': True, 'items': nav_items}]
+
+            # Siblings
+            if parent_folder:
+                siblings = [os.path.join(parent_folder, f) for f in sorted(os.listdir(parent_folder))
+                            if os.path.isdir(os.path.join(parent_folder, f))]
+                pos = siblings.index(self.folder)
+                if pos + 1 < len(siblings):
+                    categories .append({'label': 'Next sibling', 'items': [self.get_folder_item(siblings[pos + 1])]})
 
             # Subfolders
             subfolders = [os.path.join(self.folder, f) for f in sorted(os.listdir(self.folder))
