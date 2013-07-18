@@ -468,7 +468,7 @@ class Ojo(Gtk.Window):
         folder = self.folder
         crumbs = []
         while folder:
-            crumbs.insert(0, {"path": folder, "name": "/" + os.path.basename(folder)})
+            crumbs.insert(0, {"path": util.path2url(folder), "name": "/" + os.path.basename(folder)})
             folder = util.get_parent(folder)
         if len(crumbs) > 1:
             crumbs[1]["name"] = crumbs[1]["name"][1:]
