@@ -490,7 +490,7 @@ class Ojo(Gtk.Window):
             self.select_in_browser(self.selected)
 
     def build_bookmarks_category(self):
-        bookmark_items = [self.get_folder_item(b) for b in sorted(self.bookmarks, key=lambda p: os.path.basename(p))]
+        bookmark_items = [self.get_folder_item(b) for b in sorted(self.bookmarks, key=lambda p: os.path.basename(p).lower())]
         if self.folder in self.bookmarks:
             bookmark_items.append(
                 self.get_navigation_item('command:remove-bookmark', None, 'remove', 'Remove current'))

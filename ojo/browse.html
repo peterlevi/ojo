@@ -119,21 +119,36 @@
 		    background-color: rgba(57, 55, 49, 0.2);
 		    overflow-x: hidden;
 	    }
+
+        #spinner {
+            display: none;
+        }
+
+        #spinner img {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+        }
     </style>
 </head>
 
 <body>
-<div style="position: absolute; opacity: 0; z-index: -1">
-    <input type="search" id="search-field">
+<div id="spinner">
+    <img src="img/spinner.gif" class="spinner">
 </div>
-<div id="search"></div>
-<div id="title"></div>
-<div id="folders"></div>
-<div id="images"></div>
-<br style="clear: both"><br><br>&nbsp;
-<div id="label">
-    <span id="filename"></span>
-    <span id="dimensions" style="float:right; padding-right: 20px"></span>
+<div id="main">
+    <div style="position: absolute; opacity: 0; z-index: -1">
+        <input type="search" id="search-field">
+    </div>
+    <div id="search"></div>
+    <div id="title"></div>
+    <div id="folders"></div>
+    <div id="images"></div>
+    <br style="clear: both"><br><br>&nbsp;
+    <div id="label">
+        <span id="filename"></span>
+        <span id="dimensions" style="float:right; padding-right: 20px"></span>
+    </div>
 </div>
 </body>
 <script src="lib/jquery-2.0.2.min.js" type="text/javascript"></script>
@@ -216,19 +231,16 @@
 	    $("#" + get_id(category_label)).append(elem);
     }
 
-    function add_image_div(file, name, is_current, width) {
+    function add_image_div(file, name, selected, width) {
         if (file.indexOf(folder) != 0) {
             return;
         }
 
-	    var html = "<div class='item selectable %selected' file='%file'>" +
-	               "<div class='holder' style='width: %widthpx'><span class='holder-name'>%name</span></div>" +
-	               "</div>";
-	    html = html.replace(/%file/g, file);
-	    html = html.replace(/%name/g, name);
-	    html = html.replace('%selected', is_current ? 'selected' : '');
-	    html = html.replace('%width', width);
-	    var elem = $(html);
+	    var html = _.template(
+            "<div class='item selectable' file='<%= file %>'>" +
+            "<div class='holder' style='width: <%= width %> px'><span class='holder-name'><%- name %></span></div>" +
+            "</div>")({file: file, name: name, width: width});
+	    var elem = $(html).toggleClass('selected', selected);
         if (search && !basename(file).toLowerCase().indexOf(search) >= 0) {
             elem.hide();
         }
@@ -259,6 +271,11 @@
         } else {
             pending_add_timeouts[file] = setTimeout(function () {add_image(file, thumb)}, 200);
         }
+    }
+
+    function toggle_spinner(on) {
+        $('#main').toggle(!on);
+        $('#spinner').toggle(on);
     }
 
     function change_folder(new_folder) {
