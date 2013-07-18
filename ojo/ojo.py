@@ -447,7 +447,7 @@ class Ojo(Gtk.Window):
             'label': label,
             'path': command,
             'filename': os.path.basename(path) if path else label,
-            'icon': util.path2url(util.get_icon_path(icon, 24))
+            'icon': util.path2url(util.get_icon_path(icon, 24)) if icon else None
         }
 
     def get_navigation_folder(self, key):
