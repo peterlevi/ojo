@@ -164,24 +164,30 @@
     function render_folders(data) {
         set_title(data.crumbs);
 
-	    _.map(data.categories, function(category) {
-            console.log(category.label)
-            console.log(category.items)
-		    add_folder_category(category.label);
-		    var first = true;
-		    _.map(category.items, function(item) {
-			    var style = '';
-			    if (category.no_labels) {
-				    style = 'display: inline; ' + (first ? 'padding-right: 0px' : 'padding: 0px;')  //TODO we don't want inlined CSS
-			    }
-			    add_folder(category.label, item.label, item.path, item.filename, item.icon, style);
-			    first = false;
-		    });
-		    if (category.no_labels) {
-			    $("#" + category.label).append($('<div></div>'));
-		    }
-	    });
+	    _.map(data.categories, refresh_category);
         $('#folders').show();
+    }
+
+    function refresh_category(category) {
+        var elem = $('#' + get_id(category.label));
+        if (!elem.length) {
+            add_folder_category(category.label);
+        } else {
+            $('#' + get_id(category.label) + ' .folder').remove();
+        }
+
+        var first = true;
+        _.map(category.items, function(item) {
+            var style = '';
+            if (category.no_labels) {
+                style = 'display: inline; ' + (first ? 'padding-right: 0px' : 'padding: 0px;')  //TODO we don't want inlined CSS
+            }
+            add_folder(category.label, item.label, item.path, item.filename, item.icon, style);
+            first = false;
+        });
+        if (category.no_labels) {
+            $("#" + category.label).append($('<div></div>'));
+        }
     }
 
     function set_title(crumbs) {

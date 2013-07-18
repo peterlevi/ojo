@@ -25,6 +25,22 @@ def get_parent(file):
     parent = os.path.realpath(os.path.join(file, '..'))
     return parent if parent != file else None
 
+def get_xdg_pictures_folder():
+    import subprocess
+    import logging
+    try:
+        return subprocess.check_output(['xdg-user-dir', 'PICTURES']).split('\n')[0]
+    except Exception:
+        logging.exception("Could not get path to Pictures folder")
+        return os.path.expanduser('~/Pictures')
+
+def makedirs(path):
+    import logging
+    if not os.path.isdir(path):
+        logging.info("Creating folder %s" % path)
+        os.makedirs(path)
+    return path
+
 if __name__ == "__main__":
     print get_folder_icon('/', 24)
 

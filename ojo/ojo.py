@@ -103,6 +103,7 @@ class Ojo(Gtk.Window):
 
         self.set_zoom(False, 0.5, 0.5)
         self.mode = 'image' if os.path.isfile(path) else 'folder'
+        self.shown = None
         self.toggle_fullscreen(self.full, first_run=True)
 
         if os.path.isfile(path):
@@ -113,7 +114,6 @@ class Ojo(Gtk.Window):
             if not path.endswith('/'):
                 path += '/'
             self.selected = path
-            self.shown = None
             self.after_quick_start()
             self.set_mode('folder')
             self.selected = self.images[0] if self.images else path
@@ -164,39 +164,38 @@ class Ojo(Gtk.Window):
             self.scroll_v = self.scroll_window.get_vadjustment().get_value()
 
     def show(self, filename=None, quick=False):
+        self.register_action()
+
         filename = filename or self.selected
         logging.info("Showing " + filename)
 
-        if filename.startswith('navigate:'):
-            self.navigate(self.selected[self.selected.index(':') + 1:])
-            return
+        if filename.startswith('command:'):
+            self.on_command(self.selected[self.selected.index(':') + 1:])
         elif os.path.isdir(filename):
             self.change_to_folder(filename)
-            return
+        else:
+            self.shown = filename
+            self.selected = self.shown
+            self.set_title(self.shown)
+            self.refresh_image()
 
-        self.shown = filename
-        self.selected = self.shown
-        self.set_title(self.shown)
+            if not quick:
+                self.update_cursor()
+                self.select_in_browser(self.shown)
+                self.cache_around()
 
-        self.pixbuf = self.get_pixbuf(self.shown)
-        self.increase_size()
-
-        if os.path.splitext(filename)[1].lower() in ('.gif', '.mng', '.png'):
-            anim = GdkPixbuf.PixbufAnimation.new_from_file(filename)
-            if anim.is_static_image():
-                self.image.set_from_pixbuf(self.pixbuf)
+    def refresh_image(self):
+        if self.shown:
+            self.pixbuf = self.get_pixbuf(self.shown)
+            self.increase_size()
+            if os.path.splitext(self.shown)[1].lower() in ('.gif', '.mng', '.png'):
+                anim = GdkPixbuf.PixbufAnimation.new_from_file(self.shown)
+                if anim.is_static_image():
+                    self.image.set_from_pixbuf(self.pixbuf)
+                else:
+                    self.image.set_from_animation(anim)
             else:
-                self.image.set_from_animation(anim)
-        else:
-            self.image.set_from_pixbuf(self.pixbuf)
-
-        if not quick:
-            self.update_cursor()
-            self.last_action_time = time.time()
-            self.select_in_browser(self.shown)
-            self.cache_around()
-        else:
-            self.last_action_time = 0
+                self.image.set_from_pixbuf(self.pixbuf)
 
     def get_supported_image_extensions(self):
         if not hasattr(self, "image_formats"):
@@ -286,7 +285,7 @@ class Ojo(Gtk.Window):
         old_folder = self.folder
         self.set_folder(path, modify_history_position)
         self.selected = old_folder if self.folder == util.get_parent(old_folder) else \
-            self.images[0] if self.images else 'navigate:back'
+            self.images[0] if self.images else 'command:back'
         self.set_mode("folder")
         self.render_folder_view()
 
@@ -308,7 +307,7 @@ class Ojo(Gtk.Window):
            (event.width, event.height, event.x, event.y) != (last_width, last_height, last_x, last_y):
             logging.info("Manually resized, stop automatic resizing")
             self.manually_resized = True
-            GObject.idle_add(self.show)
+            GObject.idle_add(self.refresh_image)
 
         self.last_width = event.width
         self.last_height = event.height
@@ -346,12 +345,29 @@ class Ojo(Gtk.Window):
 
         self.connect('configure-event', self.resized)
 
+        self.load_bookmarks()
+
         GObject.idle_add(self.render_browser)
 
         self.start_cache_thread()
         if self.mode == "image":
             self.cache_around()
         self.start_thumbnail_thread()
+
+    def load_bookmarks(self):
+        import util
+        import json
+        try:
+            with open(self.get_config_file('boormarks.json')) as f:
+                self.bookmarks = json.load(f)
+        except Exception:
+            self.bookmarks = [util.get_xdg_pictures_folder()]
+            self.save_bookmarks()
+
+    def save_bookmarks(self):
+        import json
+        with open(self.get_config_file('boormarks.json'), 'w') as f:
+            json.dump(self.bookmarks, f)
 
     def make_transparent(self, widget):
         rgba = Gdk.RGBA()
@@ -428,7 +444,7 @@ class Ojo(Gtk.Window):
         return {
             'label': label,
             'path': command,
-            'filename': os.path.basename(path) if path else '',
+            'filename': os.path.basename(path) if path else label,
             'icon': util.get_icon_path(icon, 24)
         }
 
@@ -436,8 +452,14 @@ class Ojo(Gtk.Window):
         m = {'back': self.get_back_folder, 'forward': self.get_forward_folder, 'up': self.get_parent_folder}
         return m[key]()
 
-    def navigate(self, key):
-        m = {'back': self.folder_history_back, 'forward': self.folder_history_forward, 'up': self.folder_parent}
+    def on_command(self, key):
+        m = {
+            'back': self.folder_history_back,
+            'forward': self.folder_history_forward,
+            'up': self.folder_parent,
+            'add-bookmark': self.add_bookmark,
+            'remove-bookmark': self.remove_bookmark,
+        }
         m[key]()
 
     def get_crumbs(self):
@@ -451,9 +473,40 @@ class Ojo(Gtk.Window):
             crumbs[1]["name"] = crumbs[1]["name"][1:]
         return crumbs
 
+    def add_bookmark(self):
+        if not self.folder in self.bookmarks:
+            self.bookmarks.append(self.folder)
+            self.save_bookmarks()
+            self.refresh_category(self.build_bookmarks_category())
+            self.selected = 'command:remove-bookmark'
+            self.select_in_browser(self.selected)
+
+    def remove_bookmark(self):
+        if self.folder in self.bookmarks:
+            self.bookmarks.remove(self.folder)
+            self.save_bookmarks()
+            self.refresh_category(self.build_bookmarks_category())
+            self.selected = 'command:add-bookmark'
+            self.select_in_browser(self.selected)
+
+    def build_bookmarks_category(self):
+        bookmark_items = [self.get_folder_item(b) for b in sorted(self.bookmarks, key=lambda p: os.path.basename(p))]
+        if self.folder in self.bookmarks:
+            bookmark_items.append(
+                self.get_navigation_item('command:remove-bookmark', None, 'remove', 'Remove current'))
+        else:
+            bookmark_items.append(self.get_navigation_item('command:add-bookmark', None, 'add', 'Add current'))
+        bookmarks_category = {'label': 'Bookmarks', 'items': bookmark_items}
+        return bookmarks_category
+
+    def refresh_category(self, category):
+        import json
+        self.js('refresh_category(%s)' % json.dumps(category))
+
     def render_folder_view(self):
         self.web_view_loaded = True
-        folder = self.folder
+        thread_action_time = self.last_action_time
+        thread_folder = self.folder
         self.js("change_folder('%s')" % self.folder)
 
         import threading
@@ -463,9 +516,9 @@ class Ojo(Gtk.Window):
             parent_folder = self.get_parent_folder()
 
             nav_items = [
-                self.get_navigation_item('navigate:back' if self.get_back_folder() else None, self.get_back_folder(), 'back'),
-                self.get_navigation_item('navigate:forward' if self.get_forward_folder() else None, self.get_forward_folder(), 'forward'),
-                self.get_navigation_item('navigate:up' if parent_folder else None, parent_folder, 'up')
+                self.get_navigation_item('command:back' if self.get_back_folder() else None, self.get_back_folder(), 'back'),
+                self.get_navigation_item('command:forward' if self.get_forward_folder() else None, self.get_forward_folder(), 'forward'),
+                self.get_navigation_item('command:up' if parent_folder else None, parent_folder, 'up')
             ]
 
             categories = [{'label': 'Navigate', 'no_labels': True, 'items': nav_items}]
@@ -482,10 +535,10 @@ class Ojo(Gtk.Window):
             subfolders = [os.path.join(self.folder, f) for f in sorted(os.listdir(self.folder))
                           if os.path.isdir(os.path.join(self.folder, f))]
             if subfolders:
-                categories.append({
-                    'label': 'Subfolders',
-                    'items': [self.get_folder_item(sub) for sub in subfolders]
-                })
+                categories.append({'label': 'Subfolders', 'items': [self.get_folder_item(sub) for sub in subfolders]})
+
+            # Bookmarks
+            categories.append(self.build_bookmarks_category())
 
             folder_info = {"crumbs": self.get_crumbs(), "categories": categories}
             self.js("render_folders(%s)" % json.dumps(folder_info))    # TODO we may need some escaping here -PL
@@ -496,7 +549,7 @@ class Ojo(Gtk.Window):
             self.priority_thumbs([x[1] for x in sorted(enumerate(self.images), key=lambda (i,f): abs(i - pos))])
 
             for img in self.images:
-                if folder != self.folder:
+                if self.last_action_time != thread_action_time or thread_folder != self.folder:
                     return
                 self.js("add_image_div('%s', '%s', %s, %d)" % (
                     img, os.path.basename(img), 'true' if img==self.selected else 'false', 180))
@@ -569,6 +622,13 @@ class Ojo(Gtk.Window):
 
     def get_thumbs_cache_dir(self, height):
         return os.path.expanduser('~/.config/ojo/cache/%d' % height)
+
+    def get_config_dir(self):
+        import util
+        return util.makedirs(os.path.expanduser('~/.config/ojo/config/'))
+
+    def get_config_file(self, file):
+        return os.path.join(self.get_config_dir(), file)
 
     def start_thumbnail_thread(self):
         import threading
@@ -722,9 +782,8 @@ class Ojo(Gtk.Window):
             self.unfullscreen()
         self.last_automatic_resize = time.time()
 
-        if not first_run and not self.full:
-            self.update_cursor()
-            GObject.idle_add(self.show)
+        self.update_cursor()
+        self.refresh_image()
 
     def update_margins(self):
         if self.full:
@@ -768,10 +827,16 @@ class Ojo(Gtk.Window):
             Gtk.main_quit()
         elif key in ("F11",) or (self.mode == 'image' and key in ('f', 'F')):
             self.toggle_fullscreen()
-            self.show()
+        elif key == 'F5':
+            self.show(self.selected if self.mode == 'image' else self.folder)
         elif key == 'Return':
-            modes = ["image", "folder"]
-            self.set_mode(modes[(modes.index(self.mode) + 1) % len(modes)])
+            if self.mode == 'image':
+                self.set_mode('folder')
+            else:
+                prev = self.selected    # save selected from before the action, as it might change it
+                self.show()
+                if os.path.isfile(prev):
+                    self.set_mode('image')
         elif self.mode == 'folder':
             if hasattr(self, 'web_view'):
                 self.web_view.grab_focus()
@@ -786,8 +851,6 @@ class Ojo(Gtk.Window):
             else:
                 if key == 'BackSpace':
                     self.folder_parent()
-        elif key == 'F5':
-            self.show()
         elif key in ("Right", "Down", "Page_Down", "space"):
             GObject.idle_add(lambda: self.go(1))
         elif key in ("Left", "Up", "Page_Up", "BackSpace"):
@@ -798,15 +861,15 @@ class Ojo(Gtk.Window):
             GObject.idle_add(lambda: self.go(-1, len(self.images) - 1))
         elif key in ("z", "Z"):
             self.set_zoom(not self.zoom)
-            self.show()
+            self.refresh_image()
             self.update_zoomed_views()
         elif key in ("1", "0"):
             self.set_zoom(True)
-            self.show()
+            self.refresh_image()
             self.update_zoomed_views()
         elif key in ("slash", "asterisk"):
             self.set_zoom(False)
-            self.show()
+            self.refresh_image()
             self.update_zoomed_views()
 
     def set_zoom(self, zoom, x_percent=None, y_percent=None):
@@ -870,7 +933,7 @@ class Ojo(Gtk.Window):
                     self.set_zoom(True,
                         min(1, max(0, x - 100) / max(1, self.get_width() - 200)),
                         min(1, max(0, y - 100) / max(1, self.get_height() - 200)))
-                    self.show()
+                    self.refresh_image()
                     self.update_zoomed_views()
                     self.update_cursor()
             GObject.timeout_add(250, act)
@@ -886,7 +949,7 @@ class Ojo(Gtk.Window):
             return
         if self.mousedown_zoomed:
             self.set_zoom(False)
-            self.show()
+            self.refresh_image()
             self.update_zoomed_views()
         elif self.mousedown_panning and (event.x != self.mousedown_x or event.y != self.mousedown_y):
             self.scroll_h = self.scroll_window.get_hadjustment().get_value()
