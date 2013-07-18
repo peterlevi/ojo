@@ -22,6 +22,7 @@ import cairo
 import os
 import sys
 import time
+import util
 
 killed = False
 
@@ -148,7 +149,7 @@ class Ojo(Gtk.Window):
             GObject.timeout_add(100, lambda: self.js(command))
 
     def select_in_browser(self, file):
-        self.js("select('%s')" % file)
+        self.js("select('%s')" % (file if self.is_command(file) else util.path2url(file)))
 
     def update_zoom_scrolling(self):
         if self.zoom:
@@ -169,7 +170,7 @@ class Ojo(Gtk.Window):
         filename = filename or self.selected
         logging.info("Showing " + filename)
 
-        if filename.startswith('command:'):
+        if not quick and self.is_command(filename):
             self.on_command(self.selected[self.selected.index(':') + 1:])
         elif os.path.isdir(filename):
             self.change_to_folder(filename)
@@ -261,7 +262,6 @@ class Ojo(Gtk.Window):
             self.change_to_folder(self.get_forward_folder(), modify_history_position=self.folder_history_position - 1)
 
     def get_parent_folder(self):
-        import util
         return util.get_parent(self.folder)
 
     def folder_parent(self):
@@ -270,7 +270,6 @@ class Ojo(Gtk.Window):
 
     def change_to_folder(self, path, modify_history_position=None):
         import gc
-        import util
 
         with self.thumbs_queue_lock:
             self.thumbs_queue = []
@@ -355,7 +354,6 @@ class Ojo(Gtk.Window):
         self.start_thumbnail_thread()
 
     def load_bookmarks(self):
-        import util
         import json
         try:
             with open(self.get_config_file('boormarks.json')) as f:
@@ -383,19 +381,23 @@ class Ojo(Gtk.Window):
             meta = self.meta_cache[filename]
             rok = not meta[1]
             self.js("set_dimensions('%s', '%s', '%d x %d')" % (
-                filename, os.path.basename(filename), meta[2 if rok else 3], meta[3 if rok else 2]))
+                util.path2url(filename), os.path.basename(filename), meta[2 if rok else 3], meta[3 if rok else 2]))
+
+    def is_command(self, s):
+        return s.startswith('command:')
 
     def on_js_action(self, action, argument):
         import json
 
         if action in ('ojo', 'ojo-select'):
-            self.selected = argument
+            path = argument if self.is_command(argument) else util.url2path(argument)
+            self.selected = path
             GObject.idle_add(lambda: self.update_selected_info(self.selected))
             if action == 'ojo':
                 def _do():
                     self.from_browser_time = time.time()
                     self.show()
-                    if os.path.isfile(argument):
+                    if os.path.isfile(path):
                         self.set_mode('image')
                 GObject.idle_add(_do)
         elif action == 'ojo-priority':
@@ -433,21 +435,19 @@ class Ojo(Gtk.Window):
         self.web_view.grab_focus()
 
     def get_folder_item(self, path):
-        import util
         return {
             'label': os.path.basename(path) or path,
-            'path': path,
+            'path': util.path2url(path),
             'filename': os.path.basename(path) or path,
-            'icon': util.get_folder_icon(path, 24)
+            'icon': util.path2url(util.get_folder_icon(path, 24))
         }
 
     def get_navigation_item(self, command, path, icon, label = ''):
-        import util
         return {
             'label': label,
             'path': command,
             'filename': os.path.basename(path) if path else label,
-            'icon': util.get_icon_path(icon, 24)
+            'icon': util.path2url(util.get_icon_path(icon, 24))
         }
 
     def get_navigation_folder(self, key):
@@ -465,7 +465,6 @@ class Ojo(Gtk.Window):
         m[key]()
 
     def get_crumbs(self):
-        import util
         folder = self.folder
         crumbs = []
         while folder:
@@ -509,7 +508,7 @@ class Ojo(Gtk.Window):
         self.web_view_loaded = True
         thread_action_time = self.last_action_time
         thread_folder = self.folder
-        self.js("change_folder('%s')" % self.folder)
+        self.js("change_folder('%s')" % util.path2url(self.folder))
 
         import threading
         import json
@@ -554,7 +553,7 @@ class Ojo(Gtk.Window):
                 if self.last_action_time != thread_action_time or thread_folder != self.folder:
                     return
                 self.js("add_image_div('%s', '%s', %s, %d)" % (
-                    img, os.path.basename(img), 'true' if img==self.selected else 'false', 180))
+                    util.path2url(img), os.path.basename(img), 'true' if img==self.selected else 'false', 180))
                 time.sleep(0.01)
                 cached = self.get_cached_thumbnail_path(img)
                 if os.path.exists(cached):
@@ -567,7 +566,7 @@ class Ojo(Gtk.Window):
                         thumb_width = round(w * 120 / h) if rok else round(h * 120 / w)
                         if w and h:
                             self.js("set_dimensions('%s', '%s', '%d x %d', %d)" % (
-                                img, os.path.basename(img), w if rok else h, h if rok else w, thumb_width))
+                                util.path2url(img), os.path.basename(img), w if rok else h, h if rok else w, thumb_width))
                     except Exception:
                         pass
 
@@ -626,7 +625,6 @@ class Ojo(Gtk.Window):
         return os.path.expanduser('~/.config/ojo/cache/%d' % height)
 
     def get_config_dir(self):
-        import util
         return util.makedirs(os.path.expanduser('~/.config/ojo/config/'))
 
     def get_config_file(self, file):
@@ -679,12 +677,12 @@ class Ojo(Gtk.Window):
     def add_thumb(self, img, use_cached=None):
         try:
             thumb_path = use_cached or self.prepare_thumbnail(img, 360, 120)
-            self.js("add_image('%s', '%s')" % (img, thumb_path))
+            self.js("add_image('%s', '%s')" % (util.path2url(img), util.path2url(thumb_path)))
             if img == self.selected:
                 self.select_in_browser(img)
             self.prepared_thumbs.add(img)
         except Exception, e:
-            self.js("remove_image_div('%s')" % img)
+            self.js("remove_image_div('%s')" % util.path2url(img))
             logging.warning("Could not add thumb for " + img)
 
     def priority_thumbs(self, files):

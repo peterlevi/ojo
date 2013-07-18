@@ -43,11 +43,11 @@ def makedirs(path):
 
 def path2url(path):
     import urllib
-    return urllib.pathname2url(path)
+    return 'file://' + urllib.pathname2url(path)
 
 def url2path(url):
     import urllib
-    return urllib.url2pathname(url)
+    return urllib.url2pathname(url)[7:]
 
 if __name__ == "__main__":
     print get_folder_icon('/', 24)

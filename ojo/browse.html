@@ -160,12 +160,13 @@
 
     var search = '';
     var current = '';
+    var current_elem;
     var scroll_timeout;
     var goto_visible_timeout;
     var pending_add_timeouts = {};
 
     function python(command) {
-        console.log('python command: ' + command);
+        console.log('Python command: ' + command);
 		window.status = new Date().getTime() + '|' + command;
 	}
 
@@ -227,11 +228,11 @@
     function add_folder(category_label, label, path, filename, icon, style) {
 	    var elem = $(_.template(
             "<div class='folder' file='<%= path %>' filename='<%= filename %>' style='<%= style %>'><%= label %></div>")({
-            path: encodeURI(path), filename: esc(filename), label: esc(label), style: style
+            path: encode_path(path), filename: esc(filename), label: esc(label), style: style
         }));
         elem.addClass(path ? 'selectable' : 'disabled');
         if (icon) {
-            elem.prepend("<img class='folder-icon' src='" + encodeURI(icon) + "'/>")
+            elem.prepend("<img class='folder-icon' src='" + encode_path(icon) + "'/>");
         }
 	    $("#" + get_id(category_label)).append(elem);
     }
@@ -244,7 +245,7 @@
 	    var html = _.template(
             "<div class='item selectable' file='<%= file %>' filename='<%= name %>'>" +
             "<div class='holder' style='width: <%= width %> px'><span class='holder-name'><%= name %></span></div>" +
-            "</div>")({file: encodeURI(file), name: esc(name), width: width});
+            "</div>")({file: encode_path(file), name: esc(name), width: width});
 	    var elem = $(html).toggleClass('selected', selected);
         if (search && !name.toLowerCase().indexOf(search) >= 0) {
             elem.hide();
@@ -253,13 +254,13 @@
     }
 
     function remove_image_div(file) {
-        var to_remove = $(".item[file='" + encodeURI(file) + "']");
+        var to_remove = $(".item[file='" + encode_path(file) + "']");
         if (to_remove.hasClass('selected')) {
             var next = $(to_remove).next('.selectable');
             if (next.length == 0) {
                 next = $('.selectable');
             }
-            select(decodeURI(next.attr('file')));
+            select(decode_path(next.attr('file')));
         }
 	    to_remove.remove();
     }
@@ -270,9 +271,9 @@
         }
 
         clearTimeout(pending_add_timeouts[file]);
-        var item = $(".item[file='" + encodeURI(file) + "']");
+        var item = $(".item[file='" + encode_path(file) + "']");
         if (item.length) {
-            item.html("<img height='120' src='" + encodeURI(thumb) + "'/>");
+            item.html("<img height='120' src='" + encode_path(thumb) + "'/>");
         } else {
             pending_add_timeouts[file] = setTimeout(function () {add_image(file, thumb)}, 200);
         }
@@ -288,6 +289,7 @@
 
         folder = new_folder;
         current = '';
+        current_elem = undefined;
         search = '';
         clearTimeout(scroll_timeout);
         clearTimeout(goto_visible_timeout);
@@ -305,9 +307,9 @@
     }
 
     function set_dimensions(file, filename, dimensions, thumb_width) {
-        $(".item[file='" + encodeURI(file) + "']").attr('dimensions', dimensions).attr('filename', esc(filename));
+        $(".item[file='" + encode_path(file) + "']").attr('dimensions', dimensions).attr('filename', esc(filename));
         if (thumb_width) {
-            $(".item[file='" + encodeURI(file) + "'] .holder").css('width', thumb_width);
+            $(".item[file='" + encode_path(file) + "'] .holder").css('width', thumb_width);
         }
         if (file == current) {
             $("#filename").html(filename);
@@ -316,11 +318,12 @@
     }
 
     function select(file, dontScrollTo, elem) {
-        if (current == file) {
+        var el = elem || $(".selectable[file='" + encode_path(file) + "']").first();
+
+        if (current == file && current_elem == el) {
             return;
         }
 
-        var el = elem || $(".selectable[file='" + encodeURI(file) + "']").first();
         $("#filename").html(el.attr('filename') ? el.attr('filename') : '&nbsp;');
         $("#dimensions").html(el.attr('dimensions') ? el.attr('dimensions') : '&nbsp;');
 
@@ -352,16 +355,18 @@
 
     function goto(elem, dontScrollTo) {
 	    if (elem && elem.length > 0) {
-		    var file = decodeURI(elem.attr('file'));
+		    var file = decode_path(elem.attr('file'));
 		    select(file, dontScrollTo, elem);
 	    }
     }
 
     function get_next_in_direction(elem, direction) {
-        var o2 = elem.offset().top + (direction < 0 ? -10 : elem.height());
-	    var applicable = _.filter($(".selectable:visible"), function(x) {
-		    var o1 = $(x).offset().top;
-		    return direction < 0 ? o1 < o2 && o1 > o2 - 2*120 : o1 > o2 && o1 < o2 + 2*120;
+        var current = elem.offset().top + (direction < 0 ? -10 : elem.height());
+	    var applicable = $(".selectable:visible").filter(function() {
+		    var candidate = $(this).offset().top;
+            return direction < 0 ?
+                candidate < current && candidate > current - 2*120 :
+                candidate > current && candidate < current + 2*120;
 	    });
 	    if (applicable.length > 0) {
 		    return $(_.min(applicable, function(el) {
@@ -379,7 +384,7 @@
 			    return $(x).offset().top >= $('body').scrollTop() - 5 &&
 			           $(x).offset().top + $(x).height() < $('body').scrollTop() + $(window).height() + 5;
 		    });
-	        var file = decodeURI($(first_or_last ? _.first(visible) : _.last(visible)).attr('file'));
+	        var file = decode_path($(first_or_last ? _.first(visible) : _.last(visible)).attr('file'));
 	        select(file, true);
 	        python("ojo-select:" + file);
 	    }, 100);
@@ -439,7 +444,7 @@
         matches.show();
         var sel = $('.selected');
         if (matches.length && (sel.length == 0 || !_.contains(matches, sel[0]))) {
-            select(decodeURI($(matches[0]).attr('file')));
+            select(decode_path($(matches[0]).attr('file')));
         } else {
             scroll_to_selected();
         }
@@ -456,7 +461,7 @@
     function on_scroll() {
         var files = _.map(_.filter($('.item:visible'), function(x) {
             return $(x).offset().top + $(x).height() >= $('body').scrollTop();
-        }), function(x) { return decodeURI($(x).attr('file')) });
+        }), function(x) { return decode_path($(x).attr('file')) });
 
         python('ojo-priority:' + JSON.stringify(files));
     }
@@ -475,6 +480,14 @@
         return String(string).replace(/[&<>"'\/ ]/g, function (s) {
             return entityMap[s];
         });
+    }
+    
+    function encode_path(path) {
+        return path;
+    }
+    
+    function decode_path(path) {
+        return path;
     }
 
     $(function() {
@@ -514,7 +527,7 @@
                 event.preventDefault();
                 return;
             }
-            python("ojo:" + decodeURI($(this).attr('file')));
+            python("ojo:" + decode_path($(this).attr('file')));
         });
 
         $('#search-field').focus();
