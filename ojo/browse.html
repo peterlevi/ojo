@@ -166,7 +166,7 @@
 
     function python(command) {
         console.log('python command: ' + command);
-		document.title = new Date().getTime() + '|' + command;
+		window.status = new Date().getTime() + '|' + command;
 	}
 
     function set_mode(new_mode) {
@@ -195,20 +195,20 @@
         _.map(category.items, function(item) {
             var style = '';
             if (category.no_labels) {
-                style = 'display: inline; ' + (first ? 'padding-right: 0px' : 'padding: 0px;')  //TODO we don't want inlined CSS
+                style = 'display: inline; ' + (first ? 'padding-right: 0px' : 'padding: 0px;');  //TODO we don't want inlined CSS
             }
             add_folder(category.label, item.label, item.path, item.filename, item.icon, style);
             first = false;
         });
         if (category.no_labels) {
-            $("#" + category.label).append($('<div></div>'));
+            $("#" + category.label).append('<div></div>');
         }
     }
 
     function set_title(crumbs) {
         $('#title').html('');
         _.map(crumbs, function(part) {
-            $('<span>' + part.name + '</span>').click(
+            $('<span>' + esc(part.name) + '</span>').click(
                     _.bind(function(f) { python('ojo:' + f); }, undefined, part.path)
             ).appendTo($("#title"));
         });
@@ -219,15 +219,20 @@
     }
 
     function add_folder_category(label) {
-        var html = "<div class='folder-category' id='" + get_id(label) + "'><div class='folder-category-label'>" + label + "</div></div>";
-        $("#folders").append($(html));
+        $("#folders").append(
+            "<div class='folder-category' id='" + get_id(label) + "'>" +
+            "<div class='folder-category-label'>" + esc(label) + "</div></div>");
     }
 
     function add_folder(category_label, label, path, filename, icon, style) {
-	    var elem = $("<div class='folder " +
-            (path ? 'selectable' : 'disabled') + "' file='" + path + "' filename='" + filename + "'>" +
-            (icon ? "<img class='folder-icon' src='" + icon + "'/>" : "") + label + "</div>");  //TODO use _.template() -PL
-	    elem.attr('style', style);
+	    var elem = $(_.template(
+            "<div class='folder' file='<%= path %>' filename='<%= filename %>' style='<%= style %>'><%= label %></div>")({
+            path: encodeURI(path), filename: esc(filename), label: esc(label), style: style
+        }));
+        elem.addClass(path ? 'selectable' : 'disabled');
+        if (icon) {
+            elem.prepend("<img class='folder-icon' src='" + encodeURI(icon) + "'/>")
+        }
 	    $("#" + get_id(category_label)).append(elem);
     }
 
@@ -237,24 +242,24 @@
         }
 
 	    var html = _.template(
-            "<div class='item selectable' file='<%= file %>'>" +
-            "<div class='holder' style='width: <%= width %> px'><span class='holder-name'><%- name %></span></div>" +
-            "</div>")({file: file, name: name, width: width});
+            "<div class='item selectable' file='<%= file %>' filename='<%= name %>'>" +
+            "<div class='holder' style='width: <%= width %> px'><span class='holder-name'><%= name %></span></div>" +
+            "</div>")({file: encodeURI(file), name: esc(name), width: width});
 	    var elem = $(html).toggleClass('selected', selected);
-        if (search && !basename(file).toLowerCase().indexOf(search) >= 0) {
+        if (search && !name.toLowerCase().indexOf(search) >= 0) {
             elem.hide();
         }
         $('#images').append(elem);
     }
 
     function remove_image_div(file) {
-        var to_remove = $(".item[file='" + file + "']");
+        var to_remove = $(".item[file='" + encodeURI(file) + "']");
         if (to_remove.hasClass('selected')) {
             var next = $(to_remove).next('.selectable');
             if (next.length == 0) {
                 next = $('.selectable');
             }
-            select(next.attr('file'));
+            select(decodeURI(next.attr('file')));
         }
 	    to_remove.remove();
     }
@@ -265,9 +270,9 @@
         }
 
         clearTimeout(pending_add_timeouts[file]);
-        var item = $(".item[file='" + file + "']");
+        var item = $(".item[file='" + encodeURI(file) + "']");
         if (item.length) {
-            item.html("<img height='120' src='" + thumb + "'/>");
+            item.html("<img height='120' src='" + encodeURI(thumb) + "'/>");
         } else {
             pending_add_timeouts[file] = setTimeout(function () {add_image(file, thumb)}, 200);
         }
@@ -300,9 +305,9 @@
     }
 
     function set_dimensions(file, filename, dimensions, thumb_width) {
-        $(".item[file='" + file + "']").attr('dimensions', dimensions).attr('filename', filename);
+        $(".item[file='" + encodeURI(file) + "']").attr('dimensions', dimensions).attr('filename', esc(filename));
         if (thumb_width) {
-            $(".item[file='" + file + "'] .holder").css('width', thumb_width);
+            $(".item[file='" + encodeURI(file) + "'] .holder").css('width', thumb_width);
         }
         if (file == current) {
             $("#filename").html(filename);
@@ -310,13 +315,13 @@
         }
     }
 
-    function select(file, dontScrollTo) {
+    function select(file, dontScrollTo, elem) {
         if (current == file) {
             return;
         }
 
-        var el = $(".selectable[file='" + file + "']");
-        $("#filename").html(el.attr('filename') ? el.attr('filename') : '&nbsp;'); //TODO use a dedicated 'status' field
+        var el = elem || $(".selectable[file='" + encodeURI(file) + "']").first();
+        $("#filename").html(el.attr('filename') ? el.attr('filename') : '&nbsp;');
         $("#dimensions").html(el.attr('dimensions') ? el.attr('dimensions') : '&nbsp;');
 
         console.log("Selecting " + file);
@@ -330,11 +335,9 @@
     }
 
     function scroll_to_selected(el) {
-        console.log('scroll to selected');
+        console.log('Scroll to selected');
         el = el || $('.selected');
         if (el.length) {
-            console.log(el.offset().top)
-            console.log($(window).height())
             var scrollTo;
             if (el.offset().top > $('body').scrollTop() + $(window).height() - 250) {
                 scrollTo = el.offset().top - $(window).height() + 250;
@@ -342,16 +345,15 @@
                 scrollTo = el.offset().top - 150;
             }
             if (!_.isUndefined(scrollTo)) {
-                console.log('SCROLLING TO ' + scrollTo);
                 $('body').scrollTop(scrollTo);
             }
         }
     }
 
-    function goto($elem, dontScrollTo) {
-	    if ($elem && $elem.length > 0) {
-		    var file = $elem.attr('file');
-		    select(file, dontScrollTo);
+    function goto(elem, dontScrollTo) {
+	    if (elem && elem.length > 0) {
+		    var file = decodeURI(elem.attr('file'));
+		    select(file, dontScrollTo, elem);
 	    }
     }
 
@@ -377,7 +379,7 @@
 			    return $(x).offset().top >= $('body').scrollTop() - 5 &&
 			           $(x).offset().top + $(x).height() < $('body').scrollTop() + $(window).height() + 5;
 		    });
-	        var file = $(first_or_last ? _.first(visible) : _.last(visible)).attr('file');
+	        var file = decodeURI($(first_or_last ? _.first(visible) : _.last(visible)).attr('file'));
 	        select(file, true);
 	        python("ojo-select:" + file);
 	    }, 100);
@@ -430,14 +432,14 @@
         $('#search').toggle(search.length > 0);
         var s = search.toLowerCase();
         var ismatch = function(elem) {
-            return basename(elem.attr('file')).toLowerCase().indexOf(s) >= 0
+            return elem.attr('filename').toLowerCase().indexOf(s) >= 0
         };
         $('.selectable').filter(function() {return !ismatch($(this))}).hide();
         var matches = $('.selectable').filter(function() {return ismatch($(this))});
         matches.show();
         var sel = $('.selected');
         if (matches.length && (sel.length == 0 || !_.contains(matches, sel[0]))) {
-            select($(matches[0]).attr('file'));
+            select(decodeURI($(matches[0]).attr('file')));
         } else {
             scroll_to_selected();
         }
@@ -451,23 +453,28 @@
         return dx*dx + dy*dy
     }
 
-    function test_it() {
-	    for (var i = 0; i < 2000; i++) {
-		    add_image(i, i);
-	    }
-	    select(0, 0);
-    }
-
-    function basename(file) {
-        return file.substring(file.lastIndexOf('/') + 1);
-    }
-
     function on_scroll() {
         var files = _.map(_.filter($('.item:visible'), function(x) {
             return $(x).offset().top + $(x).height() >= $('body').scrollTop();
-        }), function(x) { return $(x).attr('file') });
+        }), function(x) { return decodeURI($(x).attr('file')) });
 
         python('ojo-priority:' + JSON.stringify(files));
+    }
+
+    var entityMap = {
+        "&": "&amp;",
+        " ": "&nbsp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': '&quot;',
+        "'": '&#39;',
+        "/": '&#x2F;'
+    };
+
+    function esc(string) {
+        return String(string).replace(/[&<>"'\/ ]/g, function (s) {
+            return entityMap[s];
+        });
     }
 
     $(function() {
@@ -507,7 +514,7 @@
                 event.preventDefault();
                 return;
             }
-            python("ojo:" + $(this).attr('file'));
+            python("ojo:" + decodeURI($(this).attr('file')));
         });
 
         $('#search-field').focus();

@@ -414,13 +414,15 @@ class Ojo(Gtk.Window):
         self.web_view.set_transparent(True)
         self.web_view.set_can_focus(True)
 
-        def nav(wv, wf, title):
-            title = title[title.index('|') + 1:]
-            index = title.index(':')
-            action = title[:index]
-            argument = title[index + 1:]
-            self.on_js_action(action, argument)
-        self.web_view.connect("title-changed", nav)
+        def nav(wv, command):
+            logging.info('Received command: ' + command)
+            if command:
+                command = command[command.index('|') + 1:]
+                index = command.index(':')
+                action = command[:index]
+                argument = command[index + 1:]
+                self.on_js_action(action, argument)
+        self.web_view.connect("status-bar-text-changed", nav)
 
         self.web_view.connect('document-load-finished', lambda wf, data: self.render_folder_view())
         self.web_view.load_string(html, "text/html", "UTF-8", "file://" + os.path.dirname(__file__) + "/")
