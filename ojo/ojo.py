@@ -104,6 +104,7 @@ class Ojo(Gtk.Window):
 
         self.set_zoom(False, 0.5, 0.5)
         self.mode = 'image' if os.path.isfile(path) else 'folder'
+        self.last_folder_change_time = time.time()
         self.shown = None
         self.toggle_fullscreen(self.full, first_run=True)
 
@@ -286,6 +287,7 @@ class Ojo(Gtk.Window):
         self.selected = old_folder if self.folder == util.get_parent(old_folder) else \
             self.images[0] if self.images else 'command:back'
         self.set_mode("folder")
+        self.last_folder_change_time = time.time()
         self.render_folder_view()
 
     def check_kill(self):
@@ -506,7 +508,7 @@ class Ojo(Gtk.Window):
 
     def render_folder_view(self):
         self.web_view_loaded = True
-        thread_action_time = self.last_action_time
+        thread_change_time = self.last_folder_change_time
         thread_folder = self.folder
         self.js("change_folder('%s')" % util.path2url(self.folder))
 
@@ -542,15 +544,17 @@ class Ojo(Gtk.Window):
             categories.append(self.build_bookmarks_category())
 
             folder_info = {"crumbs": self.get_crumbs(), "categories": categories}
-            self.js("render_folders(%s)" % json.dumps(folder_info))    # TODO we may need some escaping here -PL
 
+            if self.last_folder_change_time != thread_change_time or thread_folder != self.folder:
+                return
+            self.js("render_folders(%s)" % json.dumps(folder_info))
             self.select_in_browser(self.selected)
 
             pos = self.images.index(self.selected) if self.selected in self.images else 0
             self.priority_thumbs([x[1] for x in sorted(enumerate(self.images), key=lambda (i,f): abs(i - pos))])
 
             for img in self.images:
-                if self.last_action_time != thread_action_time or thread_folder != self.folder:
+                if self.last_folder_change_time != thread_change_time or thread_folder != self.folder:
                     return
                 self.js("add_image_div('%s', '%s', %s, %d)" % (
                     util.path2url(img), os.path.basename(img), 'true' if img==self.selected else 'false', 180))
@@ -812,7 +816,6 @@ class Ojo(Gtk.Window):
             self.show(self.selected)
         elif self.mode == "folder":
             self.set_title(self.folder)
-            self.last_action_time = 0
 
         self.update_cursor()
         self.scroll_window.set_visible(self.mode == 'image')

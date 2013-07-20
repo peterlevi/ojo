@@ -1,5 +1,5 @@
 #!/usr/bin/env python2
-#! -*- coding: utf-8 -*-
+#! -*- Mode: Python; coding: utf-8; indent-tabs-mode: nil; tab-width: 4 -*-
 from gi.repository import GObject, Gtk, Gdk, GtkClutter, Clutter, GdkPixbuf, Cogl, WebKit
 import cairo
 import sys
