@@ -104,6 +104,7 @@ class Ojo(Gtk.Window):
 
         self.set_zoom(False, 0.5, 0.5)
         self.mode = 'image' if os.path.isfile(path) else 'folder'
+        self.last_action_time = 0
         self.last_folder_change_time = time.time()
         self.shown = None
         self.toggle_fullscreen(self.full, first_run=True)
@@ -166,8 +167,6 @@ class Ojo(Gtk.Window):
             self.scroll_v = self.scroll_window.get_vadjustment().get_value()
 
     def show(self, filename=None, quick=False):
-        self.register_action()
-
         filename = filename or self.selected
         logging.info("Showing " + filename)
 
@@ -176,6 +175,7 @@ class Ojo(Gtk.Window):
         elif os.path.isdir(filename):
             self.change_to_folder(filename)
         else:
+            self.register_action()
             self.shown = filename
             self.selected = self.shown
             self.set_title(self.shown)
@@ -659,7 +659,7 @@ class Ojo(Gtk.Window):
                 self.thumbs_queue_event.wait()
                 while self.thumbs_queue:
                     # pause thumbnailing while the user is actively cycling images:
-                    while time.time() - self.last_action_time < 2:
+                    while time.time() - self.last_action_time < 2 and self.mode == "image":
                         time.sleep(0.2)
                     time.sleep(0.05)
                     try:
