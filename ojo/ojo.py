@@ -238,6 +238,7 @@ class Ojo(Gtk.Window):
             self.folder_history_position = 0
         else:
             self.folder_history_position = modify_history_position
+        self.search_text = ""
         self.images = self.get_image_list()
 
     def get_back_folder(self):
@@ -407,6 +408,8 @@ class Ojo(Gtk.Window):
             self.priority_thumbs(map(lambda f: f.encode('utf-8'), files))
         elif action == 'ojo-handle-key':
             self.process_key(key=argument, skip_browser=True)
+        elif action == "ojo-search":
+            self.search_text = argument
 
     def render_browser(self):
         from gi.repository import WebKit
@@ -759,10 +762,12 @@ class Ojo(Gtk.Window):
             self.move((self.get_screen().get_width() - new_width) // 2, (self.get_screen().get_height() - new_height) // 2)
 
     def go(self, direction, start_position=None):
+        search = getattr(self, "search_text", "")
+        applicable = self.images if not search else [f for f in self.images if os.path.basename(f).lower().find(search) >= 0]
         filename = None
-        position = start_position - direction if not start_position is None else self.images.index(self.selected)
-        position = (position + direction + len(self.images)) % len(self.images)
-        filename = self.images[position]
+        position = start_position - direction if start_position is not None else applicable.index(self.selected)
+        position = (position + direction + len(applicable)) % len(applicable)
+        filename = applicable[position]
 
         def _f():
             try:

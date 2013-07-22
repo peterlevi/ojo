@@ -95,6 +95,10 @@
 	        cursor: pointer;
         }
 
+        .nonmatch {
+            display: none;
+        }
+
         .disabled img {
 	        opacity: 0.2;
         }
@@ -139,7 +143,7 @@
     <img src="img/spinner.gif" class="spinner">
 </div>
 <div id="main">
-    <div style="position: absolute; opacity: 0; z-index: -1">
+    <div style="position: absolute; opacity: 0; z-index: -1; top: 50%; right: 50%">
         <input type="search" id="search-field">
     </div>
     <div id="search"></div>
@@ -229,7 +233,7 @@
 
     function add_folder(category_label, label, path, filename, icon, style) {
 	    var elem = $(_.template(
-            "<div class='folder' file='<%= path %>' filename='<%= filename %>' style='<%= style %>'><%= label %></div>")({
+            "<div class='folder match' file='<%= path %>' filename='<%= filename %>' style='<%= style %>'><%= label %></div>")({
             path: encode_path(path), filename: esc(filename), label: esc(label), style: style
         }));
         elem.addClass(path ? 'selectable' : 'disabled');
@@ -245,12 +249,13 @@
         }
 
 	    var html = _.template(
-            "<div class='item selectable' file='<%= file %>' filename='<%= name %>'>" +
+            "<div class='item selectable match' file='<%= file %>' filename='<%= name %>'>" +
             "<div class='holder' style='width: <%= width %> px'><span class='holder-name'><%= name %></span></div>" +
             "</div>")({file: encode_path(file), name: esc(name), width: width});
 	    var elem = $(html).toggleClass('selected', selected);
-        if (search && !name.toLowerCase().indexOf(search) >= 0) {
-            elem.hide();
+        if (search && !matches_search(elem)) {
+            elem.addClass("nonmatch");
+            elem.removeClass("match");
         }
         $('#images').append(elem);
     }
@@ -364,7 +369,7 @@
 
     function get_next_in_direction(elem, direction) {
         var current = elem.offset().top + (direction < 0 ? -10 : elem.height());
-	    var applicable = $(".selectable:visible").filter(function() {
+	    var applicable = $(".selectable.match").filter(function() {
 		    var candidate = $(this).offset().top;
             return direction < 0 ?
                 candidate < current && candidate > current - 2*120 :
@@ -382,7 +387,7 @@
     function goto_visible(first_or_last) {
 	    clearTimeout(goto_visible_timeout);
 	    goto_visible_timeout = setTimeout(function() {
-		    var visible = _.filter($('.selectable:visible'), function(x) {
+		    var visible = _.filter($('.selectable.match'), function(x) {
 			    return $(x).offset().top >= $('body').scrollTop() - 5 &&
 			           $(x).offset().top + $(x).height() < $('body').scrollTop() + $(window).height() + 5;
 		    });
@@ -398,26 +403,26 @@
 	    if (key == 'Up' || key == 'Down') {
 		    goto(get_next_in_direction(sel, key == 'Up' ? -1 : 1), false);
         } else if (key == 'Right') {
-            var next = sel.nextAll('.selectable:visible');
-            goto(next.length ? $(next[0]) : $(".selected").hasClass('folder') ? $(".item.selectable:visible:first") : null, false);
+            var next = sel.nextAll('.selectable.match');
+            goto(next.length ? $(next[0]) : $(".selected").hasClass('folder') ? $(".item.selectable.match:first") : null, false);
 	    } else if (key == 'Left') {
-            var prev = sel.prevAll('.selectable:visible');
-            goto(prev.length ? $(prev[0]) : $(".folder.selectable:visible:first"));
+            var prev = sel.prevAll('.selectable.match');
+            goto(prev.length ? $(prev[0]) : $(".folder.selectable.match:first"));
 	    } else if (key == "Page_Up") {
 		    goto_visible(true);
 	    } else if (key == "Page_Down") {
 		    goto_visible($('body').scrollTop() < $('body').height() - $(window).height() - 5);
 	    } else if (key == "Home") {
 		    if ($('.selected').hasClass('folder')) {
-			    goto($(".folder.selectable:visible:first"));
+			    goto($(".folder.selectable.match:first"));
 		    } else {
-			    goto($(".item.selectable:visible:first"));
+			    goto($(".item.selectable.match:first"));
 		    }
 	    } else if (key == "End") {
 		    if ($('.selected').hasClass('folder')) {
-			    goto($(".folder.selectable:visible:last"));
+			    goto($(".folder.selectable.match:last"));
 		    } else {
-			    goto($(".item.selectable:visible:last"));
+			    goto($(".item.selectable.match:last"));
 		    }
 	    } else if (key == 'BackSpace') {
             if (!search) {
@@ -433,17 +438,20 @@
         }
     }
 
+    function matches_search(elem) {
+        return elem.attr('filename').toLowerCase().indexOf(search.toLowerCase()) >= 0 ||
+            (elem.attr('file').substring(0, 'command:'.length) == 'command:' &&
+            elem.attr('file').substring('command:'.length + 1).toLowerCase().indexOf(search.toLowerCase()) >= 0);
+    }
+
     function on_search() {
         console.log('Searching for ' + search);
+        python('ojo-search:' + search);
         $('#search').html(search);
         $('#search').toggle(search.length > 0);
-        var s = search.toLowerCase();
-        var ismatch = function(elem) {
-            return elem.attr('filename').toLowerCase().indexOf(s) >= 0
-        };
-        $('.selectable').filter(function() {return !ismatch($(this))}).hide();
-        var matches = $('.selectable').filter(function() {return ismatch($(this))});
-        matches.show();
+        $('.selectable').filter(function() {return !matches_search($(this))}).removeClass("match").addClass("nonmatch");
+        var matches = $('.selectable').filter(function() {return matches_search($(this))});
+        matches.removeClass("nonmatch").addClass("match");
         var sel = $('.selected');
         if (matches.length && (sel.length == 0 || !_.contains(matches, sel[0]))) {
             select(decode_path($(matches[0]).attr('file')));
@@ -461,7 +469,7 @@
     }
 
     function on_scroll() {
-        var files = _.map(_.filter($('.item:visible'), function(x) {
+        var files = _.map(_.filter($('.item.match'), function(x) {
             return $(x).offset().top + $(x).height() >= $('body').scrollTop();
         }), function(x) { return decode_path($(x).attr('file')) });
 
