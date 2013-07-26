@@ -405,7 +405,7 @@ class Ojo(Gtk.Window):
                 GObject.idle_add(_do)
         elif action == 'ojo-priority':
             files = json.loads(argument)
-            self.priority_thumbs(map(lambda f: f.encode('utf-8'), files))
+            self.priority_thumbs(map(lambda f: util.url2path(f.encode('utf-8')), files))
         elif action == 'ojo-handle-key':
             self.process_key(key=argument, skip_browser=True)
         elif action == "ojo-search":
