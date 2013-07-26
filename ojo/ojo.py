@@ -226,7 +226,27 @@ class Ojo(Gtk.Window):
             return False
 
     def get_image_list(self):
-        return filter(self.is_image, map(lambda f: os.path.join(self.folder, f), sorted(os.listdir(self.folder))))
+        images = filter(self.is_image, map(lambda f: os.path.join(self.folder, f), os.listdir(self.folder)))
+        if self.options['sort_by'] == 'name':
+            key = lambda f: os.path.basename(f).lower()
+        elif self.options['sort_by'] == 'date':
+            key = lambda f: os.stat(f).st_mtime
+        elif self.options['sort_by'] == 'size':
+            key = lambda f: os.stat(f).st_size
+        else:
+            key = lambda f: f
+        images = sorted(images, key=key)
+        if self.options['sort_order'] == 'desc':
+            images = list(reversed(images))
+        return images
+
+    def sort(self, key):
+        if key in ('asc', 'desc'):
+            self.options['sort_order'] = key
+        else:
+            self.options['sort_by'] = key
+        self.save_options()
+        self.change_to_folder(self.folder, self.folder_history_position)
 
     def set_folder(self, path, modify_history_position=None):
         path = os.path.realpath(path)
@@ -325,6 +345,9 @@ class Ojo(Gtk.Window):
         self.check_kill()
         self.folder_history = []
         self.folder_history_position = 0
+
+        self.load_options()
+
         self.set_folder(os.path.dirname(self.selected))
 
         self.update_cursor()
@@ -356,19 +379,34 @@ class Ojo(Gtk.Window):
             self.cache_around()
         self.start_thumbnail_thread()
 
+    def load_options(self):
+        self.options = self.load_json('options.json', {
+            'sort_by': 'name',
+            'sort_order': 'asc'
+        })
+
+    def save_options(self):
+        self.save_json('options.json', self.options)
+
     def load_bookmarks(self):
-        import json
-        try:
-            with open(self.get_config_file('boormarks.json')) as f:
-                self.bookmarks = json.load(f)
-        except Exception:
-            self.bookmarks = [util.get_xdg_pictures_folder()]
-            self.save_bookmarks()
+        self.bookmarks = self.load_json('boormarks.json', [util.get_xdg_pictures_folder()])
 
     def save_bookmarks(self):
+        self.save_json('bookmarks.json', self.bookmarks)
+
+    def load_json(self, filename, default_data):
         import json
-        with open(self.get_config_file('boormarks.json'), 'w') as f:
-            json.dump(self.bookmarks, f)
+        try:
+            with open(self.get_config_file(filename)) as f:
+                return json.load(f)
+        except Exception:
+            self.save_json(filename, default_data)
+            return default_data
+
+    def save_json(self, filename, data):
+        import json
+        with open(self.get_config_file(filename), 'w') as f:
+            json.dump(data, f)
 
     def make_transparent(self, widget):
         rgba = Gdk.RGBA()
@@ -447,27 +485,35 @@ class Ojo(Gtk.Window):
             'icon': util.path2url(util.get_folder_icon(path, 24))
         }
 
-    def get_navigation_item(self, command, path, icon, label = ''):
+    def get_command_item(self, command, path, icon, label = ''):
+        if icon:
+            try:
+                icon_url = util.path2url(util.get_icon_path(icon, 24))
+            except Exception:
+                logging.exception('Could not get icon %s' % icon)
+                icon_url = None
         return {
             'label': label,
             'path': command,
             'filename': os.path.basename(path) if path else label,
-            'icon': util.path2url(util.get_icon_path(icon, 24)) if icon else None
+            'icon': icon_url if icon else None
         }
 
     def get_navigation_folder(self, key):
         m = {'back': self.get_back_folder, 'forward': self.get_forward_folder, 'up': self.get_parent_folder}
         return m[key]()
 
-    def on_command(self, key):
+    def on_command(self, command):
+        parts = command.split(':')
         m = {
             'back': self.folder_history_back,
             'forward': self.folder_history_forward,
             'up': self.folder_parent,
             'add-bookmark': self.add_bookmark,
             'remove-bookmark': self.remove_bookmark,
+            'sort': self.sort,
         }
-        m[key]()
+        m[parts[0]](*parts[1:])
 
     def get_crumbs(self):
         folder = self.folder
@@ -496,14 +542,24 @@ class Ojo(Gtk.Window):
             self.select_in_browser(self.selected)
 
     def build_bookmarks_category(self):
-        bookmark_items = [self.get_folder_item(b) for b in sorted(self.bookmarks, key=lambda p: os.path.basename(p).lower())]
+        bookmark_items = [self.get_folder_item(b) for b in
+                          sorted(self.bookmarks, key=lambda p: os.path.basename(p).lower()) if os.path.isdir(b)]
         if self.folder in self.bookmarks:
             bookmark_items.append(
-                self.get_navigation_item('command:remove-bookmark', None, 'remove', 'Remove current'))
+                self.get_command_item('command:remove-bookmark', None, 'remove', 'Remove current'))
         else:
-            bookmark_items.append(self.get_navigation_item('command:add-bookmark', None, 'add', 'Add current'))
+            bookmark_items.append(self.get_command_item('command:add-bookmark', None, 'add', 'Add current'))
         bookmarks_category = {'label': 'Bookmarks', 'items': bookmark_items}
         return bookmarks_category
+
+    def build_options_category(self):
+        items = []
+        for sort in ('name', 'date', 'size'):
+            if sort != self.options['sort_by']:
+                items.append(self.get_command_item('command:sort:' + sort, None, None, 'Sort by ' + sort))
+        items.append(self.get_command_item(
+            'command:sort:' + ('desc' if self.options['sort_order'] == 'asc' else 'asc'), None, None, 'Reverse order'))
+        return {'label': 'Options', 'items': items}
 
     def refresh_category(self, category):
         import json
@@ -522,9 +578,9 @@ class Ojo(Gtk.Window):
             parent_folder = self.get_parent_folder()
 
             nav_items = [
-                self.get_navigation_item('command:back' if self.get_back_folder() else None, self.get_back_folder(), 'back'),
-                self.get_navigation_item('command:forward' if self.get_forward_folder() else None, self.get_forward_folder(), 'forward'),
-                self.get_navigation_item('command:up' if parent_folder else None, parent_folder, 'up')
+                self.get_command_item('command:back' if self.get_back_folder() else None, self.get_back_folder(), 'back'),
+                self.get_command_item('command:forward' if self.get_forward_folder() else None, self.get_forward_folder(), 'forward'),
+                self.get_command_item('command:up' if parent_folder else None, parent_folder, 'up')
             ]
 
             categories = [{'label': 'Navigate', 'no_labels': True, 'items': nav_items}]
@@ -545,6 +601,9 @@ class Ojo(Gtk.Window):
 
             # Bookmarks
             categories.append(self.build_bookmarks_category())
+
+            # Options
+            categories.append(self.build_options_category())
 
             folder_info = {"crumbs": self.get_crumbs(), "categories": categories}
 
