@@ -257,6 +257,10 @@
             elem.addClass("nonmatch");
             elem.removeClass("match");
         }
+        if (selected) {
+            current = encode_path(file);
+            current_elem = elem[0];
+        }
         $('#images').append(elem);
     }
 
@@ -327,16 +331,18 @@
     function select(file, dontScrollTo, elem) {
         var el = elem || $(".selectable[file='" + encode_path(file) + "']").first();
 
-        if (current == file && current_elem == el) {
+        if (current == file && current_elem == el[0]) {
             return;
         }
+
+        current = file;
+        current_elem = el[0];
 
         $("#filename").html(el.attr('filename') ? el.attr('filename') : '&nbsp;');
         $("#dimensions").html(el.attr('dimensions') ? el.attr('dimensions') : '&nbsp;');
 
         console.log("Selecting " + file);
         python("ojo-select:" + file);
-        current = file;
         $(".selectable").removeClass('selected');
         el.addClass('selected');
 	    if (!dontScrollTo) {
