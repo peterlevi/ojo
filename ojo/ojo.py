@@ -556,9 +556,15 @@ class Ojo(Gtk.Window):
         items = []
         for sort in ('name', 'date', 'size'):
             if sort != self.options['sort_by']:
-                items.append(self.get_command_item('command:sort:' + sort, None, None, 'Sort by ' + sort))
-        items.append(self.get_command_item(
-            'command:sort:' + ('desc' if self.options['sort_order'] == 'asc' else 'asc'), None, None, 'Reverse order'))
+                m = {'name': 'name', 'date': 'date', 'size': 'file size'}
+                items.append(self.get_command_item('command:sort:' + sort, None, None, 'Sort by ' + m[sort]))
+        if self.options['sort_order'] == 'asc':
+            m = {'name': 'Z to A', 'date': 'Newest at top', 'size': 'Big at top'}
+            items.append(self.get_command_item('command:sort:desc', None, None, m[self.options['sort_by']]))
+        else:
+            m = {'name': 'A to Z', 'date': 'Oldest at top', 'size': 'Small at top'}
+            items.append(self.get_command_item('command:sort:asc', None, None, m[self.options['sort_by']]))
+
         return {'label': 'Options', 'items': items}
 
     def refresh_category(self, category):
