@@ -227,6 +227,9 @@ class Ojo(Gtk.Window):
 
     def get_image_list(self):
         images = filter(self.is_image, map(lambda f: os.path.join(self.folder, f), os.listdir(self.folder)))
+        if not self.options['show_hidden']:
+            images = filter(lambda f: not os.path.basename(f).startswith('.'), images)
+
         if self.options['sort_by'] == 'name':
             key = lambda f: os.path.basename(f).lower()
         elif self.options['sort_by'] == 'date':
@@ -239,6 +242,11 @@ class Ojo(Gtk.Window):
         if self.options['sort_order'] == 'desc':
             images = list(reversed(images))
         return images
+
+    def show_hidden(self, key):
+        self.options['show_hidden'] = key == 'true'
+        self.save_options()
+        self.change_to_folder(self.folder, self.folder_history_position)
 
     def sort(self, key):
         if key in ('asc', 'desc'):
@@ -384,10 +392,15 @@ class Ojo(Gtk.Window):
         self.start_thumbnail_thread()
 
     def load_options(self):
-        self.options = self.load_json('options.json', {
-            'sort_by': 'name',
-            'sort_order': 'asc'
-        })
+        self.options = self.load_json('options.json', {})
+        defaults = {'sort_by': 'name', 'sort_order': 'asc', 'show_hidden': False}
+        for k, v in defaults.items():
+            if not k in self.options:
+                self.options[k] = v
+
+    def filter_hidden(self, files):
+        return files if self.options['show_hidden'] else filter(
+            lambda f: not os.path.basename(f).startswith('.'), files)
 
     def save_options(self):
         self.save_json('options.json', self.options)
@@ -516,6 +529,7 @@ class Ojo(Gtk.Window):
             'add-bookmark': self.add_bookmark,
             'remove-bookmark': self.remove_bookmark,
             'sort': self.sort,
+            'hidden': self.show_hidden,
         }
         m[parts[0]](*parts[1:])
 
@@ -556,6 +570,7 @@ class Ojo(Gtk.Window):
 
     def build_options_category(self):
         items = []
+
         by = self.options['sort_by']
         order = self.options['sort_order']
         mapby = {'name': 'name', 'date': 'date', 'size': 'file size'}
@@ -572,6 +587,11 @@ class Ojo(Gtk.Window):
         else:
             m = {'name': 'A to Z', 'date': 'Oldest at top', 'size': 'Small at top'}
             items.append(self.get_command_item('command:sort:asc', None, None, m[by]))
+
+        if self.options['show_hidden']:
+            items.append(self.get_command_item('command:hidden:false', None, None, 'Hide hidden files'))
+        else:
+            items.append(self.get_command_item('command:hidden:true', None, None, 'Show hidden files'))
 
         return {'label': 'Options', 'items': items}
 
@@ -602,15 +622,15 @@ class Ojo(Gtk.Window):
 
             # Siblings
             if parent_folder:
-                siblings = [os.path.join(parent_folder, f) for f in sorted(os.listdir(parent_folder))
-                            if os.path.isdir(os.path.join(parent_folder, f))]
+                siblings = self.filter_hidden([os.path.join(parent_folder, f) for f in sorted(os.listdir(parent_folder))
+                            if os.path.isdir(os.path.join(parent_folder, f))])
                 pos = siblings.index(self.folder)
                 if pos + 1 < len(siblings):
                     categories .append({'label': 'Next sibling', 'items': [self.get_folder_item(siblings[pos + 1])]})
 
             # Subfolders
-            subfolders = [os.path.join(self.folder, f) for f in sorted(os.listdir(self.folder))
-                          if os.path.isdir(os.path.join(self.folder, f))]
+            subfolders = self.filter_hidden([os.path.join(self.folder, f) for f in sorted(os.listdir(self.folder))
+                          if os.path.isdir(os.path.join(self.folder, f))])
             if subfolders:
                 categories.append({'label': 'Subfolders', 'items': [self.get_folder_item(sub) for sub in subfolders]})
 
