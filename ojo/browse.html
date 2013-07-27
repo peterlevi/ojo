@@ -99,6 +99,14 @@
             display: none;
         }
 
+        .crumb.nonmatch {
+            display: inline;
+        }
+
+        .crumb.selected {
+            border-bottom: solid 3px #F07746;
+        }
+
         .disabled img {
 	        opacity: 0.2;
         }
@@ -214,11 +222,16 @@
 
     function set_title(crumbs) {
         $('#title').html('');
-        _.map(crumbs, function(part) {
-            $('<span>' + esc(part.name) + '</span>').click(
-                    _.bind(function(f) { python('ojo:' + f); }, undefined, part.path)
+        for (var i = 0; i < crumbs.length; i++) {
+            var part = crumbs[i];
+            $('<span class="crumb selectable match" file="' + encode_path(part.path) +
+                    '" filename="' + esc(part.name) + '">' + esc(part.name) + '</span>'//.click(
+                    //_.bind(function(f) { python('ojo:' + f); }, undefined, part.path)
             ).appendTo($("#title"));
-        });
+            if (i > 0 && i < crumbs.length - 1) {
+                $('<span>/</span>').appendTo($("#title"));
+            }
+        }
     }
 
     function get_id(s) {
@@ -445,8 +458,8 @@
     }
 
     function matches_search(elem) {
-        return elem.attr('filename').toLowerCase().indexOf(search.toLowerCase()) >= 0 ||
-            (elem.attr('file').substring(0, 'command:'.length) == 'command:' &&
+        return (elem.attr('filename') && elem.attr('filename').toLowerCase().indexOf(search.toLowerCase()) >= 0) ||
+            (elem.attr('file') && elem.attr('file').substring(0, 'command:'.length) == 'command:' &&
             elem.attr('file').substring('command:'.length + 1).toLowerCase().indexOf(search.toLowerCase()) >= 0);
     }
 

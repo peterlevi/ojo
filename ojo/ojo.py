@@ -519,10 +519,8 @@ class Ojo(Gtk.Window):
         folder = self.folder
         crumbs = []
         while folder:
-            crumbs.insert(0, {"path": util.path2url(folder), "name": "/" + os.path.basename(folder)})
+            crumbs.insert(0, {"path": util.path2url(folder), "name": os.path.basename(folder) or '/'})
             folder = util.get_parent(folder)
-        if len(crumbs) > 1:
-            crumbs[1]["name"] = crumbs[1]["name"][1:]
         return crumbs
 
     def add_bookmark(self):
@@ -573,6 +571,7 @@ class Ojo(Gtk.Window):
 
     def render_folder_view(self):
         self.web_view_loaded = True
+        self.loading_folder = True
         thread_change_time = self.last_folder_change_time
         thread_folder = self.folder
         self.js("change_folder('%s')" % util.path2url(self.folder))
@@ -643,6 +642,8 @@ class Ojo(Gtk.Window):
                         pass
 
             self.select_in_browser(self.selected)
+
+            self.loading_folder = False
 
         prepare_thread = threading.Thread(target=_thread)
         prepare_thread.daemon = True
