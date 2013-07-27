@@ -251,11 +251,13 @@ class Ojo(Gtk.Window):
     def set_folder(self, path, modify_history_position=None):
         path = os.path.realpath(path)
         logging.info("Setting folder %s" % path)
+        same = path == getattr(self, "folder", None)
         self.folder = path
         if modify_history_position is None:
-            self.folder_history = self.folder_history[self.folder_history_position:]
-            self.folder_history.insert(0, self.folder)
-            self.folder_history_position = 0
+            if not same:
+                self.folder_history = self.folder_history[self.folder_history_position:]
+                self.folder_history.insert(0, self.folder)
+                self.folder_history_position = 0
         else:
             self.folder_history_position = modify_history_position
         self.search_text = ""
