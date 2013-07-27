@@ -889,6 +889,7 @@ class Ojo(Gtk.Window):
 
         self.update_cursor()
         self.refresh_image()
+        self.js('setTimeout(scroll_to_selected, 100)')
 
     def update_margins(self):
         if self.full:

@@ -269,16 +269,20 @@
             "<div class='item selectable match' file='<%= file %>' filename='<%= name %>'>" +
             "<div class='holder' style='width: <%= width %> px'><span class='holder-name'><%= name %></span></div>" +
             "</div>")({file: encode_path(file), name: esc(name), width: width});
-	    var elem = $(html).toggleClass('selected', selected);
+
+        var elem = $(html).toggleClass('selected', selected);
         if (search && !matches_search(elem)) {
             elem.addClass("nonmatch");
             elem.removeClass("match");
         }
+
+        $('#images').append(elem);
+
         if (selected) {
             current = encode_path(file);
             current_elem = elem[0];
+            scroll_to_selected(elem);
         }
-        $('#images').append(elem);
     }
 
     function remove_image_div(file) {
