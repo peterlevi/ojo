@@ -245,6 +245,8 @@ class Ojo(Gtk.Window):
             self.options['sort_order'] = key
         else:
             self.options['sort_by'] = key
+            m = {'name': 'asc', 'date': 'asc', 'size': 'desc'}
+            self.options['sort_order'] = m[key]
         self.save_options()
         self.change_to_folder(self.folder, self.folder_history_position)
 
@@ -554,16 +556,22 @@ class Ojo(Gtk.Window):
 
     def build_options_category(self):
         items = []
+        by = self.options['sort_by']
+        order = self.options['sort_order']
+        mapby = {'name': 'name', 'date': 'date', 'size': 'file size'}
+        mapord = {
+            "desc": {'name': 'Z to A', 'date': 'newest at top', 'size': 'big at top'},
+            "asc":  {'name': 'A to Z', 'date': 'oldest at top', 'size': 'small at top'}}
+        items.append(self.get_command_item(None, None, None, 'Sorted by %s, %s' % (mapby[by], mapord[order][by])))
         for sort in ('name', 'date', 'size'):
-            if sort != self.options['sort_by']:
-                m = {'name': 'name', 'date': 'date', 'size': 'file size'}
-                items.append(self.get_command_item('command:sort:' + sort, None, None, 'Sort by ' + m[sort]))
-        if self.options['sort_order'] == 'asc':
+            if sort != by:
+                items.append(self.get_command_item('command:sort:' + sort, None, None, 'Sort by ' + mapby[sort]))
+        if order == 'asc':
             m = {'name': 'Z to A', 'date': 'Newest at top', 'size': 'Big at top'}
-            items.append(self.get_command_item('command:sort:desc', None, None, m[self.options['sort_by']]))
+            items.append(self.get_command_item('command:sort:desc', None, None, m[by]))
         else:
             m = {'name': 'A to Z', 'date': 'Oldest at top', 'size': 'Small at top'}
-            items.append(self.get_command_item('command:sort:asc', None, None, m[self.options['sort_by']]))
+            items.append(self.get_command_item('command:sort:asc', None, None, m[by]))
 
         return {'label': 'Options', 'items': items}
 
