@@ -406,7 +406,7 @@ class Ojo(Gtk.Window):
         self.save_json('options.json', self.options)
 
     def load_bookmarks(self):
-        self.bookmarks = self.load_json('boormarks.json', [util.get_xdg_pictures_folder()])
+        self.bookmarks = self.load_json('bookmarks.json', [util.get_xdg_pictures_folder()])
 
     def save_bookmarks(self):
         self.save_json('bookmarks.json', self.bookmarks)
@@ -655,7 +655,7 @@ class Ojo(Gtk.Window):
                     return
                 self.js("add_image_div('%s', '%s', %s, %d)" % (
                     util.path2url(img), os.path.basename(img), 'true' if img==self.selected else 'false', 180))
-                time.sleep(0.01)
+                time.sleep(0.001)
                 cached = self.get_cached_thumbnail_path(img)
                 if os.path.exists(cached):
                     self.add_thumb(img, use_cached=cached)
