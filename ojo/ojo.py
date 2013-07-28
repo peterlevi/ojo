@@ -183,6 +183,7 @@ class Ojo(Gtk.Window):
                     self.image.set_from_animation(anim)
             else:
                 self.image.set_from_pixbuf(self.pixbuf)
+            self.box.set_visible(True)
 
     def get_supported_image_extensions(self):
         if not hasattr(self, "image_formats"):
@@ -322,11 +323,11 @@ class Ojo(Gtk.Window):
         last_x = getattr(self, "last_x", 0)
         last_y = getattr(self, "last_y", 0)
 
-        if time.time() - self.last_automatic_resize > 0.5 and \
-           (event.width, event.height, event.x, event.y) != (last_width, last_height, last_x, last_y):
-            logging.info("Manually resized, stop automatic resizing")
-            self.manually_resized = True
+        if (event.width, event.height, event.x, event.y) != (last_width, last_height, last_x, last_y):
             GObject.idle_add(self.refresh_image)
+            if time.time() - self.last_automatic_resize > 0.5:
+                logging.info("Manually resized, stop automatic resizing")
+                self.manually_resized = True
 
         self.last_width = event.width
         self.last_height = event.height
@@ -795,13 +796,12 @@ class Ojo(Gtk.Window):
 
     def set_margins(self, margin):
         self.margin = margin
-        if self.mode == 'folder':
-            def _f():
-                self.browser.set_margin_right(margin)
-                self.browser.set_margin_left(margin)
-                self.browser.set_margin_bottom(margin)
-                self.browser.set_margin_top(margin)
-            GObject.idle_add(_f)
+        def _f():
+            self.box.set_margin_right(margin)
+            self.box.set_margin_left(margin)
+            self.box.set_margin_bottom(margin)
+            self.box.set_margin_top(margin)
+        GObject.idle_add(_f)
 
     def get_recommended_size(self):
         screen = self.get_screen()
@@ -817,17 +817,21 @@ class Ojo(Gtk.Window):
         if self.full:
             return self.get_screen().get_width()
         elif self.manually_resized:
-            return self.get_window().get_width() - 2*self.margin
+            self.last_windowed_image_width = self.get_window().get_width() - 2 * self.margin
+            return self.last_windowed_image_width
         else:
-            return self.get_recommended_size()[0] - 2*self.margin
+            self.last_windowed_image_width = self.get_recommended_size()[0] - 2*self.margin
+            return self.last_windowed_image_width
 
     def get_max_image_height(self):
         if self.full:
             return self.get_screen().get_height()
         elif self.manually_resized:
-            return self.get_window().get_height() - 2*self.margin
+            self.last_windowed_image_height = self.get_window().get_height() - 2 * self.margin
+            return self.last_windowed_image_height
         else:
-            return self.get_recommended_size()[1] - 2*self.margin
+            self.last_windowed_image_height = self.get_recommended_size()[1] - 2*self.margin
+            return self.last_windowed_image_height
 
     def increase_size(self):
         if self.manually_resized or self.zoom or self.full:
@@ -863,6 +867,14 @@ class Ojo(Gtk.Window):
 
         self.pix_cache[False] = {}
 
+        if not first_run and self.shown:
+            width = height = None
+            if not self.full:
+                width = getattr(self, "last_windowed_image_width", None)
+                height = getattr(self, "last_windowed_image_height", None)
+            self.get_pixbuf(self.shown, force=True, width=width, height=height) # caches the new image before we start changing sizes
+            self.box.set_visible(False)
+
         self.update_margins()
         if self.full:
             self.fullscreen()
@@ -871,7 +883,6 @@ class Ojo(Gtk.Window):
         self.last_automatic_resize = time.time()
 
         self.update_cursor()
-        self.refresh_image()
         self.js('setTimeout(scroll_to_selected, 100)')
 
     def update_margins(self):
@@ -902,6 +913,7 @@ class Ojo(Gtk.Window):
         if self.mode == "image" and self.selected != self.shown:
             self.show(self.selected)
         elif self.mode == "folder":
+            self.shown = None
             self.set_title(self.folder)
 
         self.update_cursor()
