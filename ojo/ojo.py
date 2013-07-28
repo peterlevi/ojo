@@ -18,7 +18,6 @@
 
 # We import here only the things necessary to start and show an image. The rest are imported lazily so they do not slow startup
 from gi.repository import Gtk, Gdk, GdkPixbuf, GObject
-import cairo
 import os
 import sys
 import time
@@ -67,8 +66,6 @@ class Ojo(Gtk.Window):
         self.visual = self.get_screen().get_rgba_visual()
         if self.visual and self.get_screen().is_composited():
             self.set_visual(self.visual)
-        self.set_app_paintable(True)
-        self.connect("draw", self.area_draw)
 
         self.scroll_window = Gtk.ScrolledWindow()
         self.image = Gtk.Image()
@@ -112,7 +109,7 @@ class Ojo(Gtk.Window):
         if os.path.isfile(path):
             self.last_automatic_resize = time.time()
             self.show(path, quick=True)
-            GObject.idle_add(self.after_quick_start)
+            GObject.timeout_add(500, self.after_quick_start)
         else:
             if not path.endswith('/'):
                 path += '/'
@@ -130,18 +127,6 @@ class Ojo(Gtk.Window):
         Gdk.threads_enter()
         Gtk.main()
         Gdk.threads_leave()
-
-    def area_draw(self, widget, cr):
-        if self.full:
-            if self.mode == 'folder':
-                cr.set_source_rgba(77.0/255, 75.0/255, 69.0/255, 1)
-            else:
-                cr.set_source_rgba(0, 0, 0, 1.0)
-        else:
-            cr.set_source_rgba(77.0/255, 75.0/255, 69.0/255, 0.9)
-        cr.set_operator(cairo.OPERATOR_SOURCE)
-        cr.paint()
-        cr.set_operator(cairo.OPERATOR_OVER)
 
     def js(self, command):
         logging.debug('js(%s)' % command)
@@ -425,9 +410,9 @@ class Ojo(Gtk.Window):
         with open(self.get_config_file(filename), 'w') as f:
             json.dump(data, f)
 
-    def make_transparent(self, widget):
+    def make_transparent(self, widget, color='rgba(0, 0, 0, 0)'):
         rgba = Gdk.RGBA()
-        rgba.parse('rgba(0, 0, 0, 0)')
+        rgba.parse(color)
         widget.override_background_color(Gtk.StateFlags.NORMAL, rgba)
 
     def update_selected_info(self, filename):
@@ -809,16 +794,14 @@ class Ojo(Gtk.Window):
             return None
 
     def set_margins(self, margin):
-        if margin == getattr(self, "margin", -1):
-            return
-
         self.margin = margin
-        def _f():
-            self.box.set_margin_right(margin)
-            self.box.set_margin_left(margin)
-            self.box.set_margin_bottom(margin)
-            self.box.set_margin_top(margin)
-        GObject.idle_add(_f)
+        if self.mode == 'folder':
+            def _f():
+                self.browser.set_margin_right(margin)
+                self.browser.set_margin_left(margin)
+                self.browser.set_margin_bottom(margin)
+                self.browser.set_margin_top(margin)
+            GObject.idle_add(_f)
 
     def get_recommended_size(self):
         screen = self.get_screen()
@@ -893,8 +876,10 @@ class Ojo(Gtk.Window):
 
     def update_margins(self):
         if self.full:
+            self.make_transparent(self, color='rgba(77, 75, 69, 1)' if self.mode == 'folder' else 'rgba(0, 0, 0, 1)')
             self.set_margins(0)
         else:
+            self.make_transparent(self, color='rgba(77, 75, 69, 0.9)')
             self.set_margins(30)
 
     def update_cursor(self):

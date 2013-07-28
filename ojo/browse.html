@@ -116,6 +116,7 @@
         }
 
         #label {
+            display: none;
             position: fixed;
             width: 100%;
             z-index: 100;
@@ -281,7 +282,7 @@
         if (selected) {
             current = encode_path(file);
             current_elem = elem[0];
-            scroll_to_selected(elem);
+            setTimeout(_.bind(scroll_to_selected, undefined, elem), 100);
         }
     }
 
@@ -346,6 +347,7 @@
         if (file == current) {
             $("#filename").html(filename);
             $("#dimensions").html(dimensions);
+            $('#label').show();
         }
     }
 
