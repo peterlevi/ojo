@@ -53,19 +53,19 @@ class Easylog:
 
 logging = Easylog(1 if "-v" in sys.argv or "--verbose" in sys.argv else 0)
 
-class Ojo(Gtk.Window):
+class Ojo():
     def __init__(self):
-        super(Ojo, self).__init__()
-
         path = os.path.realpath(sys.argv[-1]) if len(sys.argv) > 1 and os.path.exists(sys.argv[-1]) \
             else os.path.expanduser('~/Pictures') # TODO get XDG dir
         logging.info("Started with: " + path)
 
-        self.set_position(Gtk.WindowPosition.CENTER)
+        self.window = Gtk.Window()
 
-        self.visual = self.get_screen().get_rgba_visual()
-        if self.visual and self.get_screen().is_composited():
-            self.set_visual(self.visual)
+        self.window.set_position(Gtk.WindowPosition.CENTER)
+
+        self.visual = self.window.get_screen().get_rgba_visual()
+        if self.visual and self.window.get_screen().is_composited():
+            self.window.set_visual(self.visual)
 
         self.scroll_window = Gtk.ScrolledWindow()
         self.image = Gtk.Image()
@@ -78,9 +78,9 @@ class Ojo(Gtk.Window):
         self.box = Gtk.VBox()
         self.box.set_visible(True)
         self.box.add(self.scroll_window)
-        self.add(self.box)
+        self.window.add(self.box)
 
-        self.set_events(Gdk.EventMask.BUTTON_PRESS_MASK |
+        self.window.set_events(Gdk.EventMask.BUTTON_PRESS_MASK |
                         Gdk.EventMask.BUTTON_RELEASE_MASK |
                         Gdk.EventMask.SCROLL_MASK |
                         Gdk.EventMask.POINTER_MOTION_MASK)
@@ -88,9 +88,9 @@ class Ojo(Gtk.Window):
         self.mousedown_zoomed = False
         self.mousedown_panning = False
 
-        self.set_decorated('-d' in sys.argv or '--decorated' in sys.argv)
+        self.window.set_decorated('-d' in sys.argv or '--decorated' in sys.argv)
         if '-m' in sys.argv or '--maximize' in sys.argv:
-            self.maximize()
+            self.window.maximize()
         self.full = '-f' in sys.argv or '--fullscreen' in sys.argv
         self.enlarge_smaller = '--enlarge-smaller' in sys.argv
 
@@ -118,9 +118,9 @@ class Ojo(Gtk.Window):
             self.set_mode('folder')
             self.selected = self.images[0] if self.images else path
             self.last_automatic_resize = time.time()
-            self.resize(*self.get_recommended_size())
+            self.window.resize(*self.get_recommended_size())
 
-        self.set_visible(True)
+        self.window.set_visible(True)
 
         GObject.threads_init()
         Gdk.threads_init()
@@ -163,7 +163,7 @@ class Ojo(Gtk.Window):
             self.register_action()
             self.shown = filename
             self.selected = self.shown
-            self.set_title(self.shown)
+            self.window.set_title(self.shown)
             self.refresh_image()
 
             if not quick:
@@ -356,17 +356,17 @@ class Ojo(Gtk.Window):
         self.make_transparent(self.browser)
         self.box.add(self.browser)
 
-        self.connect("delete-event", Gtk.main_quit)
-        self.connect("key-press-event", self.process_key)
+        self.window.connect("delete-event", Gtk.main_quit)
+        self.window.connect("key-press-event", self.process_key)
         if "--quit-on-focus-out" in sys.argv:
-            self.connect("focus-out-event", Gtk.main_quit)
-        self.connect("button-press-event", self.mousedown)
+            self.window.connect("focus-out-event", Gtk.main_quit)
+        self.window.connect("button-press-event", self.mousedown)
         self.last_mouseup_time = 0
-        self.connect("button-release-event", self.mouseup)
-        self.connect("scroll-event", self.scrolled)
-        self.connect('motion-notify-event', self.mouse_motion)
+        self.window.connect("button-release-event", self.mouseup)
+        self.window.connect("scroll-event", self.scrolled)
+        self.window.connect('motion-notify-event', self.mouse_motion)
 
-        self.connect('configure-event', self.resized)
+        self.window.connect('configure-event', self.resized)
 
         self.load_bookmarks()
 
@@ -489,6 +489,7 @@ class Ojo(Gtk.Window):
         }
 
     def get_command_item(self, command, path, icon, label = ''):
+        icon_url = None
         if icon:
             try:
                 icon_url = util.path2url(util.get_icon_path(icon, 24))
@@ -499,7 +500,7 @@ class Ojo(Gtk.Window):
             'label': label,
             'path': command,
             'filename': os.path.basename(path) if path else label,
-            'icon': icon_url if icon else None
+            'icon': icon_url
         }
 
     def get_navigation_folder(self, key):
@@ -732,8 +733,8 @@ class Ojo(Gtk.Window):
             while self.mode == "image" and time.time() - start_time < 2:
                 time.sleep(0.1)
 
+            cache_dir = self.get_thumbs_cache_dir(120)
             try:
-                cache_dir = self.get_thumbs_cache_dir(120)
                 if not os.path.exists(cache_dir):
                     os.makedirs(cache_dir)
             except Exception:
@@ -770,7 +771,7 @@ class Ojo(Gtk.Window):
             if img == self.selected:
                 self.select_in_browser(img)
             self.prepared_thumbs.add(img)
-        except Exception, e:
+        except Exception:
             self.js("remove_image_div('%s')" % util.path2url(img))
             logging.warning("Could not add thumb for " + img)
 
@@ -804,7 +805,7 @@ class Ojo(Gtk.Window):
         GObject.idle_add(_f)
 
     def get_recommended_size(self):
-        screen = self.get_screen()
+        screen = self.window.get_screen()
         width = screen.get_width() - 150
         height = screen.get_height() - 150
         if width > 1.5 * height:
@@ -815,9 +816,9 @@ class Ojo(Gtk.Window):
 
     def get_max_image_width(self):
         if self.full:
-            return self.get_screen().get_width()
+            return self.window.get_screen().get_width()
         elif self.manually_resized:
-            self.last_windowed_image_width = self.get_window().get_width() - 2 * self.margin
+            self.last_windowed_image_width = self.window.get_window().get_width() - 2 * self.margin
             return self.last_windowed_image_width
         else:
             self.last_windowed_image_width = self.get_recommended_size()[0] - 2*self.margin
@@ -825,9 +826,9 @@ class Ojo(Gtk.Window):
 
     def get_max_image_height(self):
         if self.full:
-            return self.get_screen().get_height()
+            return self.window.get_screen().get_height()
         elif self.manually_resized:
-            self.last_windowed_image_height = self.get_window().get_height() - 2 * self.margin
+            self.last_windowed_image_height = self.window.get_window().get_height() - 2 * self.margin
             return self.last_windowed_image_height
         else:
             self.last_windowed_image_height = self.get_recommended_size()[1] - 2*self.margin
@@ -841,8 +842,10 @@ class Ojo(Gtk.Window):
         new_height = max(self.pixbuf.get_height() + 2 * self.margin, self.get_height())
         if new_width > self.get_width() or new_height > self.get_height():
             self.last_automatic_resize = time.time()
-            self.resize(new_width, new_height)
-            self.move((self.get_screen().get_width() - new_width) // 2, (self.get_screen().get_height() - new_height) // 2)
+            self.window.resize(new_width, new_height)
+            self.window.move(
+                (self.window.get_screen().get_width() - new_width) // 2,
+                (self.window.get_screen().get_height() - new_height) // 2)
 
     def go(self, direction, start_position=None):
         search = getattr(self, "search_text", "")
@@ -877,9 +880,9 @@ class Ojo(Gtk.Window):
 
         self.update_margins()
         if self.full:
-            self.fullscreen()
+            self.window.fullscreen()
         elif not first_run:
-            self.unfullscreen()
+            self.window.unfullscreen()
         self.last_automatic_resize = time.time()
 
         self.update_cursor()
@@ -887,10 +890,10 @@ class Ojo(Gtk.Window):
 
     def update_margins(self):
         if self.full:
-            self.make_transparent(self, color='rgba(77, 75, 69, 1)' if self.mode == 'folder' else 'rgba(0, 0, 0, 1)')
+            self.make_transparent(self.window, color='rgba(77, 75, 69, 1)' if self.mode == 'folder' else 'rgba(0, 0, 0, 1)')
             self.set_margins(0)
         else:
-            self.make_transparent(self, color='rgba(77, 75, 69, 0.9)')
+            self.make_transparent(self.window, color='rgba(77, 75, 69, 0.9)')
             self.set_margins(30)
 
     def update_cursor(self):
@@ -904,9 +907,9 @@ class Ojo(Gtk.Window):
             self.set_cursor(Gdk.CursorType.ARROW)
 
     def set_cursor(self, cursor):
-        if self.get_window() and (
-            not self.get_window().get_cursor() or cursor != self.get_window().get_cursor().get_cursor_type()):
-            self.get_window().set_cursor(Gdk.Cursor.new_for_display(Gdk.Display.get_default(), cursor))
+        if self.window.get_window() and (
+            not self.window.get_window().get_cursor() or cursor != self.window.get_window().get_cursor().get_cursor_type()):
+            self.window.get_window().set_cursor(Gdk.Cursor.new_for_display(Gdk.Display.get_default(), cursor))
 
     def set_mode(self, mode):
         self.mode = mode
@@ -914,7 +917,7 @@ class Ojo(Gtk.Window):
             self.show(self.selected)
         elif self.mode == "folder":
             self.shown = None
-            self.set_title(self.folder)
+            self.window.set_title(self.folder)
 
         self.update_cursor()
         self.scroll_window.set_visible(self.mode == 'image')
@@ -991,10 +994,10 @@ class Ojo(Gtk.Window):
         self.update_zoom_scrolling()
 
     def get_width(self):
-        return self.get_window().get_width() if self.get_window() else 1
+        return self.window.get_window().get_width() if self.window.get_window() else 1
 
     def get_height(self):
-        return self.get_window().get_height() if self.get_window() else 1
+        return self.window.get_window().get_height() if self.window.get_window() else 1
 
     def mouse_motion(self, widget, event):
         if not self.mousedown_zoomed and not self.mousedown_panning:
