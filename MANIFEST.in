@@ -1,6 +1,0 @@
-recursive-include ojo *.py *.js *.html *.gif *.png *.css
-recursive-include bin *.*
-recursive-include media *.*
-recursive-exclude experiments *.*
-recursive-exclude tests *.*
-include ojo.desktop

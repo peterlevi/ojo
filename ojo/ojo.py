@@ -1,17 +1,17 @@
 #!/usr/bin/python
 # -*- Mode: Python; coding: utf-8; indent-tabs-mode: nil; tab-width: 4 -*-
 ### BEGIN LICENSE
-# Copyright (c) 2012, Peter Levi <peterlevi@peterlevi.com>
-# This program is free software: you can redistribute it and/or modify it
-# under the terms of the GNU General Public License version 3, as published
+# Copyright (C) 2013 Peter Levi <peterlevi@peterlevi.com>
+# This program is free software: you can redistribute it and/or modify it 
+# under the terms of the GNU General Public License version 3, as published 
 # by the Free Software Foundation.
-#
-# This program is distributed in the hope that it will be useful, but
-# WITHOUT ANY WARRANTY; without even the implied warranties of
-# MERCHANTABILITY, SATISFACTORY QUALITY, or FITNESS FOR A PARTICULAR
+# 
+# This program is distributed in the hope that it will be useful, but 
+# WITHOUT ANY WARRANTY; without even the implied warranties of 
+# MERCHANTABILITY, SATISFACTORY QUALITY, or FITNESS FOR A PARTICULAR 
 # PURPOSE.  See the GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License along
+# 
+# You should have received a copy of the GNU General Public License along 
 # with this program.  If not, see <http://www.gnu.org/licenses/>.
 ### END LICENSE
 
@@ -22,36 +22,14 @@ import os
 import sys
 import time
 import util
+import logging
+import ojoconfig
 
 killed = False
 
 def kill(*args):
     global killed
     killed = True
-
-class Easylog:
-    def __init__(self, level):
-        self.level = level
-
-    def log(self, x):
-        print x
-
-    def info(self, x):
-        if self.level >= 0:
-            print x
-
-    def debug(self, x):
-        if self.level >= 1:
-            print x
-
-    def warning(self, x):
-        print x
-
-    def exception(self, x):
-        import logging
-        logging.exception(x)
-
-logging = Easylog(1 if "-v" in sys.argv or "--verbose" in sys.argv else 0)
 
 class Ojo():
     def __init__(self):
@@ -455,7 +433,7 @@ class Ojo():
     def render_browser(self):
         from gi.repository import WebKit
 
-        with open(os.path.join(os.path.dirname(os.path.normpath(__file__)), 'browse.html')) as f:
+        with open(ojoconfig.get_data_file('browse.html')) as f:
             html = f.read()
 
         self.web_view = WebKit.WebView()
@@ -473,7 +451,7 @@ class Ojo():
         self.web_view.connect("status-bar-text-changed", nav)
 
         self.web_view.connect('document-load-finished', lambda wf, data: self.render_folder_view())
-        self.web_view.load_string(html, "text/html", "UTF-8", "file://" + os.path.dirname(__file__) + "/")
+        self.web_view.load_string(html, "text/html", "UTF-8", util.path2url(ojoconfig.get_data_path()) + '/')
 
         self.make_transparent(self.web_view)
         self.web_view.set_visible(True)

@@ -1,4 +1,4 @@
 ojo
 ===
 
-A fast image viewer
+A fast and good-looking image viewer

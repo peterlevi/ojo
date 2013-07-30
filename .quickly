@@ -1,0 +1,4 @@
+project = ojo
+version = 12.04
+template = ubuntu-cli
+version_ubuntu-application = 12.04
