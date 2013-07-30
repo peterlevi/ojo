@@ -69,5 +69,7 @@ DistUtilsExtra.auto.setup(
     description='A fast image viewer',
     long_description='A fast and pretty image viewer, convenient for photographic work',
     url='https://launchpad.net/ojo',
-    cmdclass={'install': InstallAndUpdateDataDirectory}
+    cmdclass={'install': InstallAndUpdateDataDirectory},
+    packages = ['ojo'],
+    package_data = {'ojo': ["ojo/*.*", "media/*.*"]}
     )
