@@ -16,7 +16,8 @@
 ### END LICENSE
 
 
-# We import here only the things necessary to start and show an image. The rest are imported lazily so they do not slow startup
+# We import here only the things necessary to start and show an image.
+# The rest are imported lazily so they do not slow startup
 from gi.repository import Gtk, Gdk, GdkPixbuf, GObject
 import os
 import sys
@@ -27,9 +28,11 @@ import ojoconfig
 
 killed = False
 
+
 def kill(*args):
     global killed
     killed = True
+
 
 class Ojo():
     def __init__(self):
@@ -58,10 +61,11 @@ class Ojo():
         self.box.add(self.scroll_window)
         self.window.add(self.box)
 
-        self.window.set_events(Gdk.EventMask.BUTTON_PRESS_MASK |
-                        Gdk.EventMask.BUTTON_RELEASE_MASK |
-                        Gdk.EventMask.SCROLL_MASK |
-                        Gdk.EventMask.POINTER_MOTION_MASK)
+        self.window.set_events(
+            Gdk.EventMask.BUTTON_PRESS_MASK |
+            Gdk.EventMask.BUTTON_RELEASE_MASK |
+            Gdk.EventMask.SCROLL_MASK |
+            Gdk.EventMask.POINTER_MOTION_MASK)
 
         self.mousedown_zoomed = False
         self.mousedown_panning = False
@@ -113,8 +117,8 @@ class Ojo():
         else:
             GObject.timeout_add(100, lambda: self.js(command))
 
-    def select_in_browser(self, file):
-        self.js("select('%s')" % (file if self.is_command(file) else util.path2url(file)))
+    def select_in_browser(self, path):
+        self.js("select('%s')" % (path if self.is_command(path) else util.path2url(path)))
 
     def update_zoom_scrolling(self):
         if self.zoom:
@@ -169,7 +173,8 @@ class Ojo():
             self.image_formats = {"bmp", "dib", "dcx", "eps", "ps", "gif", "im", "jpg", "jpe", "jpeg", "pcd",
                                   "pcx", "png", "pbm", "pgm", "ppm", "psd", "tif", "tiff", "xbm", "xpm"}
 
-            # RAW formats, as per https://en.wikipedia.org/wiki/Raw_image_format#Annotated_list_of_file_extensions, we rely on pyexiv2 previews for these:
+            # RAW formats, as per https://en.wikipedia.org/wiki/Raw_image_format#Annotated_list_of_file_extensions,
+            # we rely on pyexiv2 previews for these:
             self.image_formats = self.image_formats.union(
                     {"3fr", "ari", "arw", "srf", "sr2", "bay", "crw", "cr2", "cap", "iiq",
                      "eip", "dcs", "dcr", "drf", "k25", "kdc", "dng", "erf", "fff", "mef", "mos", "mrw",
@@ -185,7 +190,8 @@ class Ojo():
     def is_image(self, filename):
         """Decide if something might be a supported image based on extension"""
         try:
-            return os.path.isfile(filename) and os.path.splitext(filename)[1].lower()[1:] in self.get_supported_image_extensions()
+            return os.path.isfile(filename) and \
+                   os.path.splitext(filename)[1].lower()[1:] in self.get_supported_image_extensions()
         except Exception:
             return False
 
@@ -665,21 +671,21 @@ class Ojo():
         def _queue_thread():
             logging.info("Starting cache thread")
             while True:
-                if len(self.pix_cache[False]) > 20:   #TODO: Do we want a proper LRU policy, or this is good enough?
+                if len(self.pix_cache[False]) > 20:   # TODO: Do we want a proper LRU policy, or this is good enough?
                     self.pix_cache[False] = {}
                 if len(self.pix_cache[True]) > 20:
                     self.pix_cache[True] = {}
 
-                file, zoom = self.cache_queue.get()
+                path, zoom = self.cache_queue.get()
 
                 try:
-                    if not file in self.pix_cache[zoom]:
-                        logging.debug("Cache thread loads file %s, zoomed %s" % (file, zoom))
-                        self.current_preparing = file, zoom
+                    if not path in self.pix_cache[zoom]:
+                        logging.debug("Cache thread loads file %s, zoomed %s" % (path, zoom))
+                        self.current_preparing = path, zoom
                         try:
-                            self.get_pixbuf(file, force=True, zoom=zoom)
+                            self.get_pixbuf(path, force=True, zoom=zoom)
                         except Exception:
-                            logging.exception("Could not cache file " + file)
+                            logging.exception("Could not cache file " + path)
                         finally:
                             self.current_preparing = None
                             self.preparing_event.set()
@@ -695,8 +701,8 @@ class Ojo():
     def get_config_dir(self):
         return util.makedirs(os.path.expanduser('~/.config/ojo/config/'))
 
-    def get_config_file(self, file):
-        return os.path.join(self.get_config_dir(), file)
+    def get_config_file(self, filename):
+        return os.path.join(self.get_config_dir(), filename)
 
     def start_thumbnail_thread(self):
         import threading
@@ -799,7 +805,7 @@ class Ojo():
             self.last_windowed_image_width = self.window.get_window().get_width() - 2 * self.margin
             return self.last_windowed_image_width
         else:
-            self.last_windowed_image_width = self.get_recommended_size()[0] - 2*self.margin
+            self.last_windowed_image_width = self.get_recommended_size()[0] - 2 * self.margin
             return self.last_windowed_image_width
 
     def get_max_image_height(self):
@@ -809,7 +815,7 @@ class Ojo():
             self.last_windowed_image_height = self.window.get_window().get_height() - 2 * self.margin
             return self.last_windowed_image_height
         else:
-            self.last_windowed_image_height = self.get_recommended_size()[1] - 2*self.margin
+            self.last_windowed_image_height = self.get_recommended_size()[1] - 2 * self.margin
             return self.last_windowed_image_height
 
     def increase_size(self):
@@ -827,7 +833,8 @@ class Ojo():
 
     def go(self, direction, start_position=None):
         search = getattr(self, "search_text", "")
-        applicable = self.images if not search else [f for f in self.images if os.path.basename(f).lower().find(search) >= 0]
+        applicable = self.images if not search else \
+            [f for f in self.images if os.path.basename(f).lower().find(search) >= 0]
         filename = None
         position = start_position - direction if start_position is not None else applicable.index(self.selected)
         position = (position + direction + len(applicable)) % len(applicable)
@@ -1009,6 +1016,7 @@ class Ojo():
             mousedown_time = time.time()
             x = event.x
             y = event.y
+
             def act():
                 if mousedown_time > self.last_mouseup_time:
                     self.mousedown_zoomed = True
@@ -1019,6 +1027,7 @@ class Ojo():
                     self.refresh_image()
                     self.update_zoomed_views()
                     self.update_cursor()
+
             GObject.timeout_add(250, act)
 
     def register_action(self):
