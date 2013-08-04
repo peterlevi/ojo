@@ -97,8 +97,8 @@
             margin: 10px;
             float: left;
             overflow: hidden;
-            cursor: pointer;
             box-shadow: 3px 3px 5px 0px #333;
+            height: 120px;
         }
 
         .item.selected {
@@ -323,7 +323,12 @@
         clearTimeout(pending_add_timeouts[file]);
         var item = $(".item[file='" + encode_path(file) + "']");
         if (item.length) {
-            item.html("<img height='120' src='" + encode_path(thumb) + "'/>");
+            item.html(
+                "<div style='display: table-cell; vertical-align: middle; text-align: center; width:60px; height:120px;'>" +
+                "<div style='display: inline-block'>" +
+                "<img style='max-height: 120px;' src='" + encode_path(thumb) + "'/>" +
+                "</div>" +
+                "</div>");
         } else {
             pending_add_timeouts[file] = setTimeout(function () {add_image(file, thumb)}, 200);
         }
