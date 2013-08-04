@@ -961,6 +961,16 @@ class Ojo():
         if self.mode == 'folder' and not self.manually_resized:
             self.resize_and_center(*self.get_recommended_size())
 
+    def clear_thumbnails(self, folder):
+        images = filter(self.is_image, map(lambda f: os.path.join(folder, f), os.listdir(folder)))
+        for img in images:
+            cached = self.get_cached_thumbnail_path(img, True)
+            if os.path.isfile(cached) and os.path.split(cached)[0] == self.get_thumbs_cache_dir(120):
+                try:
+                    os.unlink(cached)
+                except IOError:
+                    logging.exception("Could not delete %s" % cached)
+
     def process_key(self, widget=None, event=None, key=None, skip_browser=False):
         key = key or Gdk.keyval_name(event.keyval)
         if key == 'Escape' and (self.mode == 'image' or skip_browser):
@@ -968,6 +978,8 @@ class Ojo():
         elif key in ("F11",) or (self.mode == 'image' and key in ('f', 'F')):
             self.toggle_fullscreen()
         elif key == 'F5':
+            if event and event.state & Gdk.ModifierType.CONTROL_MASK and self.mode == "folder":
+                self.clear_thumbnails(self.folder)
             self.show(self.selected if self.mode == 'image' else self.folder)
         elif key == 'Return':
             if self.mode == 'image':
@@ -1126,9 +1138,9 @@ class Ojo():
     def pixbuf_to_b64(self, pixbuf):
         return pixbuf.save_to_bufferv('png', [], [])[1].encode("base64").replace('\n', '')
 
-    def get_cached_thumbnail_path(self, filename):
-        # Use "smaller" types of images directly - webkit will handle transparency, animated gifs, etc.
-        if os.path.splitext(filename)[1].lower() in (('.gif', '.svg')):
+    def get_cached_thumbnail_path(self, filename, force_cache=False):
+        # Use gifs directly - webkit will handle transparency, animation, etc.
+        if not force_cache and os.path.splitext(filename)[1].lower() == '.gif':
             return filename
 
         import hashlib
@@ -1140,21 +1152,35 @@ class Ojo():
 
     def prepare_thumbnail(self, filename, width, height):
         cached = self.get_cached_thumbnail_path(filename)
+
+        def use_pil():
+            pil = self.get_pil(filename, width, height)
+            format = {".gif": "GIF", ".png": "PNG", ".svg": "PNG"}.get(ext, 'JPEG')
+            for format in (format, 'JPEG', 'GIF', 'PNG'):
+                try:
+                    pil.save(cached, format)
+                    if os.path.getsize(cached):
+                        break
+                except Exception, e:
+                    logging.exception('Could not save thumbnail in format %s:' % format)
+
+        def use_pixbuf():
+            pixbuf = self.get_pixbuf(filename, True, False, 360, 120)
+            pixbuf.savev(cached, 'png', [], [])
+
         if not os.path.exists(cached):
-            try:
-                pil = self.get_pil(filename, width, height)
-                ext = os.path.splitext(filename)[1].lower()
-                format = {".gif": "GIF", ".png" : "PNG"}.get(ext, 'JPEG')
-                for format in (format, 'JPEG', 'GIF', 'PNG'):
-                    try:
-                        pil.save(cached, format)
-                        if os.path.getsize(cached):
-                            break
-                    except Exception, e:
-                        logging.exception('Could not save thumbnail in format %s:' % format)
-            except Exception:
-                pixbuf = self.get_pixbuf(filename, True, False, 360, 120)
-                pixbuf.savev(cached, 'jpeg', [], [])
+            ext = os.path.splitext(filename)[1].lower()
+            if not ext in ('.gif', '.png', '.svg'):
+                try:
+                    use_pil()
+                except Exception:
+                    use_pixbuf()
+            else:
+                try:
+                    use_pixbuf()
+                except Exception:
+                    use_pil()
+
         if not os.path.isfile(cached) or not os.path.getsize(cached):
             raise IOError('Could not create thumbnail')
         return cached
