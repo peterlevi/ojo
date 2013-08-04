@@ -869,10 +869,13 @@ class Ojo():
         new_height = max(300, self.pixbuf.get_height() + 2 * self.margin, self.get_height())
         if new_width > self.get_width() or new_height > self.get_height():
             self.last_automatic_resize = time.time()
-            self.window.resize(new_width, new_height)
-            self.window.move(
-                (self.window.get_screen().get_width() - new_width) // 2,
-                (self.window.get_screen().get_height() - new_height) // 2)
+            self.resize_and_center(new_width, new_height)
+
+    def resize_and_center(self, new_width, new_height):
+        self.window.resize(new_width, new_height)
+        self.window.move(
+            (self.window.get_screen().get_width() - new_width) // 2,
+            (self.window.get_screen().get_height() - new_height) // 2)
 
     def go(self, direction, start_position=None):
         search = getattr(self, "search_text", "")
@@ -954,6 +957,9 @@ class Ojo():
         self.browser.set_visible(self.mode == 'folder')
         self.update_margins()
         self.js("set_mode('%s')" % self.mode)
+
+        if self.mode == 'folder' and not self.manually_resized:
+            self.resize_and_center(*self.get_recommended_size())
 
     def process_key(self, widget=None, event=None, key=None, skip_browser=False):
         key = key or Gdk.keyval_name(event.keyval)
