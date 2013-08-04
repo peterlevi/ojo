@@ -25,22 +25,50 @@ import time
 import util
 import logging
 import ojoconfig
+import optparse
+
+import gettext
+from gettext import gettext as _
+gettext.textdomain('ojo')
+
+LEVELS = (logging.ERROR, logging.WARNING, logging.INFO, logging.DEBUG)
+
 
 killed = False
-
-
 def kill(*args):
     global killed
     killed = True
 
 
 class Ojo():
+    def parse_command_line(self):
+        # Support for command line options.
+        parser = optparse.OptionParser(version="%%prog %s" % ojoconfig.__version__, usage=(_("ojo [options]")))
+        parser.add_option('-d', '--debug', dest='debug_mode', action='store_true',
+                          help=_('Print the maximum debugging info (implies -vv)'))
+        parser.add_option('-v', '--verbose', dest='logging_level', action='count',
+                          help=_('set error_level output to warning, info, and then debug'))
+        parser.set_defaults(logging_level=0)
+        (self.command_options, self.command_args) = parser.parse_args()
+
+    def setup_logging(self):
+        # set the verbosity
+        if self.command_options.debug_mode:
+            self.command_options.logging_level = 3
+        logging.basicConfig(level=LEVELS[self.command_options.logging_level],
+                            format='%(asctime)s %(levelname)s %(message)s')
+
     def __init__(self):
-        path = os.path.realpath(sys.argv[-1]) if len(sys.argv) > 1 and os.path.exists(sys.argv[-1]) \
-            else os.path.expanduser('~/Pictures') # TODO get XDG dir
+        self.parse_command_line()
+        self.setup_logging()
+
+        if len(self.command_args) >= 1 and os.path.exists(self.command_args[0]):
+            path = os.path.realpath(self.command_args[0])
+        else:
+            path = os.path.expanduser('~/Pictures')
         logging.info("Started with: " + path)
 
-        self.window = Gtk.Window()
+        self.window = Gtk.Window(Gtk.WindowType.TOPLEVEL)
 
         self.window.set_position(Gtk.WindowPosition.CENTER)
 
@@ -70,11 +98,11 @@ class Ojo():
         self.mousedown_zoomed = False
         self.mousedown_panning = False
 
-        self.window.set_decorated('-d' in sys.argv or '--decorated' in sys.argv)
-        if '-m' in sys.argv or '--maximize' in sys.argv:
+        self.load_options()
+
+        self.window.set_decorated(self.options['decorated'])
+        if self.options['maximized']:
             self.window.maximize()
-        self.full = '-f' in sys.argv or '--fullscreen' in sys.argv
-        self.enlarge_smaller = '--enlarge-smaller' in sys.argv
 
         self.meta_cache = {}
         self.pix_cache = {False: {}, True: {}} # keyed by "zoomed" property
@@ -86,7 +114,7 @@ class Ojo():
         self.last_action_time = 0
         self.last_folder_change_time = time.time()
         self.shown = None
-        self.toggle_fullscreen(self.full, first_run=True)
+        self.toggle_fullscreen(self.options['fullscreen'], first_run=True)
 
         if os.path.isfile(path):
             self.last_automatic_resize = time.time()
@@ -318,6 +346,10 @@ class Ojo():
         self.last_x = event.x
         self.last_y = event.y
 
+    def window_state_changed(self, widget, event):
+        self.options['maximized'] = event.new_window_state & Gdk.WindowState.MAXIMIZED != 0
+        self.save_options()
+
     def after_quick_start(self):
         import signal
         signal.signal(signal.SIGINT, kill)
@@ -327,8 +359,6 @@ class Ojo():
         self.check_kill()
         self.folder_history = []
         self.folder_history_position = 0
-
-        self.load_options()
 
         self.set_folder(os.path.dirname(self.selected))
 
@@ -351,6 +381,7 @@ class Ojo():
         self.window.connect('motion-notify-event', self.mouse_motion)
 
         self.window.connect('configure-event', self.resized)
+        self.window.connect('window-state-event', self.window_state_changed)
 
         self.load_bookmarks()
 
@@ -363,7 +394,17 @@ class Ojo():
 
     def load_options(self):
         self.options = self.load_json('options.json', {})
-        defaults = {'sort_by': 'name', 'sort_order': 'asc', 'show_hidden': False}
+        defaults = {
+            'decorated': True,
+            'maximized': False,
+            'fullscreen': False,
+
+            'enlarge_smaller': False,
+
+            'sort_by': 'name',
+            'sort_order': 'asc',
+            'show_hidden': False
+        }
         for k, v in defaults.items():
             if not k in self.options:
                 self.options[k] = v
@@ -799,7 +840,7 @@ class Ojo():
         return min(width, screen.get_width() - 150), min(height, screen.get_height() - 150)
 
     def get_max_image_width(self):
-        if self.full:
+        if self.options['fullscreen']:
             return self.window.get_screen().get_width()
         elif self.manually_resized:
             self.last_windowed_image_width = self.window.get_window().get_width() - 2 * self.margin
@@ -809,7 +850,7 @@ class Ojo():
             return self.last_windowed_image_width
 
     def get_max_image_height(self):
-        if self.full:
+        if self.options['fullscreen']:
             return self.window.get_screen().get_height()
         elif self.manually_resized:
             self.last_windowed_image_height = self.window.get_window().get_height() - 2 * self.margin
@@ -819,7 +860,7 @@ class Ojo():
             return self.last_windowed_image_height
 
     def increase_size(self):
-        if self.manually_resized or self.zoom or self.full:
+        if self.manually_resized or self.zoom or self.options['fullscreen']:
             return
 
         new_width = max(self.pixbuf.get_width() + 2 * self.margin, self.get_width())
@@ -850,21 +891,22 @@ class Ojo():
 
     def toggle_fullscreen(self, full=None, first_run=False):
         if full is None:
-            full = not self.full
-        self.full = full
+            full = not self.options['fullscreen']
+        self.options['fullscreen'] = full
+        self.save_options()
 
         self.pix_cache[False] = {}
 
         if not first_run and self.shown:
             width = height = None
-            if not self.full:
+            if not self.options['fullscreen']:
                 width = getattr(self, "last_windowed_image_width", None)
                 height = getattr(self, "last_windowed_image_height", None)
             self.get_pixbuf(self.shown, force=True, width=width, height=height) # caches the new image before we start changing sizes
             self.box.set_visible(False)
 
         self.update_margins()
-        if self.full:
+        if self.options['fullscreen']:
             self.window.fullscreen()
         elif not first_run:
             self.window.unfullscreen()
@@ -874,7 +916,7 @@ class Ojo():
         self.js('setTimeout(scroll_to_selected, 100)')
 
     def update_margins(self):
-        if self.full:
+        if self.options['fullscreen']:
             self.make_transparent(self.window, color='rgba(77, 75, 69, 1)' if self.mode == 'folder' else 'rgba(0, 0, 0, 1)')
             self.set_margins(0)
         else:
@@ -886,7 +928,7 @@ class Ojo():
             self.set_cursor(Gdk.CursorType.HAND1)
         elif self.mousedown_panning:
             self.set_cursor(Gdk.CursorType.HAND1)
-        elif self.full and self.mode == 'image':
+        elif self.options['fullscreen'] and self.mode == 'image':
             self.set_cursor(Gdk.CursorType.BLANK_CURSOR)
         else:
             self.set_cursor(Gdk.CursorType.ARROW)
@@ -1138,14 +1180,16 @@ class Ojo():
             image_width = image_height = None
 
         if oriented:
+            enlarge_smaller = self.options['enlarge_smaller']
+
             try:
-                if not image_width and not self.enlarge_smaller:
+                if not image_width and not enlarge_smaller:
                     format, image_width, image_height = GdkPixbuf.Pixbuf.get_file_info(filename)
                 if not zoom:
                     pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(
                         filename,
-                        min(width, image_width if not self.enlarge_smaller else width),
-                        min(height, image_height if not self.enlarge_smaller else height),
+                        min(width, image_width if not enlarge_smaller else width),
+                        min(height, image_height if not enlarge_smaller else height),
                         True)
                 else:
                     pixbuf = GdkPixbuf.Pixbuf.new_from_file(filename)
@@ -1161,8 +1205,8 @@ class Ojo():
                 preview = full_meta.previews[-1].data
                 pixbuf = self.pixbuf_from_data(
                     preview,
-                    min(width, image_width if not self.enlarge_smaller else width),
-                    min(height, image_height if not self.enlarge_smaller else height))
+                    min(width, image_width if not enlarge_smaller else width),
+                    min(height, image_height if not enlarge_smaller else height))
                 self.pix_cache[zoom][filename] = pixbuf, width
                 logging.debug("Loaded from preview")
                 return pixbuf
