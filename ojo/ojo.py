@@ -115,6 +115,8 @@ class Ojo():
         self.last_folder_change_time = time.time()
         self.shown = None
         self.toggle_fullscreen(self.options['fullscreen'], first_run=True)
+        if self.options['fullscreen']:
+            self.window.resize(*self.get_recommended_size())
 
         if os.path.isfile(path):
             self.last_automatic_resize = time.time()
@@ -863,8 +865,8 @@ class Ojo():
         if self.manually_resized or self.zoom or self.options['fullscreen']:
             return
 
-        new_width = max(self.pixbuf.get_width() + 2 * self.margin, self.get_width())
-        new_height = max(self.pixbuf.get_height() + 2 * self.margin, self.get_height())
+        new_width = max(400, self.pixbuf.get_width() + 2 * self.margin, self.get_width())
+        new_height = max(300, self.pixbuf.get_height() + 2 * self.margin, self.get_height())
         if new_width > self.get_width() or new_height > self.get_height():
             self.last_automatic_resize = time.time()
             self.window.resize(new_width, new_height)
