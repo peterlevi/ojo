@@ -847,6 +847,11 @@ class Ojo():
         elif self.manually_resized:
             self.last_windowed_image_width = self.window.get_window().get_width() - 2 * self.margin
             return self.last_windowed_image_width
+        elif self.options['maximized']:
+            if self.window.get_window():
+                return self.window.get_window().get_width() - 2 * self.margin
+            else:
+                return self.window.get_screen().get_width() - 40 - 2 * self.margin
         else:
             self.last_windowed_image_width = self.get_recommended_size()[0] - 2 * self.margin
             return self.last_windowed_image_width
@@ -857,6 +862,11 @@ class Ojo():
         elif self.manually_resized:
             self.last_windowed_image_height = self.window.get_window().get_height() - 2 * self.margin
             return self.last_windowed_image_height
+        elif self.options['maximized']:
+            if self.window.get_window():
+                return self.window.get_window().get_height() - 2 * self.margin
+            else:
+                return self.window.get_screen().get_height() - 40 - 2 * self.margin
         else:
             self.last_windowed_image_height = self.get_recommended_size()[1] - 2 * self.margin
             return self.last_windowed_image_height
@@ -1170,7 +1180,7 @@ class Ojo():
 
         if not os.path.exists(cached):
             ext = os.path.splitext(filename)[1].lower()
-            if not ext in ('.gif', '.png', '.svg'):
+            if not ext in ('.gif', '.png', '.svg', '.xpm'):
                 try:
                     use_pil()
                 except Exception:
