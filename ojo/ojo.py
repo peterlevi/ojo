@@ -65,7 +65,7 @@ class Ojo():
         if len(self.command_args) >= 1 and os.path.exists(self.command_args[0]):
             path = os.path.realpath(self.command_args[0])
         else:
-            path = os.path.expanduser('~/Pictures')
+            path = util.get_xdg_pictures_folder()
         logging.info("Started with: " + path)
 
         self.window = Gtk.Window(Gtk.WindowType.TOPLEVEL)
