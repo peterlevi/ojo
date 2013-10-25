@@ -71,7 +71,7 @@ class Cl:
             "</body></html>", "text/html", "UTF-8", "file://" + os.path.dirname(__file__) + "/")
         box.add(self.web_view)
 
-#         window.show_all()
+        window.show_all()
 #
 #         def go(*args):
 #             self.current = images[(images.index(self.current) + 1) % len(images)]
