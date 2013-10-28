@@ -433,13 +433,14 @@ class Ojo():
             with open(self.get_config_file(filename)) as f:
                 return json.load(f)
         except Exception:
+            logging.exception("Could not load options, using defaults")
             self.save_json(filename, default_data)
             return default_data
 
     def save_json(self, filename, data):
         import json
         with open(self.get_config_file(filename), 'w') as f:
-            json.dump(data, f)
+            json.dump(data, f, ensure_ascii=True, indent=4)
 
     def make_transparent(self, widget, color='rgba(0, 0, 0, 0)'):
         rgba = Gdk.RGBA()
