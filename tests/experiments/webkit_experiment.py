@@ -25,11 +25,11 @@ class Cl:
         Gtk.init(sys.argv)
 
         window = Gtk.Window()
-        window.resize(800, 600)
+        window.resize(1000, 800)
         window.set_title("Webkit tests window")          # Window's title
         window.move(100, 100)
         window.connect('destroy', lambda x: Gtk.main_quit())  # Connect signal 'destroy'
-        window.set_decorated(False)
+        #window.set_decorated(False)
 
         self.screen = window.get_screen()
 
@@ -49,7 +49,7 @@ class Cl:
 
         folder = '/d/Pics/Wallpapers/Favorites/'
         images = sorted(os.path.join(folder, f) for f in os.listdir(folder) if f.endswith('.jpg'))
-        self.current = images[0]
+        self.current = images[100]
 
         self.web_view = WebKit.WebView()
         self.web_view.set_transparent(True)
@@ -57,7 +57,11 @@ class Cl:
         self.web_view.set_can_focus(True)
         self.web_view.load_string("<html><body style='background: rgba(0, 0, 0, 0); color: white;'><img id='i' src='data:image/png;base64," +
                                   b64(self.current) + "'/></body></html>", "text/html", "UTF-8", "file://" + os.path.dirname(__file__) + "/")
-        box.add(self.web_view)
+
+        self.scroll = Gtk.ScrolledWindow()
+        self.scroll.add_with_viewport(self.web_view)
+        make_transparent(self.scroll.get_child())
+        box.add(self.scroll)
 
         window.show_all()
 

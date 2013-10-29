@@ -648,7 +648,7 @@ class Ojo():
 
             # Subfolders
             subfolders = self.filter_hidden([os.path.join(self.folder, f) for f in sorted(os.listdir(self.folder))
-                          if os.path.isdir(os.path.join(self.folder, f))])
+                                             if os.path.isdir(os.path.join(self.folder, f))])
             if subfolders:
                 categories.append({'label': 'Subfolders', 'items': [self.get_folder_item(sub) for sub in subfolders]})
 
