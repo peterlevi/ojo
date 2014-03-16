@@ -67,7 +67,10 @@ class Ojo():
             path = os.path.realpath(self.command_args[0])
         else:
             path = self.options['folder'].encode('utf-8')
-        logging.info("Started with: " + path)
+        logging.info("Started with: %s" % path)
+        if not os.path.exists(path):
+            logging.warning("%s does not exist, reverting to %s" % (path, util.get_xdg_pictures_folder()))
+            path = util.get_xdg_pictures_folder()
 
         self.window = Gtk.Window(Gtk.WindowType.TOPLEVEL)
 
