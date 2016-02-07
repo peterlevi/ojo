@@ -939,6 +939,7 @@ class Ojo():
         self.last_automatic_resize = time.time()
 
         self.update_cursor()
+        self.js('toggle_fullscreen(' + ('true' if full else 'false') + ')')
         self.js('setTimeout(scroll_to_selected, 100)')
 
     def update_margins(self):

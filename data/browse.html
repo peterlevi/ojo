@@ -31,7 +31,7 @@
         }
 
         body {
-            background: rgba(0, 0, 0, 0);
+            background: rgba(77, 75, 69, 0.9);
             overflow-x: hidden;
         }
 
@@ -211,6 +211,10 @@
         if (mode == 'folder') {
             scroll_to_selected();
         }
+    }
+
+    function toggle_fullscreen(fullscreen) {
+        $('body').css('background', fullscreen ? 'rgba(77, 75, 69, 1)' : 'rgba(77, 75, 69, 0.9)')
     }
 
     function render_folders(data) {
