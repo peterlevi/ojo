@@ -1,7 +1,9 @@
 #!/usr/bin/make -f
-
-#exports specified using stdeb Setup-Env-Vars:
-#export DH_OPTIONS=--buildsystem=python_distutils
-
 %:
+ifneq ($(shell dh -l | grep -xF translations),)
+	dh $@ --with python2,translations
+else
 	dh $@ --with python2
+endif
+
+
