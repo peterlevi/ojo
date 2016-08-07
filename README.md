@@ -33,7 +33,7 @@ F11 - toggles fullscreen (also F when viewing a single image)
 [browse mode] Backspace moves up, Enter selects currently active link
 ```
 
-## Screenshots.
+## Screenshots
 Single image view:
 ![Ojo - Single image view](http://i.imgur.com/oa1Dr2I.png)
 
