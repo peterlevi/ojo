@@ -11,7 +11,8 @@
 5. It should be easy to quickly zoom-in to 100% to a certain part of the image. [we have zooming to 100% now and fit-to-window, but no other-finer grain zooming options]
 6. It should provide some simple but convenient Trash, Copy and Move functionality. [nothing of these yet]
 
-Ojo is based on these technologies: Python, GTK and HTML/JS/CSS in an embedded WebKit
+## Tech stack
+Ojo is based on these technologies: Python, GTK and HTML/JS/CSS with jQuery in an embedded WebKit
 
 ## Installation
 To install on Ubuntu, Mint or other Ubuntu derivatives:
