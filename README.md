@@ -12,3 +12,10 @@ Ojo's goals:
 1. It should provide some simple but convenient Trash, Copy and Move functionality. [nothing of these yet]
 
 Ojo is based on these technologies: Python, GTK and HTML/JS/CSS in an embedded WebKit
+
+To install on Ubuntu, Mint or other Ubuntu derivatives:
+```
+sudo add-apt-repository -y ppa:ojo/daily
+sudo apt-get update
+sudo apt-get install ojo
+```
