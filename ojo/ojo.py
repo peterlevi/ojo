@@ -1112,7 +1112,7 @@ class Ojo():
                     self.update_zoomed_views()
                     self.update_cursor()
 
-            GObject.timeout_add(250, act)
+            GObject.timeout_add(20, act)
 
     def register_action(self):
         self.last_action_time = time.time()
@@ -1130,8 +1130,6 @@ class Ojo():
         elif self.mousedown_panning and (event.x != self.mousedown_x or event.y != self.mousedown_y):
             self.scroll_h = self.scroll_window.get_hadjustment().get_value()
             self.scroll_v = self.scroll_window.get_vadjustment().get_value()
-        else:
-            self.go(-1 if event.x < 0.5 * self.get_width() else 1)
         self.mousedown_zoomed = False
         self.mousedown_panning = False
         self.update_cursor()
