@@ -201,6 +201,8 @@
     var goto_visible_timeout;
     var pending_add_timeouts = {};
 
+    var thumb_height = 120;
+
     function python(command) {
         console.log('Python command: ' + command);
 		window.status = new Date().getTime() + '|' + command;
@@ -211,6 +213,11 @@
         if (mode == 'folder') {
             scroll_to_selected();
         }
+    }
+
+    function set_thumb_height(new_thumb_height) {
+        console.log('Setting thumb height: ' + new_thumb_height);
+        thumb_height = new_thumb_height;
     }
 
     function toggle_fullscreen(fullscreen) {
@@ -288,8 +295,8 @@
         }
 
 	    var html = _.template(
-            "<div class='item selectable match' file='<%= file %>' filename='<%= name %>'>" +
-            "<div class='holder' style='width: <%= width %> px'><span class='holder-name'><%= name %></span></div>" +
+            "<div class='item selectable match' style='height: <%= thumb_height %>px' file='<%= file %>' filename='<%= name %>'>" +
+            "<div class='holder' style='width: <%= width %> px; height: <%= thumb_height %>px'><span class='holder-name'><%= name %></span></div>" +
             "</div>")({file: encode_path(file), name: esc(name), width: width});
 
         var elem = $(html).toggleClass('selected', selected);
@@ -328,9 +335,9 @@
         var item = $(".item[file='" + encode_path(file) + "']");
         if (item.length) {
             item.html(
-                "<div style='display: table-cell; vertical-align: middle; text-align: center; width:60px; height:120px;'>" +
+                "<div style='display: table-cell; vertical-align: middle; text-align: center; width:60px; height:" + thumb_height + "px;'>" +
                 "<div style='display: inline-block'>" +
-                "<img style='max-height: 120px;' src='" + encode_path(thumb) + "'/>" +
+                "<img style='max-height: " + thumb_height + "px;' src='" + encode_path(thumb) + "'/>" +
                 "</div>" +
                 "</div>");
         } else {
@@ -427,8 +434,8 @@
 	    var applicable = $(".selectable.match").filter(function() {
 		    var candidate = $(this).offset().top;
             return direction < 0 ?
-                candidate < current && candidate > current - 2*120 :
-                candidate > current && candidate < current + 2*120;
+                candidate < current && candidate > current - 2*thumb_height :
+                candidate > current && candidate < current + 2*thumb_height;
 	    });
 	    if (applicable.length > 0) {
 		    return $(_.min(applicable, function(el) {

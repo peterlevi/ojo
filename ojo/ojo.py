@@ -429,6 +429,8 @@ class Ojo():
             'sort_order': 'asc',
             'show_hidden': False,
 
+            'thumb_height': 120,
+
             'folder': util.get_xdg_pictures_folder()
         }
         for k, v in defaults.items():
@@ -667,6 +669,8 @@ class Ojo():
         self.loading_folder = True
         thread_change_time = self.last_folder_change_time
         thread_folder = self.folder
+        thumbh = self.options['thumb_height']
+        self.js("set_thumb_height(%d)" % thumbh)
         self.js("change_folder('%s')" % util.path2url(self.folder))
 
         import threading
@@ -752,7 +756,7 @@ class Ojo():
                         meta = self.get_meta(img)
                         w, h = meta.dimensions
                         rok = not self.needs_rotation(meta)
-                        thumb_width = round(w * 120 / h) if rok else round(h * 120 / w)
+                        thumb_width = round(w * thumbh / h) if rok else round(h * thumbh / w)
                         if w and h:
                             self.js("set_dimensions('%s', '%s', '%d x %d', %d)" % (
                                 util.path2url(img),
@@ -843,7 +847,7 @@ class Ojo():
             while self.mode == "image" and time.time() - start_time < 2:
                 time.sleep(0.1)
 
-            cache_dir = self.get_thumbs_cache_dir(120)
+            cache_dir = self.get_thumbs_cache_dir(self.options['thumb_height'])
             try:
                 if not os.path.exists(cache_dir):
                     os.makedirs(cache_dir)
@@ -877,7 +881,8 @@ class Ojo():
 
     def add_thumb(self, img, use_cached=None):
         try:
-            thumb_path = use_cached or self.prepare_thumbnail(img, 360, 120)
+            th = self.options['thumb_height']
+            thumb_path = use_cached or self.prepare_thumbnail(img, 3*th, th)
             self.js("add_image('%s', '%s')" %
                     (util.path2url(img), util.path2url(thumb_path)))
             if img == self.selected:
@@ -1079,7 +1084,8 @@ class Ojo():
             map(lambda f: os.path.join(folder, f), os.listdir(folder)))
         for img in images:
             cached = self.get_cached_thumbnail_path(img, True)
-            if os.path.isfile(cached) and os.path.split(cached)[0] == self.get_thumbs_cache_dir(120):
+            if os.path.isfile(cached) and \
+                    os.path.split(cached)[0] == self.get_thumbs_cache_dir(self.options['thumb_height']):
                 try:
                     os.unlink(cached)
                 except IOError:
@@ -1268,7 +1274,7 @@ class Ojo():
         if folder.startswith(os.sep):
             folder = folder[1:]
         return os.path.join(
-            self.get_thumbs_cache_dir(120),  # cache folder root
+            self.get_thumbs_cache_dir(self.options['thumb_height']),  # cache folder root
             folder,  # mirror the original directory structure
             os.path.basename(filename) + '_' + hash + '.jpg')  # hash of the image name itself
 
@@ -1288,7 +1294,8 @@ class Ojo():
                         'Could not save thumbnail in format %s:' % format)
 
         def use_pixbuf():
-            pixbuf = self.get_pixbuf(filename, True, False, 360, 120)
+            th = self.options['thumb_height']
+            pixbuf = self.get_pixbuf(filename, True, False, 3*th, th)
             pixbuf.savev(cached, 'png', [], [])
 
         if not os.path.exists(cached):
