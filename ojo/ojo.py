@@ -1239,8 +1239,9 @@ class Ojo():
                 Gdk.ScrollDirection.RIGHT):
             return
 
-        if getattr(self, "wheel_timer", None):
-            GObject.source_remove(self.wheel_timer)
+        wheel_timer = getattr(self, "wheel_timer", None)
+        if wheel_timer:
+            GObject.source_remove(wheel_timer)
 
         direction = -1 if event.direction in (Gdk.ScrollDirection.UP, Gdk.ScrollDirection.LEFT) \
             else 1
@@ -1252,7 +1253,7 @@ class Ojo():
         return GdkPixbuf.Pixbuf.new_from_stream(input_str, None)
 
     def pixbuf_to_b64(self, pixbuf):
-        return pixbuf.save_to_bufferv('png', [], [])[1].encode("base64").replace('\n', '')
+        return pixbuf.save_to_bufferv('png', [], [])[1].encode('base64').replace('\n', '')
 
     def get_cached_thumbnail_path(self, filename, force_cache=False):
         # Use gifs directly - webkit will handle transparency, animation, etc.
@@ -1260,19 +1261,22 @@ class Ojo():
             return filename
 
         import hashlib
-        import re
         # we append modification time to ensure we're not using outdated cached images
         mtime = os.path.getmtime(filename)
         hash = hashlib.md5(filename + str(mtime)).hexdigest()
+        folder = os.path.dirname(filename)
+        if folder.startswith(os.sep):
+            folder = folder[1:]
         return os.path.join(
-            self.get_thumbs_cache_dir(120),
-            re.sub('[\W_]+', '_', filename)[:80] + '_' + hash + ".jpg")
+            self.get_thumbs_cache_dir(120),  # cache folder root
+            folder,  # mirror the original directory structure
+            os.path.basename(filename) + '_' + hash + '.jpg')  # hash of the image name itself
 
     def prepare_thumbnail(self, filename, width, height):
         cached = self.get_cached_thumbnail_path(filename)
 
         def use_pil():
-            pil = self.get_pil(filename, width, height, True)
+            pil = self.get_pil(filename, width, height)
             format = {".gif": "GIF", ".png": "PNG", ".svg": "PNG"}.get(ext, 'JPEG')
             for format in (format, 'JPEG', 'GIF', 'PNG'):
                 try:
@@ -1288,6 +1292,9 @@ class Ojo():
             pixbuf.savev(cached, 'png', [], [])
 
         if not os.path.exists(cached):
+            cache_dir = os.path.dirname(cached)
+            if not os.path.exists(cache_dir):
+                os.makedirs(cache_dir)
             ext = os.path.splitext(filename)[1].lower()
             if not ext in ('.gif', '.png', '.svg', '.xpm'):
                 try:
@@ -1342,7 +1349,7 @@ class Ojo():
             try:
                 pixbuf = GdkPixbuf.Pixbuf.new_from_file(filename)
                 logging.debug("Loaded directly")
-            except GObject.GError, e:
+            except GObject.GError:
                 pass  # below we'll use another method
 
         if not pixbuf:
