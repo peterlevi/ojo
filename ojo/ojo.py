@@ -38,6 +38,8 @@ gettext.textdomain('ojo')
 
 LEVELS = (logging.ERROR, logging.WARNING, logging.INFO, logging.DEBUG)
 
+THUMBHEIGHTS = [80, 120, 180, 240, 320, 480, 640]
+
 killed = False
 
 
@@ -1119,6 +1121,10 @@ class Ojo():
                 self.folder_history_forward()
             elif key == 'Up' and event and (event.state & (Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.MOD1_MASK)):
                 self.folder_parent()
+            elif (key == 'plus' or key == 'equal') and event and (event.state & (Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.MOD1_MASK)):
+                self.increase_thumb_height()
+            elif key == 'minus' and event and (event.state & (Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.MOD1_MASK)):
+                self.decrease_thumb_height()
             elif not skip_browser:
                 self.js("on_key('%s')" % key)
             else:
@@ -1144,6 +1150,18 @@ class Ojo():
             self.set_zoom(False)
             self.refresh_image()
             self.update_zoomed_views()
+
+    def increase_thumb_height(self):
+        bigger = [th for th in THUMBHEIGHTS if th > self.options['thumb_height']]
+        if bigger:
+            self.options['thumb_height'] = bigger[0]
+            self.change_to_folder(self.folder)
+
+    def decrease_thumb_height(self):
+        smaller = [th for th in THUMBHEIGHTS if th < self.options['thumb_height']]
+        if smaller:
+            self.options['thumb_height'] = smaller[-1]
+            self.change_to_folder(self.folder)
 
     def set_zoom(self, zoom, x_percent=None, y_percent=None):
         self.zoom = zoom
