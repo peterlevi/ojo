@@ -525,7 +525,7 @@ class Ojo():
         self.web_view.set_can_focus(True)
 
         def nav(wv, command):
-            logging.info('Received command: ' + command)
+            logging.debug('Received command: ' + command)
             if command:
                 command = command[command.index('|') + 1:]
                 index = command.index(':')
@@ -995,7 +995,7 @@ class Ojo():
         filename = None
         position = start_position - direction if start_position is not None \
             else applicable.index(self.selected)
-        position = (position + direction + len(applicable)) % len(applicable)
+        position = max(0, min(len(applicable), position + direction))
         filename = applicable[position]
 
         def _f():

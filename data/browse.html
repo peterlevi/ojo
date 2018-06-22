@@ -23,7 +23,7 @@
         * {
             margin: 0;
             padding: 0;
-            font-family: Ubuntu Light;
+            font-family: Ubuntu Light, sans-serif;
         }
         
         img {
@@ -203,9 +203,13 @@
     var pending_add_timeouts = {};
 
     var thumb_height = 120;
-
+    
+    function log(msg) {
+        // console.debug(msg);
+    }
+    
     function python(command) {
-        console.log('Python command: ' + command);
+        log('Python command: ' + command);
 		window.status = new Date().getTime() + '|' + command;
 	}
 
@@ -217,7 +221,7 @@
     }
 
     function set_thumb_height(new_thumb_height) {
-        console.log('Setting thumb height: ' + new_thumb_height);
+        log('Setting thumb height: ' + new_thumb_height);
         thumb_height = new_thumb_height;
     }
 
@@ -352,7 +356,7 @@
     }
 
     function change_folder(new_folder) {
-        console.log('Changing to folder ' + new_folder);
+        log('Changing to folder ' + new_folder);
 
         folder = new_folder;
         current = '';
@@ -398,7 +402,7 @@
         $("#filename").html(el.attr('filename') ? el.attr('filename') : '&nbsp;');
         $("#dimensions").html(el.attr('dimensions') ? el.attr('dimensions') : '&nbsp;');
 
-        console.log("Selecting " + file);
+        log("Selecting " + file);
         python("ojo-select:" + file);
         $(".selectable").removeClass('selected');
         el.addClass('selected');
@@ -408,7 +412,7 @@
     }
 
     function scroll_to_selected(el) {
-        console.log('Scroll to selected');
+        log('Scroll to selected');
         el = el || $('.selected');
         if (el.length) {
             var scrollTo;
@@ -461,7 +465,7 @@
     }
 
     function on_key(key) {
-	    console.log(key);
+	    log(key);
 	    var sel = $('.selected');
 	    if (key == 'Up' || key == 'Down') {
 		    goto(get_next_in_direction(sel, key == 'Up' ? -1 : 1), false);
@@ -508,7 +512,7 @@
     }
 
     function on_search() {
-        console.log('Searching for ' + search);
+        log('Searching for ' + search);
         python('ojo-search:' + search);
         $('#search').html(search);
         $('#search').toggle(search.length > 0);
