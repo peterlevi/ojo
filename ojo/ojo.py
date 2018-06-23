@@ -1087,7 +1087,7 @@ class Ojo():
         for img in images:
             cached = self.get_cached_thumbnail_path(img, True)
             if os.path.isfile(cached) and \
-                    os.path.split(cached)[0] == self.get_thumbs_cache_dir(self.options['thumb_height']):
+                    cached.startswith(self.get_thumbs_cache_dir(self.options['thumb_height']) + os.sep):
                 try:
                     os.unlink(cached)
                 except IOError:
@@ -1294,7 +1294,7 @@ class Ojo():
         return os.path.join(
             self.get_thumbs_cache_dir(self.options['thumb_height']),  # cache folder root
             folder,  # mirror the original directory structure
-            os.path.basename(filename) + '_' + hash + '.jpg')  # hash of the image name itself
+            os.path.basename(filename) + '_' + hash + '.jpg')  # filename + hash of the name & time
 
     def prepare_thumbnail(self, filename, width, height):
         cached = self.get_cached_thumbnail_path(filename)
