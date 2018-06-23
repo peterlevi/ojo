@@ -43,6 +43,8 @@ from imaging import (
     needs_rotation,
     auto_rotate_pixbuf,
     pil_to_pixbuf,
+    pixbuf_from_data,
+    is_image,
 )
 
 gettext.textdomain('ojo')
@@ -222,38 +224,9 @@ class Ojo():
                 self.image.set_from_pixbuf(self.pixbuf)
             self.box.set_visible(True)
 
-    def get_supported_image_extensions(self):
-        if not hasattr(self, "image_formats"):
-            # supported by PIL, as per http://infohost.nmt.edu/tcc/help/pubs/pil/formats.html:
-            self.image_formats = {"bmp", "dib", "dcx", "eps", "ps", "gif", "im", "jpg", "jpe", "jpeg", "pcd",
-                                  "pcx", "png", "pbm", "pgm", "ppm", "psd", "tif", "tiff", "xbm", "xpm"}
-
-            # RAW formats, as per https://en.wikipedia.org/wiki/Raw_image_format#Annotated_list_of_file_extensions,
-            # we rely on pyexiv2 previews for these:
-            self.image_formats = self.image_formats.union(
-                {"3fr", "ari", "arw", "srf", "sr2", "bay", "crw", "cr2", "cap", "iiq",
-                 "eip", "dcs", "dcr", "drf", "k25", "kdc", "dng", "erf", "fff", "mef", "mos", "mrw",
-                 "nef", "nrw", "orf", "pef", "ptx", "pxn", "r3d", "raf", "raw", "rw2", "raw", "rwl",
-                 "dng", "rwz", "srw", "x3f"})
-
-            # supported by GdkPixbuf:
-            for l in [f.get_extensions() for f in GdkPixbuf.Pixbuf.get_formats()]:
-                self.image_formats = self.image_formats.union(map(lambda e: e.lower(), l))
-
-        return self.image_formats
-
-    def is_image(self, filename):
-        """Decide if something might be a supported image based on extension"""
-        try:
-            return os.path.isfile(filename) and \
-                   os.path.splitext(filename)[1].lower()[1:] in \
-                   self.get_supported_image_extensions()
-        except Exception:
-            return False
-
     def get_image_list(self):
         images = filter(
-            self.is_image,
+            is_image,
             map(lambda f: os.path.join(self.folder, f), os.listdir(self.folder)))
         if not options['show_hidden']:
             images = filter(lambda f: not os.path.basename(f).startswith('.'), images)
@@ -671,7 +644,7 @@ class Ojo():
                 pos = siblings.index(self.folder)
                 if pos + 1 < len(siblings):
                     categories.append({
-                        'label': 'Next sibling',
+                        'label': 'Next folder',
                         'items': [self.get_folder_item(siblings[pos + 1])]
                     })
 
@@ -856,7 +829,7 @@ class Ojo():
         logging.debug("Priority thumbs: " + str(files))
         new_thumbs_queue = [f for f in files if not f in self.prepared_thumbs] + \
                            [f for f in self.thumbs_queue if not f in files and not f in self.prepared_thumbs]
-        new_thumbs_queue = filter(self.is_image, new_thumbs_queue)
+        new_thumbs_queue = filter(is_image, new_thumbs_queue)
         with self.thumbs_queue_lock:
             self.thumbs_queue = new_thumbs_queue
             self.thumbs_queue_event.set()
@@ -1024,7 +997,7 @@ class Ojo():
 
     def clear_thumbnails(self, folder):
         images = filter(
-            self.is_image,
+            is_image,
             map(lambda f: os.path.join(folder, f), os.listdir(folder)))
         for img in images:
             cached = self.get_cached_thumbnail_path(img, True)
@@ -1213,14 +1186,6 @@ class Ojo():
             else 1
         self.wheel_timer = GObject.timeout_add(100, lambda: self.go(direction))
 
-    def pixbuf_from_data(self, data):
-        from gi.repository import Gio
-        input_str = Gio.MemoryInputStream.new_from_data(data, None)
-        return GdkPixbuf.Pixbuf.new_from_stream(input_str, None)
-
-    def pixbuf_to_b64(self, pixbuf):
-        return pixbuf.save_to_bufferv('png', [], [])[1].encode('base64').replace('\n', '')
-
     def get_cached_thumbnail_path(self, filename, force_cache=False):
         # Use gifs directly - webkit will handle transparency, animation, etc.
         if not force_cache and os.path.splitext(filename)[1].lower() == '.gif':
@@ -1320,7 +1285,7 @@ class Ojo():
                 full_meta = meta.get('full_meta',
                                      metadata.get_full(filename))
                 preview = full_meta.previews[-1].data
-                pixbuf = self.pixbuf_from_data(preview)
+                pixbuf = pixbuf_from_data(preview)
                 logging.debug("Loaded from preview")
             except Exception, e:
                 pass  # below we'll use another method

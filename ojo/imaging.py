@@ -1,6 +1,7 @@
 # coding=utf-8
-from gi.repository import GdkPixbuf
+import os
 import logging
+from gi.repository import GdkPixbuf
 
 
 def get_pil(filename, width=None, height=None):
@@ -137,4 +138,45 @@ def pil_to_base64(pil_image):
     output.close()
     return contents.replace('\n', '')
 
+
+def pixbuf_from_data(data):
+    from gi.repository import Gio
+    input_str = Gio.MemoryInputStream.new_from_data(data, None)
+    return GdkPixbuf.Pixbuf.new_from_stream(input_str, None)
+
+
+def pixbuf_to_b64(pixbuf):
+    return pixbuf.save_to_bufferv('png', [], [])[1].encode('base64').replace('\n', '')
+
+
+def get_supported_image_extensions():
+    fn = get_supported_image_extensions
+    if not hasattr(fn, "image_formats"):
+        # supported by PIL, as per http://infohost.nmt.edu/tcc/help/pubs/pil/formats.html:
+        fn.image_formats = {"bmp", "dib", "dcx", "eps", "ps", "gif", "im", "jpg", "jpe", "jpeg", "pcd",
+                              "pcx", "png", "pbm", "pgm", "ppm", "psd", "tif", "tiff", "xbm", "xpm"}
+
+        # RAW formats, as per https://en.wikipedia.org/wiki/Raw_image_format#Annotated_list_of_file_extensions,
+        # we rely on pyexiv2 previews for these:
+        fn.image_formats = fn.image_formats.union(
+            {"3fr", "ari", "arw", "srf", "sr2", "bay", "crw", "cr2", "cap", "iiq",
+             "eip", "dcs", "dcr", "drf", "k25", "kdc", "dng", "erf", "fff", "mef", "mos", "mrw",
+             "nef", "nrw", "orf", "pef", "ptx", "pxn", "r3d", "raf", "raw", "rw2", "raw", "rwl",
+             "dng", "rwz", "srw", "x3f"})
+
+        # supported by GdkPixbuf:
+        for l in [f.get_extensions() for f in GdkPixbuf.Pixbuf.get_formats()]:
+            fn.image_formats = fn.image_formats.union(map(lambda e: e.lower(), l))
+
+    return fn.image_formats
+
+
+def is_image(filename):
+    """Decide if something might be a supported image based on extension"""
+    try:
+        return os.path.isfile(filename) and \
+               os.path.splitext(filename)[1].lower()[1:] in \
+               get_supported_image_extensions()
+    except Exception:
+        return False
 
