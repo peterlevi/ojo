@@ -1,4 +1,4 @@
-from imaging import needs_orientation, needs_rotation
+import imaging
 
 
 class Metadata:
@@ -27,8 +27,8 @@ class Metadata:
 
             # also cache the most important part
             self.cache[filename] = {
-                'needs_orientation': needs_orientation(meta),
-                'needs_rotation': needs_rotation(meta),
+                'needs_orientation': imaging.needs_orientation(meta),
+                'needs_rotation': imaging.needs_rotation(meta),
                 'width': meta.dimensions[0],
                 'height': meta.dimensions[1],
                 'orientation': meta['Exif.Image.Orientation'].value if 'Exif.Image.Orientation' in meta else None
@@ -40,3 +40,5 @@ class Metadata:
             logging.exception("Could not parse meta-info for %s" % filename)
             return None
 
+
+metadata = Metadata()

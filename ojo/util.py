@@ -1,6 +1,24 @@
 import os
 
 
+def _u(s):
+    if s is None:
+        return s
+    if isinstance(s, unicode):
+        return s
+    else:
+        return unicode(s, 'utf8')
+
+
+def _str(s):
+    if s is None:
+        return s
+    if isinstance(s, unicode):
+        return s.encode('utf8')
+    else:
+        return str(s)
+
+
 def get_folder_icon_name(path):
     try:
         from gi.repository import Gio
@@ -50,7 +68,7 @@ def makedirs(path):
 
 def path2url(path):
     import urllib
-    return 'file://' + urllib.pathname2url(path)
+    return 'file://' + urllib.pathname2url(_str(path))
 
 
 def url2path(url):

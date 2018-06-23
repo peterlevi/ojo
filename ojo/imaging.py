@@ -1,5 +1,35 @@
 # coding=utf-8
 from gi.repository import GdkPixbuf
+import logging
+
+
+def get_pil(filename, width=None, height=None):
+    from PIL import Image
+    from metadata import metadata
+
+    try:
+        pil_image = Image.open(filename)
+    except IOError:
+        import cStringIO
+        full_meta = metadata.get_full(filename)
+        pil_image = Image.open(
+            cStringIO.StringIO(full_meta.previews[-1].data))
+
+    if width is not None:
+        meta = metadata.get(filename)
+
+        pil_image.thumbnail(
+            (max(width, height), max(width, height)), Image.ANTIALIAS)
+
+        try:
+            pil_image = auto_rotate(meta['orientation'] if meta else None, pil_image)
+        except Exception:
+            logging.exception('Auto-rotation failed for %s' % filename)
+
+        if pil_image.size[0] > width or pil_image.size[1] > height:
+            pil_image.thumbnail((width, height), Image.ANTIALIAS)
+
+    return pil_image
 
 
 def needs_orientation(meta):
