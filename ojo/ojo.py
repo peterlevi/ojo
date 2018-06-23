@@ -18,21 +18,29 @@
 
 # We import here only the things necessary to start and show an image.
 # The rest are imported lazily so they do not slow startup
-import gi
-gi.require_version('WebKit', '3.0')
-gi.require_version('Gtk', '3.0')
-
-from gi.repository import Gtk, Gdk, GdkPixbuf, GObject
 import os
 import sys
 import time
 import util
 import logging
-import ojoconfig
 import optparse
-
 import gettext
 from gettext import gettext as _
+
+import gi
+gi.require_version('WebKit', '3.0')
+gi.require_version('Gtk', '3.0')
+gi.require_version('GdkPixbuf', '2.0')
+from gi.repository import Gtk, Gdk, GdkPixbuf, GObject
+
+import ojoconfig
+import metadata
+from imaging import (
+    needs_rotation,
+    auto_rotate,
+    auto_rotate_pixbuf,
+    pil_to_pixbuf,
+)
 
 gettext.textdomain('ojo')
 
@@ -116,7 +124,7 @@ class Ojo():
         if self.options['maximized']:
             self.window.maximize()
 
-        self.meta_cache = {}
+        self.metadata = metadata.Metadata()
         self.pix_cache = {False: {}, True: {}}  # keyed by "zoomed" property
         self.current_preparing = None
         self.manually_resized = False
@@ -334,7 +342,7 @@ class Ojo():
             self.prepared_thumbs = set()
         self.pix_cache[False].clear()
         self.pix_cache[True].clear()
-        self.meta_cache.clear()
+        self.metadata.clear_cache()
 
         collected = gc.collect()
         logging.debug("GC collected: %d" % collected)
@@ -476,16 +484,14 @@ class Ojo():
     def update_selected_info(self, filename):
         if self.selected != filename or not os.path.isfile(filename):
             return
-        if not filename in self.meta_cache:
-            self.get_meta(filename)
-        if filename in self.meta_cache:  # get_meta() might have failed
-            meta = self.meta_cache[filename]
-            rok = not meta[1]
+        meta = self.metadata.get(filename)
+        if meta:
+            rok = not meta['needs_rotation']
             self.js("set_dimensions('%s', '%s', '%d x %d')" % (
                 util.path2url(filename),
                 os.path.basename(filename),
-                meta[2 if rok else 3],
-                meta[3 if rok else 2]))
+                meta['width' if rok else 'height'],
+                meta['height' if rok else 'width']))
 
     def is_command(self, s):
         return s.startswith('command:')
@@ -755,9 +761,9 @@ class Ojo():
                     self.add_thumb(img, use_cached=cached)
                 else:
                     try:
-                        meta = self.get_meta(img)
+                        meta = self.metadata.get_full(img)
                         w, h = meta.dimensions
-                        rok = not self.needs_rotation(meta)
+                        rok = not needs_rotation(meta)
                         thumb_width = round(w * thumbh / h) if rok else round(h * thumbh / w)
                         if w and h:
                             self.js("set_dimensions('%s', '%s', '%d x %d', %d)" % (
@@ -903,22 +909,6 @@ class Ojo():
             self.thumbs_queue = new_thumbs_queue
             self.thumbs_queue_event.set()
 
-    def get_meta(self, filename):
-        try:
-            from pyexiv2 import ImageMetadata
-            meta = ImageMetadata(filename)
-            meta.read()
-            self.meta_cache[filename] = \
-                self.needs_orientation(meta), \
-                self.needs_rotation(meta), \
-                meta.dimensions[0], \
-                meta.dimensions[1], \
-                meta['Exif.Image.Orientation'].value if 'Exif.Image.Orientation' in meta else None
-            return meta
-        except Exception:
-            logging.exception("Could not parse meta-info for %s" % filename)
-            return None
-
     def set_margins(self, margin):
         self.margin = margin
 
@@ -995,7 +985,7 @@ class Ojo():
         filename = None
         position = start_position - direction if start_position is not None \
             else applicable.index(self.selected)
-        position = max(0, min(len(applicable), position + direction))
+        position = max(0, min(len(applicable) - 1, position + direction))
         filename = applicable[position]
 
         def _f():
@@ -1353,14 +1343,10 @@ class Ojo():
                 logging.info("Cache hit: " + filename)
                 return cached[0]
 
-        full_meta = None
-        orientation = None
-        if not filename in self.meta_cache:
-            full_meta = self.get_meta(filename)
-        if filename in self.meta_cache:
-            meta = self.meta_cache[filename]
-            orientation = meta[4]
-            image_width, image_height = meta[2], meta[3]
+        meta = self.metadata.get(filename)
+        if meta:
+            orientation = meta['orientation']
+            image_width, image_height = meta['width'], meta['height']
         else:
             image_width = image_height = None
 
@@ -1379,8 +1365,8 @@ class Ojo():
 
         if not pixbuf:
             try:
-                if not full_meta:
-                    full_meta = self.get_meta(filename)
+                full_meta = meta.get('full_meta',
+                                     self.metadata.get_full(filename))
                 preview = full_meta.previews[-1].data
                 pixbuf = self.pixbuf_from_data(preview)
                 logging.debug("Loaded from preview")
@@ -1388,10 +1374,10 @@ class Ojo():
                 pass  # below we'll use another method
 
         if not pixbuf:
-            pixbuf = self.pil_to_pixbuf(self.get_pil(filename))
+            pixbuf = pil_to_pixbuf(self.get_pil(filename))
             logging.debug("Loaded with PIL")
 
-        pixbuf = self.auto_rotate_pixbuf(orientation, pixbuf)
+        pixbuf = auto_rotate_pixbuf(orientation, pixbuf)
         if orientation in (5, 6, 7, 8):
             # needs rotation
             image_width, image_height = image_height, image_width
@@ -1424,20 +1410,18 @@ class Ojo():
             pil_image = Image.open(filename)
         except IOError:
             import cStringIO
-            full_meta = self.get_meta(filename)
+            full_meta = self.metadata.get_full(filename)
             pil_image = Image.open(
                 cStringIO.StringIO(full_meta.previews[-1].data))
 
         if width is not None:
-            if not filename in self.meta_cache:
-                self.get_meta(filename)
-            meta = self.meta_cache.get(filename, None)
+            meta = self.metadata.get(filename)
 
             pil_image.thumbnail(
                 (max(width, height), max(width, height)), Image.ANTIALIAS)
 
             try:
-                pil_image = self.auto_rotate(meta[4] if meta else None, pil_image)
+                pil_image = auto_rotate(meta['orientation'] if meta else None, pil_image)
             except Exception:
                 logging.exception('Auto-rotation failed for %s' % filename)
 
@@ -1445,107 +1429,6 @@ class Ojo():
                 pil_image.thumbnail((width, height), Image.ANTIALIAS)
 
         return pil_image
-
-    def pil_to_base64(self, pil_image):
-        import cStringIO
-        output = cStringIO.StringIO()
-        pil_image.save(output, "PNG")
-        contents = output.getvalue().encode("base64")
-        output.close()
-        return contents.replace('\n', '')
-
-    def pil_to_pixbuf(self, pil_image):
-        import cStringIO
-        if pil_image.mode != 'RGB':  # Fix IOError: cannot write mode P as PPM
-            pil_image = pil_image.convert('RGB')
-        buff = cStringIO.StringIO()
-        pil_image.save(buff, 'ppm')
-        contents = buff.getvalue()
-        buff.close()
-        loader = GdkPixbuf.PixbufLoader()
-        loader.write(contents)
-        pixbuf = loader.get_pixbuf()
-        loader.close()
-        return pixbuf
-
-    def needs_orientation(self, meta):
-        return 'Exif.Image.Orientation' in meta.keys() and meta['Exif.Image.Orientation'].value != 1
-
-    def needs_rotation(self, meta):
-        return 'Exif.Image.Orientation' in meta.keys() and meta['Exif.Image.Orientation'].value in (5, 6, 7, 8)
-
-    def auto_rotate(self, orientation, im):
-        from PIL import Image
-        # We rotate regarding to the EXIF orientation information
-        if orientation is None:
-            result = im
-        elif orientation == 1:
-            # Nothing
-            result = im
-        elif orientation == 2:
-            # Vertical Mirror
-            result = im.transpose(Image.FLIP_LEFT_RIGHT)
-        elif orientation == 3:
-            # Rotation 180°
-            result = im.transpose(Image.ROTATE_180)
-        elif orientation == 4:
-            # Horizontal Mirror
-            result = im.transpose(Image.FLIP_TOP_BOTTOM)
-        elif orientation == 5:
-            # Horizontal Mirror + Rotation 270°
-            result = im.transpose(Image.FLIP_TOP_BOTTOM).transpose(Image.ROTATE_270)
-        elif orientation == 6:
-            # Rotation 270°
-            result = im.transpose(Image.ROTATE_270)
-        elif orientation == 7:
-            # Vertical Mirror + Rotation 270°
-            result = im.transpose(Image.FLIP_LEFT_RIGHT).transpose(Image.ROTATE_270)
-        elif orientation == 8:
-            # Rotation 90°
-            result = im.transpose(Image.ROTATE_90)
-        else:
-            result = im
-
-        return result
-
-    def auto_rotate_pixbuf(self, orientation, im):
-        # prefer the orientation specified in the pixbuf, if any
-        try:
-            orientation = int(im.get_options()['orientation'])
-        except:
-            pass
-
-        # We rotate regarding to the EXIF orientation information
-        if orientation is None:
-            result = im
-        elif orientation == 1:
-            # Nothing
-            result = im
-        elif orientation == 2:
-            # Vertical Mirror
-            result = im.flip(True)
-        elif orientation == 3:
-            # Rotation 180°
-            result = im.rotate_simple(180)
-        elif orientation == 4:
-            # Horizontal Mirror
-            result = im.flip(False)
-        elif orientation == 5:
-            # Horizontal Mirror + Rotation 270°
-            result = im.flip(False).rotate_simple(270)
-        elif orientation == 6:
-            # Rotation 270°
-            result = im.rotate_simple(270)
-        elif orientation == 7:
-            # Vertical Mirror + Rotation 270°
-            result = im.flip(True).rotate_simple(270)
-        elif orientation == 8:
-            # Rotation 90°
-            result = im.rotate_simple(90)
-        else:
-            result = im
-
-        return result
 
 
 if __name__ == "__main__":
