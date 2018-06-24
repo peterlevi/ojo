@@ -312,9 +312,7 @@ class Ojo():
     def change_to_folder(self, path, modify_history_position=None):
         import gc
 
-        with self.thumbs_queue_lock:
-            self.thumbs_queue = []
-            self.prepared_thumbs = set()
+        self.thumbs.reset_queues()
         self.pix_cache[False].clear()
         self.pix_cache[True].clear()
         metadata.clear_cache()
@@ -399,7 +397,10 @@ class Ojo():
         self.start_cache_thread()
         if self.mode == "image":
             self.cache_around()
-        self.start_thumbnail_thread()
+
+        import thumbs
+        self.thumbs = thumbs.Thumbs(ojo=self)
+        self.thumbs.start_thumbnail_thread()
 
     def filter_hidden(self, files):
         return files if options['show_hidden'] else filter(
@@ -442,7 +443,7 @@ class Ojo():
                 GObject.idle_add(_do)
         elif action == 'ojo-priority':
             files = json.loads(argument)
-            self.priority_thumbs(
+            self.thumbs.priority_thumbs(
                 map(lambda f: util.url2path(f.encode('utf-8')), files))
         elif action == 'ojo-handle-key':
             self.process_key(key=argument, skip_browser=True)
@@ -615,7 +616,7 @@ class Ojo():
         import threading
         import json
 
-        def _thread():
+        def _prepare_thread():
             parent_folder = self.get_parent_folder()
 
             nav_items = [
@@ -675,7 +676,7 @@ class Ojo():
 
             pos = self.images.index(
                 self.selected) if self.selected in self.images else 0
-            self.priority_thumbs([x[1] for x in sorted(
+            self.thumbs.priority_thumbs([x[1] for x in sorted(
                 enumerate(self.images), key=lambda (i, f): abs(i - pos))])
 
             for img in self.images:
@@ -687,7 +688,7 @@ class Ojo():
                     'true' if img == self.selected else 'false',
                     180))
                 time.sleep(0.001)
-                cached = self.get_cached_thumbnail_path(img)
+                cached = self.thumbs.get_cached_thumbnail_path(img)
                 if os.path.exists(cached):
                     self.add_thumb(img, use_cached=cached)
                 else:
@@ -710,7 +711,7 @@ class Ojo():
 
             self.loading_folder = False
 
-        prepare_thread = threading.Thread(target=_thread)
+        prepare_thread = threading.Thread(target=_prepare_thread)
         prepare_thread.daemon = True
         prepare_thread.start()
 
@@ -764,75 +765,23 @@ class Ojo():
         cache_thread.daemon = True
         cache_thread.start()
 
-    def get_thumbs_cache_dir(self, height):
-        return os.path.expanduser('~/.config/ojo/cache/%d' % height)
-
-    def start_thumbnail_thread(self):
-        import threading
-        self.prepared_thumbs = set()
-        self.thumbs_queue = []
-        self.thumbs_queue_event = threading.Event()
-        self.thumbs_queue_lock = threading.Lock()
-
-        def _thumbs_thread():
-            # delay the start to give the caching thread some time to prepare next images
-            start_time = time.time()
-            while self.mode == "image" and time.time() - start_time < 2:
-                time.sleep(0.1)
-
-            cache_dir = self.get_thumbs_cache_dir(options['thumb_height'])
-            try:
-                if not os.path.exists(cache_dir):
-                    os.makedirs(cache_dir)
-            except Exception:
-                logging.exception("Could not create cache dir %s" % cache_dir)
-
-            logging.info("Starting thumbs thread")
-            while True:
-                self.thumbs_queue_event.wait()
-                while self.thumbs_queue:
-                    # pause thumbnailing while the user is actively cycling images:
-                    while time.time() - self.last_action_time < 2 and self.mode == "image":
-                        time.sleep(0.2)
-                    time.sleep(0.05)
-                    try:
-                        with self.thumbs_queue_lock:
-                            if not self.thumbs_queue:
-                                continue
-                            img = self.thumbs_queue[0]
-                            self.thumbs_queue.remove(img)
-                        if not img in self.prepared_thumbs:
-                            logging.debug("Thumbs thread loads file " + img)
-                            self.add_thumb(img)
-                    except Exception:
-                        logging.exception("Exception in thumbs thread:")
-                self.thumbs_queue_event.clear()
-
-        thumbs_thread = threading.Thread(target=_thumbs_thread)
-        thumbs_thread.daemon = True
-        thumbs_thread.start()
-
     def add_thumb(self, img, use_cached=None):
-        try:
-            th = options['thumb_height']
-            thumb_path = use_cached or self.prepare_thumbnail(img, 3*th, th)
+        th = options['thumb_height']
+
+        def _done(thumb_path):
             self.js("add_image('%s', '%s')" %
                     (util.path2url(img), util.path2url(thumb_path)))
             if img == self.selected:
                 self.select_in_browser(img)
-            self.prepared_thumbs.add(img)
-        except Exception:
+
+        def _error(error_msg):
             self.js("remove_image_div('%s')" % util.path2url(img))
             logging.warning("Could not add thumb for " + img)
 
-    def priority_thumbs(self, files):
-        logging.debug("Priority thumbs: " + str(files))
-        new_thumbs_queue = [f for f in files if not f in self.prepared_thumbs] + \
-                           [f for f in self.thumbs_queue if not f in files and not f in self.prepared_thumbs]
-        new_thumbs_queue = filter(is_image, new_thumbs_queue)
-        with self.thumbs_queue_lock:
-            self.thumbs_queue = new_thumbs_queue
-            self.thumbs_queue_event.set()
+        if use_cached:
+            _done(thumb_path=use_cached)
+        else:
+            self.thumbs.prepare_thumbnail(img, 3 * th, th, on_done=_done, on_error=_error)
 
     def set_margins(self, margin):
         self.margin = margin
@@ -995,19 +944,6 @@ class Ojo():
         if self.mode == 'folder' and not self.manually_resized:
             self.resize_and_center(*self.get_recommended_size())
 
-    def clear_thumbnails(self, folder):
-        images = filter(
-            is_image,
-            map(lambda f: os.path.join(folder, f), os.listdir(folder)))
-        for img in images:
-            cached = self.get_cached_thumbnail_path(img, True)
-            if os.path.isfile(cached) and \
-                    cached.startswith(self.get_thumbs_cache_dir(options['thumb_height']) + os.sep):
-                try:
-                    os.unlink(cached)
-                except IOError:
-                    logging.exception("Could not delete %s" % cached)
-
     def process_key(self, widget=None, event=None, key=None, skip_browser=False):
         key = key or Gdk.keyval_name(event.keyval)
         if key == 'Escape' and (self.mode == 'image' or skip_browser):
@@ -1016,7 +952,7 @@ class Ojo():
             self.toggle_fullscreen()
         elif key == 'F5':
             if event and event.state & Gdk.ModifierType.CONTROL_MASK and self.mode == "folder":
-                self.clear_thumbnails(self.folder)
+                self.thumbs.clear_thumbnails(self.folder)
             self.show(self.selected if self.mode == 'image' else self.folder)
         elif key == 'Return':
             if self.mode == 'image':
@@ -1185,63 +1121,6 @@ class Ojo():
         direction = -1 if event.direction in (Gdk.ScrollDirection.UP, Gdk.ScrollDirection.LEFT) \
             else 1
         self.wheel_timer = GObject.timeout_add(100, lambda: self.go(direction))
-
-    def get_cached_thumbnail_path(self, filename, force_cache=False):
-        # Use gifs directly - webkit will handle transparency, animation, etc.
-        if not force_cache and os.path.splitext(filename)[1].lower() == '.gif':
-            return filename
-
-        import hashlib
-        # we append modification time to ensure we're not using outdated cached images
-        mtime = os.path.getmtime(filename)
-        hash = hashlib.md5(filename + str(mtime)).hexdigest()
-        folder = os.path.dirname(filename)
-        if folder.startswith(os.sep):
-            folder = folder[1:]
-        return os.path.join(
-            self.get_thumbs_cache_dir(options['thumb_height']),  # cache folder root
-            folder,  # mirror the original directory structure
-            os.path.basename(filename) + '_' + hash + '.jpg')  # filename + hash of the name & time
-
-    def prepare_thumbnail(self, filename, width, height):
-        cached = self.get_cached_thumbnail_path(filename)
-
-        def use_pil():
-            pil = get_pil(filename, width, height)
-            format = {".gif": "GIF", ".png": "PNG", ".svg": "PNG"}.get(ext, 'JPEG')
-            for format in (format, 'JPEG', 'GIF', 'PNG'):
-                try:
-                    pil.save(cached, format)
-                    if os.path.getsize(cached):
-                        break
-                except Exception, e:
-                    logging.exception(
-                        'Could not save thumbnail in format %s:' % format)
-
-        def use_pixbuf():
-            th = options['thumb_height']
-            pixbuf = self.get_pixbuf(filename, True, False, 3*th, th)
-            pixbuf.savev(cached, 'png', [], [])
-
-        if not os.path.exists(cached):
-            cache_dir = os.path.dirname(cached)
-            if not os.path.exists(cache_dir):
-                os.makedirs(cache_dir)
-            ext = os.path.splitext(filename)[1].lower()
-            if not ext in ('.gif', '.png', '.svg', '.xpm'):
-                try:
-                    use_pil()
-                except Exception:
-                    use_pixbuf()
-            else:
-                try:
-                    use_pixbuf()
-                except Exception:
-                    use_pil()
-
-        if not os.path.isfile(cached) or not os.path.getsize(cached):
-            raise IOError('Could not create thumbnail')
-        return cached
 
     def get_pixbuf(self, filename, force=False, zoom=None, width=None, height=None):
         if zoom is None:
