@@ -3,7 +3,15 @@ import os
 import time
 
 from config import options
-from imaging import is_image, get_pil, get_pixbuf
+from imaging import is_image, thumbnail
+
+
+def _safe_thumbnail(filename, cached, width, height):
+    try:
+        return thumbnail(filename, cached, width, height)
+    except Exception:
+        # caller will check whether the file was actually created
+        return cached
 
 
 class Thumbs:
@@ -20,10 +28,12 @@ class Thumbs:
 
     def start_thumbnail_thread(self):
         import threading
+        import multiprocessing
         self.prepared_thumbs = set()
         self.thumbs_queue = []
         self.thumbs_queue_event = threading.Event()
         self.thumbs_queue_lock = threading.Lock()
+        self.pool = multiprocessing.Pool()
 
         def _thumbs_thread():
             # delay the start to give the caching thread some time to prepare next images
@@ -52,9 +62,9 @@ class Thumbs:
                                 continue
                             img = self.thumbs_queue[0]
                             self.thumbs_queue.remove(img)
-                        if not img in self.prepared_thumbs:
+                        if img not in self.prepared_thumbs:
                             logging.debug("Thumbs thread loads file " + img)
-                            self.ojo.add_thumb(img)
+                            self.add_thumb(img)
                     except Exception:
                         logging.exception("Exception in thumbs thread:")
                 self.thumbs_queue_event.clear()
@@ -89,47 +99,32 @@ class Thumbs:
             folder,  # mirror the original directory structure
             os.path.basename(filename) + '_' + hash + '.jpg')  # filename + hash of the name & time
 
+    def add_thumb(self, img, cached_thumb=None):
+        th = options['thumb_height']
+        if cached_thumb:
+            self.ojo.thumb_ready(img, thumb_path=cached_thumb)
+        else:
+            self.prepare_thumbnail(img, 3 * th, th,
+                                   on_done=self.ojo.thumb_ready,
+                                   on_error=self.ojo.thumb_failed)
+
     def prepare_thumbnail(self, filename, width, height, on_done, on_error):
         cached = self.get_cached_thumbnail_path(filename)
 
-        def use_pil():
-            pil = get_pil(filename, width, height)
-            format = {".gif": "GIF", ".png": "PNG", ".svg": "PNG"}.get(ext, 'JPEG')
-            for format in (format, 'JPEG', 'GIF', 'PNG'):
-                try:
-                    pil.save(cached, format)
-                    if os.path.getsize(cached):
-                        self.prepared_thumbs.add(filename)
-                        break
-                except Exception, e:
-                    logging.exception(
-                        'Could not save thumbnail in format %s:' % format)
-
-        def use_pixbuf():
-            th = options['thumb_height']
-            pixbuf = get_pixbuf(filename, 3*th, th)
-            pixbuf.savev(cached, 'png', [], [])
+        def _thumbnail_ready(thumb_path):
+            if not os.path.isfile(thumb_path) or not os.path.getsize(thumb_path):
+                on_error(filename, 'Could not create thumbnail')
+            else:
+                self.prepared_thumbs.add(filename)
+                on_done(filename, thumb_path)
 
         if not os.path.exists(cached):
-            cache_dir = os.path.dirname(cached)
-            if not os.path.exists(cache_dir):
-                os.makedirs(cache_dir)
-            ext = os.path.splitext(filename)[1].lower()
-            if not ext in ('.gif', '.png', '.svg', '.xpm'):
-                try:
-                    use_pil()
-                except Exception:
-                    use_pixbuf()
-            else:
-                try:
-                    use_pixbuf()
-                except Exception:
-                    use_pil()
-
-        if not os.path.isfile(cached) or not os.path.getsize(cached):
-            on_error('Could not create thumbnail')
-
-        on_done(cached)
+            self.pool.apply_async(
+                _safe_thumbnail,
+                args=(filename, cached, width, height),
+                callback=_thumbnail_ready)
+        else:
+            _thumbnail_ready(cached)
 
     def clear_thumbnails(self, folder):
         images = filter(

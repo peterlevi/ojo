@@ -88,6 +88,41 @@ def get_pixbuf(filename, width=None, height=None):
     return pixbuf
 
 
+def thumbnail(filename, thumb_path, width, height):
+    def use_pil():
+        pil = get_pil(filename, width, height)
+        # format = {".gif": "GIF", ".png": "PNG", ".svg": "PNG"}.get(ext, 'JPEG')  # TODO where did ext come from??
+        for format in ('JPEG', 'GIF', 'PNG'):
+            try:
+                pil.save(thumb_path, format)
+                if os.path.getsize(thumb_path):
+                    break
+            except Exception, e:
+                logging.exception(
+                    'Could not save thumbnail in format %s:' % format)
+
+    def use_pixbuf():
+        pixbuf = get_pixbuf(filename, 3 * height, height)
+        pixbuf.savev(thumb_path, 'png', [], [])
+
+    cache_dir = os.path.dirname(thumb_path)
+    if not os.path.exists(cache_dir):
+        os.makedirs(cache_dir)
+    ext = os.path.splitext(filename)[1].lower()
+    if not ext in ('.gif', '.png', '.svg', '.xpm'):
+        try:
+            use_pil()
+        except Exception:
+            use_pixbuf()
+    else:
+        try:
+            use_pixbuf()
+        except Exception:
+            use_pil()
+
+    return thumb_path
+
+
 def needs_orientation(meta):
     return 'Exif.Image.Orientation' in meta.keys() and meta['Exif.Image.Orientation'].value != 1
 

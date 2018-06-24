@@ -690,7 +690,7 @@ class Ojo():
                 time.sleep(0.001)
                 cached = self.thumbs.get_cached_thumbnail_path(img)
                 if os.path.exists(cached):
-                    self.add_thumb(img, use_cached=cached)
+                    self.thumb_ready(img, thumb_path=cached)
                 else:
                     try:
                         meta = metadata.get_full(img)
@@ -765,23 +765,15 @@ class Ojo():
         cache_thread.daemon = True
         cache_thread.start()
 
-    def add_thumb(self, img, use_cached=None):
-        th = options['thumb_height']
+    def thumb_ready(self, img, thumb_path):
+        self.js("add_image('%s', '%s')" %
+                (util.path2url(img), util.path2url(thumb_path)))
+        if img == self.selected:
+            self.select_in_browser(img)
 
-        def _done(thumb_path):
-            self.js("add_image('%s', '%s')" %
-                    (util.path2url(img), util.path2url(thumb_path)))
-            if img == self.selected:
-                self.select_in_browser(img)
-
-        def _error(error_msg):
-            self.js("remove_image_div('%s')" % util.path2url(img))
-            logging.warning("Could not add thumb for " + img)
-
-        if use_cached:
-            _done(thumb_path=use_cached)
-        else:
-            self.thumbs.prepare_thumbnail(img, 3 * th, th, on_done=_done, on_error=_error)
+    def thumb_failed(self, img, error_msg):
+        self.js("remove_image_div('%s')" % util.path2url(img))
+        logging.warning("Could not add thumb for " + img)
 
     def set_margins(self, margin):
         self.margin = margin
