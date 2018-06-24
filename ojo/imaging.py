@@ -102,7 +102,7 @@ def thumbnail(filename, thumb_path, width, height):
                     'Could not save thumbnail in format %s:' % format)
 
     def use_pixbuf():
-        pixbuf = get_pixbuf(filename, 3 * height, height)
+        pixbuf = get_pixbuf(filename, width, height)
         pixbuf.savev(thumb_path, 'png', [], [])
 
     cache_dir = os.path.dirname(thumb_path)
