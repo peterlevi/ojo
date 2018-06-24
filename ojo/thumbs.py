@@ -2,9 +2,8 @@ import logging
 import os
 import time
 
-
 from config import options
-from imaging import is_image, get_pil
+from imaging import is_image, get_pil, get_pixbuf
 
 
 class Thumbs:
@@ -108,7 +107,7 @@ class Thumbs:
 
         def use_pixbuf():
             th = options['thumb_height']
-            pixbuf = self.ojo.get_pixbuf(filename, True, False, 3*th, th) # TODO detach from ojo
+            pixbuf = get_pixbuf(filename, 3*th, th)
             pixbuf.savev(cached, 'png', [], [])
 
         if not os.path.exists(cached):

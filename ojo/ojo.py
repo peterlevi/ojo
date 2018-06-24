@@ -907,7 +907,7 @@ class Ojo():
             self.set_margins(0)
         else:
             self.make_transparent(self.window, color='rgba(77, 75, 69, 0.9)')
-            self.set_margins(30)
+            self.set_margins(25)
 
     def update_cursor(self):
         if self.mousedown_zoomed:

@@ -1,7 +1,7 @@
 # coding=utf-8
 import os
 import logging
-from gi.repository import GdkPixbuf
+from gi.repository import Gio, GdkPixbuf, GObject
 
 
 def get_pil(filename, width=None, height=None):
@@ -31,6 +31,61 @@ def get_pil(filename, width=None, height=None):
             pil_image.thumbnail((width, height), Image.ANTIALIAS)
 
     return pil_image
+
+
+def get_pixbuf(filename, width=None, height=None):
+    from metadata import metadata
+
+    orientation = None
+    image_width = image_height = None
+    meta = metadata.get(filename)
+    if meta:
+        orientation = meta['orientation']
+        image_width, image_height = meta['width'], meta['height']
+
+    if not image_width:
+        format, image_width, image_height = GdkPixbuf.Pixbuf.get_file_info(filename)
+
+    pixbuf = None
+    try:
+        pixbuf = GdkPixbuf.Pixbuf.new_from_file(filename)
+        logging.debug("Loaded directly")
+    except GObject.GError:
+        pass  # below we'll use another method
+
+    if not pixbuf:
+        try:
+            full_meta = meta.get('full_meta',
+                                 metadata.get_full(filename))
+            preview = full_meta.previews[-1].data
+            pixbuf = pixbuf_from_data(preview)
+            logging.debug("Loaded from preview")
+        except Exception, e:
+            pass  # below we'll use another method
+
+    if not pixbuf:
+        pixbuf = pil_to_pixbuf(get_pil(filename))
+        logging.debug("Loaded with PIL")
+
+    pixbuf = auto_rotate_pixbuf(orientation, pixbuf)
+    if orientation in (5, 6, 7, 8):
+        # needs rotation
+        image_width, image_height = image_height, image_width
+
+    if width is not None:
+        # scale it
+        if float(width) / height < float(image_width) / image_height:
+            pixbuf = pixbuf.scale_simple(
+                width,
+                int(float(width) * image_height / image_width),
+                GdkPixbuf.InterpType.BILINEAR)
+        else:
+            pixbuf = pixbuf.scale_simple(
+                int(float(height) * image_width / image_height),
+                height,
+                GdkPixbuf.InterpType.BILINEAR)
+
+    return pixbuf
 
 
 def needs_orientation(meta):
@@ -140,7 +195,6 @@ def pil_to_base64(pil_image):
 
 
 def pixbuf_from_data(data):
-    from gi.repository import Gio
     input_str = Gio.MemoryInputStream.new_from_data(data, None)
     return GdkPixbuf.Pixbuf.new_from_stream(input_str, None)
 
