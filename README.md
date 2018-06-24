@@ -35,9 +35,11 @@ F11 - toggles fullscreen (also F when viewing a single image)
 [image mode] Arrows and PgUp/PgDown - move back and forth between images
 [browse mode] Arrows and PgUp/PgDown - navigate around
 [image mode] Press and hold mouse to zoom to specific point at 100%, then hold and move to "look around"
-[image mode] Z to toggle zoom between 100% and Fit-to-window
-[browse mode] Enter letters directly to quick-filter the images by filename
+[image mode] Z - toggles zoom between 100% and Fit-to-window
+[browse mode] Enter letters directly to quick-filter the images, folders and commands by filename
 [browse mode] Backspace moves up, Enter selects currently active link
+[browse mode] Ctrl-F5 - refresh/recreate all thumbnails in the current folder
+[browse more] Ctrl +/-/= - increase or decrease the size of the thumbnails
 ```
 
 ## Screenshots
