@@ -1,0 +1,159 @@
+* {
+    margin: 0;
+    padding: 0;
+}
+
+img {
+    display: block;
+}
+
+body {
+    font-size: 14px;
+    font-family: Ubuntu, sans-serif;
+    background: rgba(77, 75, 69, 0.9);
+    overflow-x: hidden;
+    padding-bottom: 20px;
+}
+
+#title span {
+    cursor: pointer;
+    font-size: 18px;
+}
+
+#title {
+    color: #A19C90;
+    margin: 15px 10px 10px;
+}
+
+#search {
+    display: none;
+    position: fixed;
+    top: 15px;
+    right: 20px;
+    color: white;
+    background-color: #F07746;
+    padding: 10px;
+    border-radius: 10px;
+}
+
+#folders {
+    display: none;
+    margin: 10px;
+    background: rgba(105, 101, 93, 0.8);
+    box-shadow: 3px 3px 5px 0px #333;
+    padding: 20px;
+    float: left;
+}
+
+.folder-category {
+    padding-bottom: 10px;
+}
+
+.folder-category-label {
+    color: #A19C90;
+    padding-bottom: 10px;
+}
+
+.folder {
+    padding-left: 20px;
+    padding-right: 20px;
+    color: #d3d0c5;
+    margin-bottom: 10px;
+}
+
+.folder-icon {
+    padding-right: 3px;
+    vertical-align: text-bottom;
+    display: inline;
+}
+
+.folder.selected {
+    margin-bottom: 7px;
+    border-bottom: solid 3px #F07746;
+}
+
+.item {
+    margin: 10px;
+    float: left;
+    overflow: hidden;
+    box-shadow: 3px 3px 5px 1px #333;
+    height: 120px;
+}
+
+.item.selected {
+    margin: 0px;
+    border: solid 10px #F07746;
+    overflow: hidden;
+    border-radius: 10px;
+}
+
+.selectable {
+    cursor: pointer;
+}
+
+.nonmatch {
+    display: none;
+}
+
+.crumb.nonmatch {
+    display: inline;
+}
+
+.crumb.selected {
+    border-bottom: solid 3px #F07746;
+}
+
+.disabled {
+    color: #A19C90;
+}
+
+.disabled img {
+    opacity: 0.2;
+}
+
+#label {
+    display: none;
+    position: fixed;
+    width: 100%;
+    z-index: 100;
+    bottom: 0px;
+    background: rgba(57, 55, 49, 0.7);
+    padding: 10px;
+    color: white;
+}
+
+span.holder-name {
+    color: #d3d3d3;
+    font-family: Ubuntu;
+    font-size: 80%;
+}
+
+div.holder {
+    width: 180px;
+    height: 120px;
+    background-color: rgba(57, 55, 49, 0.2);
+    overflow-x: hidden;
+}
+
+#spinner {
+    display: none;
+}
+
+#spinner img {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+}
+
+div.search {
+    position: absolute;
+    opacity: 0;
+    z-index: -1;
+    top: 50%;
+    right: 50%;
+}
+
+#dimensions {
+    float:right;
+    padding-right: 20px;
+}

@@ -30,7 +30,6 @@ def get_folder_icon_name(path):
 
 
 def get_folder_icon(path, size):
-    from gi.repository import Gtk
     name = get_folder_icon_name(path)
     try:
         return get_icon_path(name, size)
@@ -77,5 +76,5 @@ def url2path(url):
 
 
 if __name__ == "__main__":
-    print get_folder_icon('/', 24)
+    print get_folder_icon('/', 16)
 

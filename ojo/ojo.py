@@ -486,14 +486,14 @@ class Ojo():
             'label': _u(os.path.basename(path) or path),
             'path': util.path2url(path),
             'filename': os.path.basename(path) or path,
-            'icon': util.path2url(util.get_folder_icon(path, 24))
+            'icon': util.path2url(util.get_folder_icon(path, 16))
         }
 
     def get_command_item(self, command, path, icon, label=''):
         icon_url = None
         if icon:
             try:
-                icon_url = util.path2url(util.get_icon_path(icon, 24))
+                icon_url = util.path2url(util.get_icon_path(icon, 16))
             except Exception:
                 logging.exception('Could not get icon %s' % icon)
                 icon_url = None
@@ -637,18 +637,6 @@ class Ojo():
                 'items': nav_items,
             }]
 
-            # Siblings
-            if parent_folder:
-                siblings = self.filter_hidden([
-                    os.path.join(parent_folder, f) for f in sorted(os.listdir(parent_folder))
-                    if os.path.isdir(os.path.join(parent_folder, f))])
-                pos = siblings.index(self.folder)
-                if pos + 1 < len(siblings):
-                    categories.append({
-                        'label': 'Next folder',
-                        'items': [self.get_folder_item(siblings[pos + 1])]
-                    })
-
             # Subfolders
             subfolders = self.filter_hidden([os.path.join(self.folder, f) for f in sorted(os.listdir(self.folder))
                                              if os.path.isdir(os.path.join(self.folder, f))])
@@ -658,6 +646,18 @@ class Ojo():
                     'items': [self.get_folder_item(sub) for sub in subfolders]
                 })
 
+            # # Siblings - TODO disabled for now, they look too similar to subfolders and confuse
+            # if parent_folder:
+            #     siblings = self.filter_hidden([
+            #         os.path.join(parent_folder, f) for f in sorted(os.listdir(parent_folder))
+            #         if os.path.isdir(os.path.join(parent_folder, f))])
+            #     pos = siblings.index(self.folder)
+            #     if pos + 1 < len(siblings):
+            #         categories.append({
+            #             'label': 'Next folder',
+            #             'items': [self.get_folder_item(siblings[pos + 1])]
+            #         })
+            #
             # Bookmarks
             categories.append(self.build_bookmarks_category())
 
