@@ -489,7 +489,7 @@ class Ojo():
             'icon': util.path2url(util.get_folder_icon(path, 16))
         }
 
-    def get_command_item(self, command, path, icon, label=''):
+    def get_command_item(self, command, path, icon, label='', nofocus=False):
         icon_url = None
         if icon:
             try:
@@ -501,7 +501,8 @@ class Ojo():
             'label': label,
             'path': command,
             'filename': os.path.basename(path) if path else label,
-            'icon': icon_url
+            'icon': icon_url,
+            'nofocus': nofocus,
         }
 
     def get_navigation_folder(self, key):
@@ -621,14 +622,14 @@ class Ojo():
 
             nav_items = [
                 self.get_command_item(
-                    'command:back' if self.get_back_folder()
-                    else None, self.get_back_folder(), 'back'),
+                    'command:back' if self.get_back_folder() else None,
+                    self.get_back_folder(), 'back', nofocus=True),
                 self.get_command_item(
-                    'command:forward' if self.get_forward_folder()
-                    else None, self.get_forward_folder(), 'forward'),
+                    'command:forward' if self.get_forward_folder() else None,
+                    self.get_forward_folder(), 'forward', nofocus=True),
                 self.get_command_item(
-                    'command:up' if parent_folder
-                    else None, parent_folder, 'up')
+                    'command:up' if parent_folder else None,
+                    parent_folder, 'up', nofocus=True)
             ]
 
             categories = [{
@@ -972,9 +973,9 @@ class Ojo():
                 self.js("on_key('%s')" % key)
             elif key == 'BackSpace':
                 self.folder_parent()
-        elif key in ("Right", "Down", "Page_Down", "space"):
+        elif key in ("Right", "Down", "Page_Down"):
             GObject.idle_add(lambda: self.go(1))
-        elif key in ("Left", "Up", "Page_Up", "BackSpace"):
+        elif key in ("Left", "Up", "Page_Up"):
             GObject.idle_add(lambda: self.go(-1))
         elif key == "Home":
             GObject.idle_add(lambda: self.go(1, 0))

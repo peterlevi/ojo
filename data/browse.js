@@ -54,7 +54,7 @@ function refresh_category(category) {
         if (category.no_labels) {
             style = 'display: inline; ' + (first ? 'padding-right: 0px' : 'padding: 0px;');  //TODO we don't want inlined CSS
         }
-        add_folder(category.label, item.label, item.path, item.filename, item.icon, style);
+        add_folder(category.label, item.label, item.path, item.filename, item.icon, style, item.nofocus);
         first = false;
     });
     if (category.no_labels) {
@@ -66,10 +66,9 @@ function set_title(crumbs) {
     $('#title').html('');
     for (var i = 0; i < crumbs.length; i++) {
         var part = crumbs[i];
-        $('<span class="crumb selectable match" file="' + encode_path(part.path) +
-                '" filename="' + esc(part.name) + '">' + esc(part.name) + '</span>'//.click(
-                //_.bind(function(f) { python('ojo:' + f); }, undefined, part.path)
-        ).appendTo($("#title"));
+        $('<span class="crumb clickable match" file="' + encode_path(part.path) +
+                '" filename="' + esc(part.name) + '">' + esc(part.name) + '</span>')
+            .appendTo($("#title"));
         if (i > 0 && i < crumbs.length - 1) {
             $('<span>/</span>').appendTo($("#title"));
         }
@@ -86,12 +85,12 @@ function add_folder_category(label) {
         "<div class='folder-category-label'>" + esc(label) + "</div></div>");
 }
 
-function add_folder(category_label, label, path, filename, icon, style) {
+function add_folder(category_label, label, path, filename, icon, style, nofocus) {
     var elem = $(_.template(
         "<div class='folder match' file='<%= path %>' filename='<%= filename %>' style='<%= style %>'><%= label %></div>")({
         path: encode_path(path), filename: esc(filename), label: esc(label), style: style
     }));
-    elem.addClass(path ? 'selectable' : 'disabled');
+    elem.addClass(path? (nofocus? 'clickable': 'selectable') : 'disabled');
     if (icon) {
         elem.prepend("<img class='folder-icon' src='" + encode_path(icon) + "'/>");
     }
@@ -371,6 +370,14 @@ function decode_path(path) {
     return path;
 }
 
+function on_clickable(event) {
+    if (mode != 'folder') {
+        event.preventDefault();
+        return;
+    }
+    python("ojo:" + decode_path($(this).attr('file')));
+};
+
 $(function() {
     change_folder('');
 
@@ -403,13 +410,7 @@ $(function() {
         scroll_timeout = setTimeout(on_scroll, 200);
     });
 
-    $(document).on('click', '.selectable', function(event) {
-        if (mode != 'folder') {
-            event.preventDefault();
-            return;
-        }
-        python("ojo:" + decode_path($(this).attr('file')));
-    });
+    $(document).on('click', '.selectable, .clickable', on_clickable);
 
     $('#search-field').focus();
     $('#search-field').keyup(function() {

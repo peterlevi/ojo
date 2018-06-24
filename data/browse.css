@@ -87,7 +87,7 @@ body {
     border-radius: 10px;
 }
 
-.selectable {
+.selectable, .clickable {
     cursor: pointer;
 }
 

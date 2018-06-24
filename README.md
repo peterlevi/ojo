@@ -29,18 +29,29 @@ sudo apt-get install ojo
 4. Hack away, and open a pull-request when ready, or better - immediately once you decide what you want do. For new features, please sync with me before you start - peterlevi AT peterlevi.com. 
 
 ## Keyboard shortcuts
-```
-Enter - toggles between single image / browse mode
-F11 - toggles fullscreen (also F when viewing a single image)
-[image mode] Arrows and PgUp/PgDown - move back and forth between images
-[browse mode] Arrows and PgUp/PgDown - navigate around
-[image mode] Press and hold mouse to zoom to specific point at 100%, then hold and move to "look around"
-[image mode] Z - toggles zoom between 100% and Fit-to-window
-[browse mode] Enter letters directly to quick-filter the images, folders and commands by filename
-[browse mode] Backspace moves up, Enter selects currently active link
-[browse mode] Ctrl-F5 - refresh/recreate all thumbnails in the current folder
-[browse more] Ctrl +/-/= - increase or decrease the size of the thumbnails
-```
+
+#### Browse and image modes
+`Enter` - toggles between single image / browse mode  
+`F11` - toggles fullscreen (also F when viewing a single image)  
+
+#### Image mode:
+
+`Arrows` and `PgUp/PgDown` - move back and forth between images  
+`Home` / `End` - go to first/last image  
+Press and hold mouse to zoom to specific point at 100%, then hold and move to "look around"  
+`Z` - toggles zoom between 100% and Fit-to-window   
+(Partial zooming is not supported yet)  
+
+#### Browse mode:
+
+`Arrows` and `PgUp/PgDown` - navigate around  
+`Home` / `End` - go to first/last image or folder  
+`Enter` - select currently active link  
+Press letters directly to quick-filter the images, folders and commands  
+`Backspace` - move one folder up  
+`Alt-Left` / `Alt-Right` - go back / go forward in history  
+`Ctrl +/=` / `Ctrl -` - increase / decrease size of the thumbnails  
+`Ctrl-F5` - refresh/recreate all thumbnails in the current folder  
 
 ## Screenshots
 Single image view:
