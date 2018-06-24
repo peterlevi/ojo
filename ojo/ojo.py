@@ -901,6 +901,8 @@ class Ojo():
         else:
             self.make_transparent(
                 self.window,
+                # Note: for non-fullscreen browsing transparency:
+                # color='rgba(77, 75, 69, 0.9)' if self.mode == 'folder' else 'rgba(77, 75, 69, 0.9)')
                 color='rgba(77, 75, 69, 1)' if self.mode == 'folder' else 'rgba(77, 75, 69, 0.9)')
             self.set_margins(15)
 
