@@ -957,8 +957,6 @@ class Ojo():
                 if os.path.isfile(prev):
                     self.set_mode('image')
         elif self.mode == 'folder':
-            if hasattr(self, 'web_view'):
-                self.web_view.grab_focus()
             if key == 'Left' and event and (event.state & (Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.MOD1_MASK)):
                 self.folder_history_back()
             elif key == 'Right' and event and (
@@ -972,9 +970,8 @@ class Ojo():
                 self.decrease_thumb_height()
             elif not skip_browser:
                 self.js("on_key('%s')" % key)
-            else:
-                if key == 'BackSpace':
-                    self.folder_parent()
+            elif key == 'BackSpace':
+                self.folder_parent()
         elif key in ("Right", "Down", "Page_Down", "space"):
             GObject.idle_add(lambda: self.go(1))
         elif key in ("Left", "Up", "Page_Up", "BackSpace"):
