@@ -898,8 +898,10 @@ class Ojo():
                 color='rgba(77, 75, 69, 1)' if self.mode == 'folder' else 'rgba(0, 0, 0, 1)')
             self.set_margins(0)
         else:
-            self.make_transparent(self.window, color='rgba(77, 75, 69, 0.9)')
-            self.set_margins(25)
+            self.make_transparent(
+                self.window,
+                color='rgba(77, 75, 69, 1)' if self.mode == 'folder' else 'rgba(77, 75, 69, 0.9)')
+            self.set_margins(15)
 
     def update_cursor(self):
         if self.mousedown_zoomed:
