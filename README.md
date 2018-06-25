@@ -45,7 +45,8 @@ Press and hold mouse to zoom to specific point at 100%, then hold and move to "l
 #### Browse mode:
 
 `Arrows` and `PgUp/PgDown` - navigate around  
-`Home` / `End` - go to first/last image or folder  
+`Home` / `End` - go to first/last image or folder
+`Tab` / `Shift-Tab` - switch focus between files and folders list   
 `Enter` - select currently active link  
 Press letters directly to quick-filter the images, folders and commands  
 `Backspace` - move one folder up  

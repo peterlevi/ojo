@@ -445,6 +445,7 @@ class Ojo():
 
                 GObject.idle_add(_do)
         elif action == 'ojo-priority':
+            pass
             files = json.loads(argument)
             self.thumbs.priority_thumbs(
                 map(lambda f: util.url2path(f.encode('utf-8')), files))
@@ -982,6 +983,8 @@ class Ojo():
                 self.increase_thumb_height()
             elif key == 'minus' and event and (event.state & (Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.MOD1_MASK)):
                 self.decrease_thumb_height()
+            elif key in ('Tab', 'ISO_Left_Tab'):
+                self.js("on_key('%s')" % 'Tab')
             elif not skip_browser:
                 self.js("on_key('%s')" % key)
             elif key == 'BackSpace':
