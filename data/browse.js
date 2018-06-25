@@ -147,7 +147,7 @@ function add_image(file, thumb) {
     var item = $(".item[file='" + encode_path(file) + "']");
     if (item.length) {
         item.html(
-            "<div style='display: table-cell; vertical-align: middle; text-align: center; width:60px; height:" + thumb_height + "px;'>" +
+            "<div style='display: table-cell; vertical-align: middle; text-align: center; width:10px; height:" + thumb_height + "px;'>" +
             "<div style='display: inline-block'>" +
             "<img style='max-height: " + thumb_height + "px;' src='" + encode_path(thumb) + "'/>" +
             "</div>" +

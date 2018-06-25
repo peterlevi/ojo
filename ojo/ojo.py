@@ -690,7 +690,7 @@ class Ojo():
                     util.path2url(img),
                     os.path.basename(img),
                     'true' if img == self.selected else 'false',
-                    180))
+                    options['thumb_height'] * 3/2))
                 time.sleep(0.001)
                 cached = self.thumbs.get_cached_thumbnail_path(img)
                 if os.path.exists(cached):
@@ -700,7 +700,7 @@ class Ojo():
                         meta = metadata.get_full(img)
                         w, h = meta.dimensions
                         rok = not needs_rotation(meta)
-                        thumb_width = round(w * thumbh / h) if rok else round(h * thumbh / w)
+                        thumb_width = int(float(w) * thumbh / h) if rok else int(float(h) * thumbh / w)
                         if w and h:
                             self.js("set_dimensions('%s', '%s', '%d x %d', %d)" % (
                                 util.path2url(img),
