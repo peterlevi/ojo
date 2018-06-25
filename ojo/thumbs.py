@@ -35,13 +35,13 @@ class Thumbs:
         self.thumbs_queue_event = threading.Event()
         self.thumbs_queue_lock = threading.Lock()
 
-        self.pool = multiprocessing.Pool()
+        self.pool = multiprocessing.Pool(processes=multiprocessing.cpu_count() - 1)
 
-        # nice the parent as high-priority, the thumbnailing pool as idle priority
+        # nice the thumbnailing pool as idle priority
         parent = psutil.Process()
-        parent.nice(psutil.IOPRIO_CLASS_RT)
         for child in parent.children():
-            child.nice(psutil.IOPRIO_CLASS_IDLE)
+            child.nice(10)  # lower than normal priority
+            child.ionice(psutil.IOPRIO_CLASS_IDLE)
 
         def _thumbs_thread():
             # delay the start to give the caching thread some time to prepare next images
