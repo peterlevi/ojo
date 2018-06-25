@@ -82,7 +82,6 @@ class Thumbs:
         thumbs_thread.start()
 
     def priority_thumbs(self, files):
-        logging.debug("Priority thumbs: " + str(files))
         new_thumbs_queue = [f for f in files if not f in self.prepared_thumbs] + \
                            [f for f in self.thumbs_queue if not f in files and not f in self.prepared_thumbs]
         new_thumbs_queue = filter(is_image, new_thumbs_queue)
@@ -107,14 +106,11 @@ class Thumbs:
             folder,  # mirror the original directory structure
             os.path.basename(filename) + '_' + hash + '.jpg')  # filename + hash of the name & time
 
-    def add_thumb(self, img, cached_thumb=None):
+    def add_thumb(self, img):
         th = options['thumb_height']
-        if cached_thumb:
-            self.ojo.thumb_ready(img, thumb_path=cached_thumb)
-        else:
-            self.prepare_thumbnail(img, 3 * th, th,
-                                   on_done=self.ojo.thumb_ready,
-                                   on_error=self.ojo.thumb_failed)
+        self.prepare_thumbnail(img, 3 * th, th,
+                               on_done=self.ojo.thumb_ready,
+                               on_error=self.ojo.thumb_failed)
 
     def prepare_thumbnail(self, filename, width, height, on_done, on_error):
         cached = self.get_cached_thumbnail_path(filename)
