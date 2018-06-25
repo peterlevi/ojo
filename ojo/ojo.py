@@ -680,8 +680,11 @@ class Ojo():
 
             pos = self.images.index(
                 self.selected) if self.selected in self.images else 0
-            self.thumbs.priority_thumbs([x[1] for x in sorted(
-                enumerate(self.images), key=lambda (i, f): abs(i - pos))])
+            self.thumbs.priority_thumbs([
+                x[1] for x in
+                sorted(enumerate(self.images), key=lambda (i, f): abs(i - pos))
+                if not os.path.exists(self.thumbs.get_cached_thumbnail_path(x[1]))
+            ])
 
             for img in self.images:
                 if self.last_folder_change_time != thread_change_time or thread_folder != self.folder:
@@ -700,7 +703,9 @@ class Ojo():
                         meta = metadata.get_full(img)
                         w, h = meta.dimensions
                         rok = not needs_rotation(meta)
-                        thumb_width = int(float(w) * thumbh / h) if rok else int(float(h) * thumbh / w)
+                        thumb_width = \
+                            int(float(w) * min(h, thumbh) / h) if rok else \
+                            int(float(h) * min(w, thumbh) / w)
                         if w and h:
                             self.js("set_dimensions('%s', '%s', '%d x %d', %d)" % (
                                 util.path2url(img),

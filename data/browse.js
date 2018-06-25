@@ -145,6 +145,7 @@ function add_image(file, thumb) {
 
     clearTimeout(pending_add_timeouts[file]);
     var item = $(".item[file='" + encode_path(file) + "']");
+    item.attr('with_thumb', true);
     if (item.length) {
         item.html(
             "<div style='display: table-cell; vertical-align: middle; text-align: center; width:10px; height:" + thumb_height + "px;'>" +
@@ -375,9 +376,10 @@ function distance(el1, el2) {
 
 function on_scroll() {
     var files = _.map(_.filter($('.item.match'), function(x) {
-        return $(x).offset().top + $(x).height() >= $('body').scrollTop();
+        var $x = $(x);
+        return !$x.attr('with_thumb') &&
+            $x.offset().top + $x.height() >= $('body').scrollTop();
     }), function(x) { return decode_path($(x).attr('file')) });
-
     python('ojo-priority:' + JSON.stringify(files));
 }
 
