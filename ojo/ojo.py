@@ -445,7 +445,6 @@ class Ojo():
 
                 GObject.idle_add(_do)
         elif action == 'ojo-priority':
-            pass
             files = json.loads(argument)
             self.thumbs.priority_thumbs(
                 map(lambda f: util.url2path(f.encode('utf-8')), files))
