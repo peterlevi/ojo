@@ -21,12 +21,11 @@
 import os
 import sys
 import time
-import util
-from util import _u
 import logging
 import optparse
 import gettext
 from gettext import gettext as _
+from collections import OrderedDict
 
 import gi
 gi.require_version('WebKit', '3.0')
@@ -34,6 +33,8 @@ gi.require_version('Gtk', '3.0')
 gi.require_version('GdkPixbuf', '2.0')
 from gi.repository import Gtk, Gdk, GdkPixbuf, GObject
 
+import util
+from util import _u
 import ojoconfig
 from metadata import metadata
 import config
@@ -51,7 +52,9 @@ gettext.textdomain('ojo')
 
 LEVELS = (logging.ERROR, logging.WARNING, logging.INFO, logging.DEBUG)
 
-THUMBHEIGHTS = [80, 120, 180, 240, 320, 480, 640]
+THUMBHEIGHTS = [80, 120, 180, 240, 320, 480]
+
+CACHE_SIZE = 50
 
 killed = False
 
@@ -129,7 +132,7 @@ class Ojo():
         if options['maximized']:
             self.window.maximize()
 
-        self.pix_cache = {False: {}, True: {}}  # keyed by "zoomed" property
+        self.pix_cache = {False: OrderedDict(), True: OrderedDict()}  # keyed by "zoomed" property
         self.current_preparing = None
         self.manually_resized = False
 
@@ -725,7 +728,7 @@ class Ojo():
             if pos + i < 0 or pos + i >= len(self.images):
                 continue
             f = self.images[pos + i]
-            if not f in self.pix_cache[self.zoom]:
+            if f not in self.pix_cache[self.zoom]:
                 logging.info("Caching around: file %s, zoomed %s" %
                              (f, self.zoom))
                 self.cache_queue.put((f, self.zoom))
@@ -736,19 +739,23 @@ class Ojo():
         self.cache_queue = Queue.Queue()
         self.preparing_event = threading.Event()
 
+        def _reduce_to_latest(cached, count):
+            while len(cached) > count:
+                cached.popitem(last=False)
+
         def _queue_thread():
             logging.info("Starting cache thread")
             while True:
                 # TODO: Do we want a proper LRU policy, or this is good enough?
-                if len(self.pix_cache[False]) > 20:
-                    self.pix_cache[False] = {}
-                if len(self.pix_cache[True]) > 20:
-                    self.pix_cache[True] = {}
+                if len(self.pix_cache[False]) > CACHE_SIZE:
+                    _reduce_to_latest(self.pix_cache[False], CACHE_SIZE / 2)
+                if len(self.pix_cache[True]) > CACHE_SIZE:
+                    _reduce_to_latest(self.pix_cache[True], CACHE_SIZE / 2)
 
                 path, zoom = self.cache_queue.get()
 
                 try:
-                    if not path in self.pix_cache[zoom]:
+                    if path not in self.pix_cache[zoom]:
                         logging.debug(
                             "Cache thread loads file %s, zoomed %s" % (path, zoom))
                         self.current_preparing = path, zoom
@@ -870,7 +877,7 @@ class Ojo():
         options['fullscreen'] = full
         config.save_options()
 
-        self.pix_cache[False] = {}
+        self.pix_cache[False].clear()
 
         if not first_run and self.shown:
             width = height = None
@@ -1193,8 +1200,9 @@ class Ojo():
                     int(float(target_height) * image_width / image_height),
                     target_height,
                     GdkPixbuf.InterpType.BILINEAR)
-
-        self.pix_cache[zoom][filename] = pixbuf, width
+        if filename in self.pix_cache[zoom]:
+            del self.pix_cache[zoom][filename]  # we use OrderedDict for LRU, this makes sure filename will now be last
+        self.pix_cache[zoom][filename] = pixbuf, width, time.time()
 
         return pixbuf
 
