@@ -1,4 +1,5 @@
 var folder = '';
+var image_count = 1;
 var mode = 'image';
 var search = '';
 var current = '';
@@ -102,7 +103,7 @@ function add_folder(category_label, label, path, filename, icon, style, nofocus)
 }
 
 function add_image_div(file, name, selected, width) {
-    if (file.indexOf(folder) != 0) {
+    if (file.indexOf(folder) !== 0) {
         return;
     }
 
@@ -126,20 +127,19 @@ function add_image_div(file, name, selected, width) {
     }
 }
 
-function remove_image_div(file) {
-    var to_remove = $(".item[file='" + encode_path(file) + "']");
-    if (to_remove.hasClass('selected')) {
-        var next = $(to_remove).next('.selectable');
-        if (next.length === 0) {
-            next = $('.selectable');
-        }
-        select(decode_path(next.attr('file')));
-    }
-    to_remove.remove();
+function set_image_count(count) {
+    image_count = count;
+}
+
+function update_progress() {
+    var done = $('.item[with_thumb=true]').length;
+    var progress = done === image_count ? 0 : Math.min(100, 100 * done / (image_count || 1));
+    // (hide when done)
+    $('#progress').width(progress + '%');
 }
 
 function add_image(file, thumb) {
-    if (file.indexOf(folder) != 0) {
+    if (file.indexOf(folder) !== 0) {
         return;
     }
 
@@ -153,14 +153,25 @@ function add_image(file, thumb) {
             "<img style='max-height: " + thumb_height + "px;' src='" + encode_path(thumb) + "'/>" +
             "</div>" +
             "</div>");
+        update_progress();
     } else {
         pending_add_timeouts[file] = setTimeout(function () {add_image(file, thumb)}, 200);
     }
 }
 
-function toggle_spinner(on) {
-    $('#main').toggle(!on);
-    $('#spinner').toggle(on);
+function remove_image_div(file) {
+    var to_remove = $(".item[file='" + encode_path(file) + "']");
+    if (to_remove.hasClass('selected')) {
+        var next = $(to_remove).next('.selectable');
+        if (next.length === 0) {
+            next = $('.selectable');
+        }
+        select(decode_path(next.attr('file')));
+    }
+    to_remove.remove();
+
+    image_count = Math.max(1, image_count - 1);
+    update_progress();
 }
 
 function change_folder(new_folder) {
@@ -408,12 +419,12 @@ function decode_path(path) {
 }
 
 function on_clickable(event) {
-    if (mode != 'folder') {
+    if (mode !== 'folder') {
         event.preventDefault();
         return;
     }
     python("ojo:" + decode_path($(this).attr('file')));
-};
+}
 
 $(function() {
     change_folder('');
@@ -423,7 +434,7 @@ $(function() {
     });
 
     $(document).keydown(function(event) {
-        if (mode != 'folder') {
+        if (mode !== 'folder') {
             event.preventDefault();
             return;
         }
@@ -451,7 +462,7 @@ $(function() {
 
     $('#search-field').focus();
     $('#search-field').keyup(function() {
-        if ($(this).val() != search) {
+        if ($(this).val() !== search) {
             search = $(this).val();
             on_search();
         }

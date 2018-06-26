@@ -39,14 +39,14 @@ body {
     color: white;
     background-color: #F07746;
     padding: 10px;
-    border-radius: 10px;
+    border-radius: 6px;
 }
 
 #folders {
     display: none;
     margin: 7px;
     background: rgba(105, 101, 93, 0.8);
-    box-shadow: 3px 3px 5px 0px #333;
+    box-shadow: 3px 3px 5px 0 #333;
     padding: 20px;
     float: left;
 }
@@ -123,7 +123,7 @@ body {
     position: fixed;
     width: 100%;
     z-index: 100;
-    bottom: 0px;
+    bottom: 0;
     background: rgba(57, 55, 49, 0.7);
     padding: 10px;
     color: white;
@@ -131,7 +131,6 @@ body {
 
 span.holder-name {
     color: #d3d3d3;
-    font-family: Ubuntu;
     font-size: 80%;
 }
 
@@ -163,4 +162,14 @@ div.search {
 #dimensions {
     float:right;
     padding-right: 20px;
+}
+
+#progress {
+    position: absolute;
+    z-index: 2;
+    bottom: 0;
+    left: 0;
+    width: 0;
+    height: 3px;
+    background-color: #F07746;
 }

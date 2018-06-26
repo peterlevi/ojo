@@ -685,6 +685,7 @@ class Ojo():
                 if not os.path.exists(self.thumbs.get_cached_thumbnail_path(x[1]))
             ])
 
+            self.js("set_image_count(%d)" % len(self.images));
             for img in self.images:
                 if self.last_folder_change_time != thread_change_time or thread_folder != self.folder:
                     return
