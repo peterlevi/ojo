@@ -356,9 +356,13 @@ function on_key(key) {
 }
 
 function matches_search(elem) {
-    return (elem.attr('filename') && elem.attr('filename').toLowerCase().indexOf(search.toLowerCase()) >= 0) ||
-        (elem.attr('file') && elem.attr('file').substring(0, 'command:'.length) === 'command:' &&
-        elem.attr('file').substring('command:'.length + 1).toLowerCase().indexOf(search.toLowerCase()) >= 0);
+    var nbsp = new RegExp(String.fromCharCode(160), 'g');
+    var filename = elem.attr('filename').replace(nbsp, ' ');
+    var file = elem.attr('file').replace(nbsp, ' ');
+
+    return (filename && filename.toLowerCase().indexOf(search.toLowerCase()) >= 0) ||
+        (file && file.substring(0, 'command:'.length) === 'command:' &&
+        file.substring('command:'.length + 1).toLowerCase().indexOf(search.toLowerCase()) >= 0);
 }
 
 function on_search() {

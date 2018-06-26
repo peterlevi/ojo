@@ -33,6 +33,7 @@ sudo apt-get install ojo
 #### Browse and image modes
 `Enter` - toggles between single image / browse mode  
 `F11` - toggles fullscreen (also F when viewing a single image)  
+`Esc` / `Alt-F4` - exit  
 
 #### Image mode:
 
@@ -48,11 +49,16 @@ Press and hold mouse to zoom to specific point at 100%, then hold and move to "l
 `Home` / `End` - go to first/last image or folder
 `Tab` / `Shift-Tab` - switch focus between files and folders list   
 `Enter` - select currently active link  
-Press letters directly to quick-filter the images, folders and commands  
 `Backspace` - move one folder up  
 `Alt-Left` / `Alt-Right` - go back / go forward in history  
-`Ctrl +/=` / `Ctrl -` - increase / decrease size of the thumbnails  
+`Ctrl +/=` / `Ctrl -` - increase / decrease size of the thumbnails
+`F5` - reload current folder (file changes are not reflected automatically)  
 `Ctrl-F5` - refresh/recreate all thumbnails in the current folder  
+
+Press letters directly to quick-filter the images, folders and commands. 
+E.g. type `.jpg` to see just JPEG files. Or type `date` to focus the `Sort by date` command.
+The filtered view over the images remains if you go into Image mode and start cycling the images.
+Press `Esc` once to clear the filter 
 
 ## Screenshots
 Single image view:
