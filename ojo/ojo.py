@@ -168,7 +168,6 @@ class Ojo():
         Gdk.threads_leave()
 
     def js(self, command):
-        logging.debug('js(%s)' % command)
         if hasattr(self, "web_view_loaded"):
             GObject.idle_add(lambda: self.web_view.execute_script(command))
         else:
@@ -335,7 +334,7 @@ class Ojo():
         global killed
         if killed:
             logging.info('Killed, quitting...')
-            GObject.idle_add(Gtk.main_quit)
+            self.exit()
         else:
             GObject.timeout_add(500, self.check_kill)
 
@@ -380,10 +379,10 @@ class Ojo():
         self.make_transparent(self.browser)
         self.box.add(self.browser)
 
-        self.window.connect("delete-event", Gtk.main_quit)
+        self.window.connect("delete-event", self.exit)
         self.window.connect("key-press-event", self.process_key)
         if "--quit-on-focus-out" in sys.argv:
-            self.window.connect("focus-out-event", Gtk.main_quit)
+            self.window.connect("focus-out-event", self.exit)
         self.window.connect("button-press-event", self.mousedown)
         self.last_mouseup_time = 0
         self.window.connect("button-release-event", self.mouseup)
@@ -403,7 +402,7 @@ class Ojo():
 
         import thumbs
         self.thumbs = thumbs.Thumbs(ojo=self)
-        self.thumbs.start_thumbnail_thread()
+        self.thumbs.start()
 
     def filter_hidden(self, files):
         return files if options['show_hidden'] else filter(
@@ -953,10 +952,32 @@ class Ojo():
         if self.mode == 'folder' and not self.manually_resized:
             self.resize_and_center(*self.get_recommended_size())
 
+    def exit(self, *args):
+        """
+        Makes sure we'll exit regardless of GTK/multithreading/multiprocessing hiccups
+        """
+        import threading
+
+        def _exit(*args):
+            self.thumbs.stop()
+            GObject.idle_add(Gtk.main_quit)
+
+        # attempt a standard exit
+        threading.Timer(0, _exit).start()
+
+        # if failed, suicide with SIGKILL after 2 seconds
+        def _suicide():
+            logging.warning('Exiting via suicide')
+            os.kill(os.getpid(), 9)
+
+        suicide_timer = threading.Timer(2, _suicide)
+        suicide_timer.daemon = True
+        suicide_timer.start()
+
     def process_key(self, widget=None, event=None, key=None, skip_browser=False):
         key = key or Gdk.keyval_name(event.keyval)
         if key == 'Escape' and (self.mode == 'image' or skip_browser):
-            Gtk.main_quit()
+            self.exit()
         elif key in ("F11",) or (self.mode == 'image' and key in ('f', 'F')):
             self.toggle_fullscreen()
         elif key == 'F5':
