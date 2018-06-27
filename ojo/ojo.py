@@ -155,7 +155,7 @@ class Ojo():
             self.selected = path
             self.after_quick_start()
             self.set_mode('folder')
-            self.selected = self.images[0] if self.images else path
+            self.selected = self.images[0] if self.images else self.get_parent_folder()
             self.last_automatic_resize = time.time()
             self.window.resize(*self.get_recommended_size())
 
@@ -174,8 +174,11 @@ class Ojo():
             GObject.timeout_add(100, lambda: self.js(command))
 
     def select_in_browser(self, path):
-        self.js("select('%s')" %
-                (path if self.is_command(path) else util.path2url(path)))
+        if path:
+            self.js("select('%s')" %
+                    (path if self.is_command(path) else util.path2url(path)))
+        else:
+            self.js("goto_visible(true)")
 
     def update_zoom_scrolling(self):
         if self.zoom:
@@ -325,7 +328,7 @@ class Ojo():
         old_folder = self.folder
         self.set_folder(path, modify_history_position)
         self.selected = old_folder if self.folder == util.get_parent(old_folder) else \
-            self.images[0] if self.images else 'command:back'
+            self.images[0] if self.images else self.get_parent_folder()
         self.set_mode("folder")
         self.last_folder_change_time = time.time()
         self.render_folder_view()
@@ -697,7 +700,7 @@ class Ojo():
                 if not os.path.exists(self.thumbs.get_cached_thumbnail_path(x[1]))
             ])
 
-            self.js("set_image_count(%d)" % len(self.images));
+            self.js("set_image_count(%d)" % len(self.images))
             for img in self.images:
                 if self.last_folder_change_time != thread_change_time or thread_folder != self.folder:
                     return

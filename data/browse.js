@@ -1,5 +1,5 @@
 var folder = '';
-var image_count = 1;
+var image_count = 0;
 var mode = 'image';
 var search = '';
 var current = '';
@@ -109,8 +109,14 @@ function add_image_div(file, name, selected, width) {
 
     var html = _.template(
         "<div class='item selectable match' style='height: <%= thumb_height %>px' file='<%= file %>' filename='<%= name %>'>" +
-        "<div class='holder' style='width: <%= width %> px; height: <%= thumb_height %>px'><span class='holder-name'><%= name %></span></div>" +
-        "</div>")({file: encode_path(file), name: esc(name), width: width});
+        "<div class='holder' style='width: <%= width %> px; height: <%= thumb_height %>px'>" +
+        "<span class='holder-name'><%= name %></span>" +
+        "</div></div>"
+    )({
+        file: encode_path(file),
+        name: esc(name),
+        width: width
+    });
 
     var elem = $(html).toggleClass('selected', selected);
     if (search && !matches_search(elem)) {
@@ -133,7 +139,7 @@ function set_image_count(count) {
 
 function update_progress() {
     var done = $('.item[with_thumb=true]').length;
-    var progress = done === image_count ? 0 : Math.min(100, 100 * done / (image_count || 1));
+    var progress = done >= image_count ? 0 : Math.min(100, 100 * done / (image_count || 1));
     // (hide when done)
     $('#progress').width(progress + '%');
 }
@@ -170,7 +176,7 @@ function remove_image_div(file) {
     }
     to_remove.remove();
 
-    image_count = Math.max(1, image_count - 1);
+    image_count = Math.max(0, image_count - 1);
     update_progress();
 }
 
