@@ -483,6 +483,12 @@ class Ojo():
         self.browser.add(self.web_view)
         self.web_view.grab_focus()
 
+    def get_parent_folder_item(self):
+        if self.folder == '/':
+            return None
+        else:
+            return dict(self.get_folder_item(self.get_parent_folder()), label='..', filename='..')
+
     def get_folder_item(self, path):
         return {
             'label': _u(os.path.basename(path) or path),
@@ -641,12 +647,18 @@ class Ojo():
             }]
 
             # Subfolders
-            subfolders = self.filter_hidden([os.path.join(self.folder, f) for f in sorted(os.listdir(self.folder))
-                                             if os.path.isdir(os.path.join(self.folder, f))])
-            if subfolders:
+            subfolders = self.filter_hidden([
+                os.path.join(self.folder, f) for f in sorted(os.listdir(self.folder))
+                if os.path.isdir(os.path.join(self.folder, f))
+            ])
+
+            parent_item = self.get_parent_folder_item()
+            special_items = [parent_item] if parent_item else []
+            subfolder_items = special_items + [self.get_folder_item(sub) for sub in subfolders]
+            if subfolder_items:
                 categories.append({
                     'label': 'Subfolders',
-                    'items': [self.get_folder_item(sub) for sub in subfolders]
+                    'items': subfolder_items
                 })
 
             # # Siblings - TODO disabled for now, they look too similar to subfolders and confuse
