@@ -167,6 +167,32 @@ class Ojo():
         Gtk.main()
         Gdk.threads_leave()
 
+    def show_error(self, error_msg):
+        if self.mode == 'image':
+            dialog = Gtk.MessageDialog(
+                self.window,
+                Gtk.DialogFlags.MODAL,
+                Gtk.MessageType.ERROR,
+                Gtk.ButtonsType.OK,
+                error_msg)
+            dialog.set_title("Oops")
+            dialog.run()
+            dialog.destroy()
+        else:
+            self.js('show_error("Oops: %s")' % error_msg)
+
+    def safe(self, fn):
+        def safe_fn(*args, **kwargs):
+            try:
+                fn(*args, **kwargs)
+            except OSError, e:
+                logging.exception('OSError:')
+                self.show_error('%s %s' % (e.message, os.strerror(e.errno)))
+            except Exception, e:
+                logging.exception('Exception:')
+                self.show_error(e.message)
+        return safe_fn
+
     def js(self, command):
         if hasattr(self, "web_view_loaded"):
             GObject.idle_add(lambda: self.web_view.execute_script(command))
@@ -315,13 +341,15 @@ class Ojo():
             self.change_to_folder(self.get_parent_folder())
 
     def change_to_folder(self, path, modify_history_position=None):
-        import gc
+        # make sure we fail early if there are permission issues:
+        os.listdir(path)
 
         self.thumbs.reset_queues()
         self.pix_cache[False].clear()
         self.pix_cache[True].clear()
         metadata.clear_cache()
 
+        import gc
         collected = gc.collect()
         logging.debug("GC collected: %d" % collected)
 
@@ -372,7 +400,12 @@ class Ojo():
         self.folder_history = []
         self.folder_history_position = 0
 
-        self.set_folder(os.path.dirname(self.selected))
+        try:
+            self.set_folder(os.path.dirname(self.selected))
+        except OSError as e:
+            logging.exception('Could not open %s' % self.selected)
+            self.selected = util.get_xdg_pictures_folder()
+            self.set_folder(self.selected)
 
         self.update_cursor()
         self.from_browser_time = 0
@@ -383,7 +416,7 @@ class Ojo():
         self.box.add(self.browser)
 
         self.window.connect("delete-event", self.exit)
-        self.window.connect("key-press-event", self.process_key)
+        self.window.connect("key-press-event", self.safe(self.process_key))
         if "--quit-on-focus-out" in sys.argv:
             self.window.connect("focus-out-event", self.exit)
         self.window.connect("button-press-event", self.mousedown)
@@ -445,7 +478,7 @@ class Ojo():
                     if os.path.isfile(path):
                         self.set_mode('image')
 
-                GObject.idle_add(_do)
+                GObject.idle_add(self.safe(_do))
         elif action == 'ojo-priority':
             files = json.loads(argument)
             self.thumbs.priority_thumbs(
@@ -472,7 +505,7 @@ class Ojo():
                 index = command.index(':')
                 action = command[:index]
                 argument = command[index + 1:]
-                self.on_js_action(action, argument)
+                self.safe(self.on_js_action)(action, argument)
 
         self.web_view.connect("status-bar-text-changed", nav)
 
@@ -701,6 +734,8 @@ class Ojo():
             ])
 
             self.js("set_image_count(%d)" % len(self.images))
+            if self.selected:
+                self.update_selected_info(self.selected)
             for img in self.images:
                 if self.last_folder_change_time != thread_change_time or thread_folder != self.folder:
                     return

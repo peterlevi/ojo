@@ -216,6 +216,10 @@ function set_dimensions(file, filename, dimensions, thumb_width) {
     }
 }
 
+function show_error(error) {
+    $('#filename').html(error);
+}
+
 function select(file, dontScrollTo, elem) {
     var el = elem || $(".selectable[file='" + encode_path(file) + "']").first();
 
