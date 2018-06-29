@@ -41,7 +41,7 @@ import config
 from config import options
 from imaging import (
     get_pil,
-    needs_rotation,
+    get_size,
     auto_rotate_pixbuf,
     pil_to_pixbuf,
     pixbuf_from_data,
@@ -739,32 +739,36 @@ class Ojo():
             for img in self.images:
                 if self.last_folder_change_time != thread_change_time or thread_folder != self.folder:
                     return
-                self.js("add_image_div('%s', '%s', %s, %d)" % (
+                self.js("add_image_div('%s', '%s', %s)" % (
                     util.path2url(img),
                     os.path.basename(img),
-                    'true' if img == self.selected else 'false',
-                    options['thumb_height'] * 3/2))
+                    'true' if img == self.selected else 'false'))
                 time.sleep(0.001)
                 cached = self.thumbs.get_cached_thumbnail_path(img)
                 if os.path.exists(cached):
                     self.thumb_ready(img, thumb_path=cached)
                 else:
                     try:
-                        meta = metadata.get_full(img)
-                        w, h = meta.dimensions
-                        rok = not needs_rotation(meta)
-                        thumb_width = \
-                            int(float(w) * min(h, thumbh) / h) if rok else \
-                            int(float(h) * min(w, thumbh) / w)
-                        if w and h:
-                            self.js("set_dimensions('%s', '%s', '%d x %d', %d)" % (
-                                util.path2url(img),
-                                os.path.basename(img),
-                                w if rok else h,
-                                h if rok else w,
-                                thumb_width))
+                        meta = metadata.get(img)
+                        w, h = meta['width'], meta['height']
+                        needs_rotation = meta['needs_rotation']
                     except Exception:
-                        pass
+                        try:
+                            # image without metadata, try to just get the size
+                            w, h = get_size(img)
+                            needs_rotation = False
+                        except Exception:
+                            continue
+
+                    thumb_width = \
+                        (float(w) * min(h, thumbh) / h) if not needs_rotation else \
+                        (float(h) * min(w, thumbh) / w)
+                    self.js("set_dimensions('%s', '%s', '%d x %d', %d)" % (
+                        util.path2url(img),
+                        os.path.basename(img),
+                        w if not needs_rotation else h,
+                        h if not needs_rotation else w,
+                        thumb_width))
 
             self.select_in_browser(self.selected)
 

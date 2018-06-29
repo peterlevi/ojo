@@ -57,7 +57,7 @@ function refresh_category(category) {
     _.map(category.items, function(item) {
         var style = '';
         if (category.no_labels) {
-            style = 'display: inline; ' + (first ? 'padding-right: 0px' : 'padding: 0px;');  //TODO we don't want inlined CSS
+            style = 'display: inline; ' + (first ? 'padding-right: 0' : 'padding: 0;');  //TODO we don't want inlined CSS
         }
         add_folder(category.label, item.label, item.path, item.filename, item.icon, style, item.nofocus);
         first = false;
@@ -92,8 +92,18 @@ function add_folder_category(label) {
 
 function add_folder(category_label, label, path, filename, icon, style, nofocus) {
     var elem = $(_.template(
-        "<div class='folder match' file='<%= path %>' filename='<%= filename %>' style='<%= style %>'><%= label %></div>")({
-        path: encode_path(path), filename: esc(filename), label: esc(label), style: style
+        "<div " +
+        "   class='folder match' " +
+        "   file='<%= path %>' " +
+        "   filename='<%= filename %>' " +
+        "   style='<%= style %>'>" +
+        "<%= label %>" +
+        "</div>")
+    ({
+        path: encode_path(path),
+        filename: esc(filename),
+        label: esc(label),
+        style: style
     }));
     elem.addClass(path? (nofocus? 'clickable': 'selectable') : 'disabled');
     if (icon) {
@@ -102,20 +112,35 @@ function add_folder(category_label, label, path, filename, icon, style, nofocus)
     $("#" + get_id(category_label)).append(elem);
 }
 
-function add_image_div(file, name, selected, width) {
+function add_image_div(file, name, selected, thumb, thumb_width) {
     if (file.indexOf(folder) !== 0) {
         return;
     }
 
+    var content = thumb ?
+        "<img src='<%= thumb %>'/>" :
+        "<span class='holder-name'><%= name %></span>";
+
     var html = _.template(
-        "<div class='item selectable match' style='height: <%= thumb_height %>px' file='<%= file %>' filename='<%= name %>'>" +
-        "<div class='holder' style='width: <%= width %> px; height: <%= thumb_height %>px'>" +
-        "<span class='holder-name'><%= name %></span>" +
-        "</div></div>"
+        "<div " +
+        "   class='item selectable match' " +
+        "   file='<%= file %>' " +
+        "   filename='<%= name %>' " +
+        (thumb ? "with_thumb=true " : "") +
+        "   style='width: <%= thumb_width %>; height: <%= thumb_height %>px'>" +
+        "   <div class='holder'>" +
+        content +
+        "   </div>" +
+        "</div>"
     )({
         file: encode_path(file),
         name: esc(name),
-        width: width
+        thumb: thumb ? encode_path(thumb) : '',
+        thumb_width:
+            thumb ? 'initial' :
+            thumb_width ? thumb_width + 'px' :
+            (thumb_height * 3/2) + 'px',
+        thumb_height: thumb_height
     });
 
     var elem = $(html).toggleClass('selected', selected);
@@ -125,6 +150,10 @@ function add_image_div(file, name, selected, width) {
     }
 
     $('#images').append(elem);
+
+    if (thumb) {
+        update_progress();
+    }
 
     if (selected) {
         current = encode_path(file);
@@ -151,14 +180,9 @@ function add_image(file, thumb) {
 
     clearTimeout(pending_add_timeouts[file]);
     var item = $(".item[file='" + encode_path(file) + "']");
-    item.attr('with_thumb', true);
     if (item.length) {
-        item.html(
-            "<div style='display: table-cell; vertical-align: middle; text-align: center; width:10px; height:" + thumb_height + "px;'>" +
-            "<div style='display: inline-block'>" +
-            "<img style='max-height: " + thumb_height + "px;' src='" + encode_path(thumb) + "'/>" +
-            "</div>" +
-            "</div>");
+        item.attr('with_thumb', true).css('width', 'initial');
+        item.find('.holder').html("<img src='" + encode_path(thumb) + "'/>");
         update_progress();
     } else {
         pending_add_timeouts[file] = setTimeout(function () {add_image(file, thumb)}, 200);
@@ -207,7 +231,7 @@ function change_folder(new_folder) {
 function set_dimensions(file, filename, dimensions, thumb_width) {
     $(".item[file='" + encode_path(file) + "']").attr('dimensions', dimensions).attr('filename', esc(filename));
     if (thumb_width) {
-        $(".item[file='" + encode_path(file) + "'] .holder").css('width', thumb_width);
+        $(".item[file='" + encode_path(file) + "']").css('width', thumb_width);
     }
     if (file === current) {
         $("#filename").html(filename);

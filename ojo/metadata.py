@@ -19,6 +19,9 @@ class Metadata:
 
         return None
 
+    def get_cached(self, filename):
+        return self.cache.get(filename, None)
+
     def get_full(self, filename):
         try:
             from pyexiv2 import ImageMetadata

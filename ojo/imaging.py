@@ -91,15 +91,11 @@ def get_pixbuf(filename, width=None, height=None):
 def thumbnail(filename, thumb_path, width, height):
     def use_pil():
         pil = get_pil(filename, width, height)
-        # format = {".gif": "GIF", ".png": "PNG", ".svg": "PNG"}.get(ext, 'JPEG')  # TODO where did ext come from??
-        for format in ('JPEG', 'GIF', 'PNG'):
-            try:
-                pil.save(thumb_path, format)
-                if os.path.getsize(thumb_path):
-                    break
-            except Exception, e:
-                logging.exception(
-                    'Could not save thumbnail in format %s:' % format)
+        try:
+            pil.save(thumb_path, 'JPEG')
+        except Exception, e:
+            logging.exception(
+                'Could not save thumbnail in format %s:' % format)
 
     def use_pixbuf():
         pixbuf = get_pixbuf(filename, width, height)
@@ -258,6 +254,19 @@ def get_supported_image_extensions():
             fn.image_formats = fn.image_formats.union(map(lambda e: e.lower(), l))
 
     return fn.image_formats
+
+
+def get_size(image):
+    format, image_width, image_height = GdkPixbuf.Pixbuf.get_file_info(image)
+    if format:
+        return image_width, image_height
+    else:
+        try:
+            from PIL import Image
+            im = Image.open(image)
+            return im.size
+        except:
+            raise Exception('Not an image or unsupported image format')
 
 
 def is_image(filename):
