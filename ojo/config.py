@@ -19,19 +19,20 @@ def load_options():
     options.clear()
     options.update(load_json('options.json', {}))
     defaults = {
+        'folder': util.get_xdg_pictures_folder(),
+
         'decorated': True,
         'maximized': False,
         'fullscreen': False,
 
         'enlarge_smaller': False,
 
+        'thumb_height': 120,
+
         'sort_by': 'name',
         'sort_order': 'asc',
         'show_hidden': False,
-
-        'thumb_height': 120,
-
-        'folder': util.get_xdg_pictures_folder()
+        'show_captions': False,
     }
     for k, v in defaults.items():
         if not k in options:

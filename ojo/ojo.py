@@ -280,6 +280,11 @@ class Ojo():
         config.save_options()
         self.change_to_folder(self.folder, self.folder_history_position)
 
+    def show_captions(self, key):
+        options['show_captions'] = key == 'true'
+        config.save_options()
+        self.change_to_folder(self.folder, self.folder_history_position)
+
     def sort(self, key):
         if key in ('asc', 'desc'):
             options['sort_order'] = key
@@ -567,6 +572,7 @@ class Ojo():
             'remove-bookmark': self.remove_bookmark,
             'sort': self.sort,
             'hidden': self.show_hidden,
+            'captions': self.show_captions,
         }
         m[parts[0]](*parts[1:])
 
@@ -642,6 +648,13 @@ class Ojo():
         else:
             items.append(self.get_command_item(
                 'command:hidden:true', None, None, 'Show hidden files'))
+
+        if options['show_captions']:
+            items.append(self.get_command_item(
+                'command:captions:false', None, None, 'Hide captions'))
+        else:
+            items.append(self.get_command_item(
+                'command:captions:true', None, None, 'Show captions'))
 
         return {'label': 'Options', 'items': items}
 
@@ -739,10 +752,12 @@ class Ojo():
             for img in self.images:
                 if self.last_folder_change_time != thread_change_time or thread_folder != self.folder:
                     return
-                self.js("add_image_div('%s', '%s', %s)" % (
+                self.js("add_image_div('%s', '%s', %s, %s)" % (
                     util.path2url(img),
                     os.path.basename(img),
-                    'true' if img == self.selected else 'false'))
+                    'true' if img == self.selected else 'false',
+                    'true' if options['show_captions'] else 'false',
+                ))
                 time.sleep(0.001)
                 cached = self.thumbs.get_cached_thumbnail_path(img)
                 if os.path.exists(cached):

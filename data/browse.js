@@ -112,14 +112,10 @@ function add_folder(category_label, label, path, filename, icon, style, nofocus)
     $("#" + get_id(category_label)).append(elem);
 }
 
-function add_image_div(file, name, selected, thumb, thumb_width) {
+function add_image_div(file, name, selected, show_caption, thumb, thumb_width) {
     if (file.indexOf(folder) !== 0) {
         return;
     }
-
-    var content = thumb ?
-        "<img src='<%= thumb %>'/>" :
-        "<span class='holder-name'><%= name %></span>";
 
     var html = _.template(
         "<div " +
@@ -129,8 +125,9 @@ function add_image_div(file, name, selected, thumb, thumb_width) {
         (thumb ? "with_thumb=true " : "") +
         "   style='width: <%= thumb_width %>; height: <%= thumb_height %>px'>" +
         "   <div class='holder'>" +
-        content +
+        (thumb ? "<img src='<%= thumb %>'/>" : "") +
         "   </div>" +
+        "<div class='caption' style='z-index: <%= caption_z %>'><%= name %></div>" +
         "</div>"
     )({
         file: encode_path(file),
@@ -140,7 +137,8 @@ function add_image_div(file, name, selected, thumb, thumb_width) {
             thumb ? 'initial' :
             thumb_width ? thumb_width + 'px' :
             (thumb_height * 3/2) + 'px',
-        thumb_height: thumb_height
+        thumb_height: thumb_height,
+        caption_z: show_caption ? 2 : -1
     });
 
     var elem = $(html).toggleClass('selected', selected);
