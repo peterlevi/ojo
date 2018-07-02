@@ -46,11 +46,12 @@ function render_folders(data) {
 }
 
 function refresh_category(category) {
-    var elem = $('#' + get_id(category.label));
+    var id = '#' + get_id(category.label);
+    var elem = $(id);
     if (!elem.length) {
         add_folder_category(category.label);
     } else {
-        $('#' + get_id(category.label) + ' .folder').remove();
+        $(id + ' .folder').remove();
     }
 
     var first = true;
@@ -63,7 +64,7 @@ function refresh_category(category) {
         first = false;
     });
     if (category.no_labels) {
-        $("#" + category.label).append('<div></div>');
+        $(id).append('<div></div>');
     }
 }
 
@@ -127,7 +128,7 @@ function add_image_div(file, name, selected, show_caption, thumb, thumb_width) {
         "   <div class='holder'>" +
         (thumb ? "<img src='<%= thumb %>'/>" : "") +
         "   </div>" +
-        "<div class='caption' style='z-index: <%= caption_z %>'><%= name %></div>" +
+        "<div class='caption <%= caption_z %>'><%= name %></div>" +
         "</div>"
     )({
         file: encode_path(file),
@@ -138,7 +139,7 @@ function add_image_div(file, name, selected, show_caption, thumb, thumb_width) {
             thumb_width ? thumb_width + 'px' :
             (thumb_height * 3/2) + 'px',
         thumb_height: thumb_height,
-        caption_z: show_caption ? 2 : -1
+        caption_z: show_caption ? 'caption_above' : ''
     });
 
     var elem = $(html).toggleClass('selected', selected);
@@ -460,6 +461,11 @@ function on_clickable(event) {
         return;
     }
     python("ojo:" + decode_path($(this).attr('file')));
+}
+
+
+function show_captions(visible) {
+    $('.caption').toggleClass('caption_above', visible);
 }
 
 $(function() {

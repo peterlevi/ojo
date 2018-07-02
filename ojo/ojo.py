@@ -283,7 +283,8 @@ class Ojo():
     def show_captions(self, key):
         options['show_captions'] = key == 'true'
         config.save_options()
-        self.change_to_folder(self.folder, self.folder_history_position)
+        self.refresh_category(self.build_options_category())
+        self.js('show_captions(%s)' % key)
 
     def sort(self, key):
         if key in ('asc', 'desc'):
@@ -675,63 +676,7 @@ class Ojo():
         import json
 
         def _prepare_thread():
-            parent_folder = self.get_parent_folder()
-
-            nav_items = [
-                self.get_command_item(
-                    'command:back' if self.get_back_folder() else None,
-                    self.get_back_folder(), 'back', nofocus=True),
-                self.get_command_item(
-                    'command:forward' if self.get_forward_folder() else None,
-                    self.get_forward_folder(), 'forward', nofocus=True),
-                self.get_command_item(
-                    'command:up' if parent_folder else None,
-                    parent_folder, 'up', nofocus=True)
-            ]
-
-            categories = [{
-                'label': 'Navigate',
-                'no_labels': True,
-                'items': nav_items,
-            }]
-
-            # Subfolders
-            subfolders = self.filter_hidden([
-                os.path.join(self.folder, f) for f in sorted(os.listdir(self.folder))
-                if os.path.isdir(os.path.join(self.folder, f))
-            ])
-
-            parent_item = self.get_parent_folder_item()
-            special_items = [parent_item] if parent_item else []
-            subfolder_items = special_items + [self.get_folder_item(sub) for sub in subfolders]
-            if subfolder_items:
-                categories.append({
-                    'label': 'Subfolders',
-                    'items': subfolder_items
-                })
-
-            # # Siblings - TODO disabled for now, they look too similar to subfolders and confuse
-            # if parent_folder:
-            #     siblings = self.filter_hidden([
-            #         os.path.join(parent_folder, f) for f in sorted(os.listdir(parent_folder))
-            #         if os.path.isdir(os.path.join(parent_folder, f))])
-            #     pos = siblings.index(self.folder)
-            #     if pos + 1 < len(siblings):
-            #         categories.append({
-            #             'label': 'Next folder',
-            #             'items': [self.get_folder_item(siblings[pos + 1])]
-            #         })
-            #
-            # Bookmarks
-            categories.append(self.build_bookmarks_category())
-
-            # Options
-            categories.append(self.build_options_category())
-
-            folder_info = {
-                'crumbs': self.get_crumbs(),
-                'categories': categories
-            }
+            folder_info = self.build_folder_info()
 
             if self.last_folder_change_time != thread_change_time or thread_folder != self.folder:
                 return
@@ -792,6 +737,66 @@ class Ojo():
         prepare_thread = threading.Thread(target=_prepare_thread)
         prepare_thread.daemon = True
         prepare_thread.start()
+
+    def build_folder_info(self):
+        parent_folder = self.get_parent_folder()
+
+        nav_items = [
+            self.get_command_item(
+                'command:back' if self.get_back_folder() else None,
+                self.get_back_folder(), 'back', nofocus=True),
+            self.get_command_item(
+                'command:forward' if self.get_forward_folder() else None,
+                self.get_forward_folder(), 'forward', nofocus=True),
+            self.get_command_item(
+                'command:up' if parent_folder else None,
+                parent_folder, 'up', nofocus=True)
+        ]
+
+        categories = [{
+            'label': 'Navigate',
+            'no_labels': True,
+            'items': nav_items,
+        }]
+
+        # Subfolders
+        subfolders = self.filter_hidden([
+            os.path.join(self.folder, f) for f in sorted(os.listdir(self.folder))
+            if os.path.isdir(os.path.join(self.folder, f))
+        ])
+
+        parent_item = self.get_parent_folder_item()
+        special_items = [parent_item] if parent_item else []
+        subfolder_items = special_items + [self.get_folder_item(sub) for sub in subfolders]
+
+        if subfolder_items:
+            categories.append({
+                'label': 'Subfolders',
+                'items': subfolder_items
+            })
+        # # Siblings - TODO disabled for now, they look too similar to subfolders and confuse
+        # if parent_folder:
+        #     siblings = self.filter_hidden([
+        #         os.path.join(parent_folder, f) for f in sorted(os.listdir(parent_folder))
+        #         if os.path.isdir(os.path.join(parent_folder, f))])
+        #     pos = siblings.index(self.folder)
+        #     if pos + 1 < len(siblings):
+        #         categories.append({
+        #             'label': 'Next folder',
+        #             'items': [self.get_folder_item(siblings[pos + 1])]
+        #         })
+        #
+        # Bookmarks
+        categories.append(self.build_bookmarks_category())
+        # Options
+        categories.append(self.build_options_category())
+
+        folder_info = {
+            'crumbs': self.get_crumbs(),
+            'categories': categories
+        }
+
+        return folder_info
 
     def cache_around(self):
         if not hasattr(self, "images") or not self.images:
@@ -1037,6 +1042,8 @@ class Ojo():
 
         # if failed, suicide with SIGKILL after 2 seconds
         def _suicide():
+            import os
+            import logging
             logging.warning('Exiting via suicide')
             os.kill(os.getpid(), 9)
 

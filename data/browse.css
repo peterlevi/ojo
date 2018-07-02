@@ -139,6 +139,11 @@ div.caption {
     line-height: 20px;
     padding-left: 5px;
     font-size: 10px;
+    z-index: -1;
+}
+
+div.caption.caption_above {
+    z-index: 2;
 }
 
 div.holder {
