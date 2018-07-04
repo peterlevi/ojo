@@ -35,6 +35,25 @@ def load_options():
         'show_captions': False,
 
         'date_format': '%d %B %Y',
+        'show_groups_for': {
+            'date': True,
+            'extension': True,
+            'name': False,
+            'size': True,
+        },
+        'group_by_size_buckets': [
+            [1000, 'Bytes'],
+            [100 * 1024, 'Less than 100 KB'],
+            [1 * 1024 * 1024, '100 KB to 1 MB'],
+            [2 * 1024 * 1024, '1-2 MB'],
+            [5 * 1024 * 1024, '2-5 MB'],
+            [10 * 1024 * 1024, '5-10 MB'],
+            [20 * 1024 * 1024, '10-20 MB'],
+            [50 * 1024 * 1024, '20-50 MB'],
+            [100 * 1024 * 1024, '50-100 MB'],
+            [1024 * 1024 * 1024, '100 MB - 1 GB'],
+            [1e18, 'More than 1 GB'],
+        ]
     }
     for k, v in defaults.items():
         if not k in options:
@@ -77,5 +96,5 @@ def load_json(filename, default_data):
 def save_json(filename, data):
     import json
     with open(get_config_file(filename), 'w') as f:
-        json.dump(data, f, ensure_ascii=True, indent=4)
+        json.dump(data, f, ensure_ascii=True, indent=4, sort_keys=True)
 

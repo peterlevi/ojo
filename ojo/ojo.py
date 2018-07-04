@@ -277,14 +277,20 @@ class Ojo():
             images = list(reversed(images))
         return images
 
-    def get_group_key(self, image):
-        if options['sort_by'] == 'extension':
+    def get_group_key(self, image, sort_by):
+        if sort_by == 'extension':
             ext = os.path.splitext(image)[1][1:].upper()
             return ext if ext else 'No extension'
-        elif options['sort_by'] == 'date':
+        elif sort_by == 'date':
             import datetime
             ts = os.stat(image).st_mtime
             return datetime.datetime.fromtimestamp(ts).strftime(options['date_format'])
+        elif sort_by == 'name':
+            return os.path.basename(image)[0].upper()
+        elif sort_by == 'size':
+            size = os.stat(image).st_size
+            buckets = options['group_by_size_buckets']
+            return next(b[1] for b in buckets if b[0] > size)
         else:
             return None
 
@@ -728,10 +734,12 @@ class Ojo():
 
             last_group = None
             for img in self.images:
-                group = self.get_group_key(img)
-                if group != last_group:
-                    self.js("add_group('%s', %s)" % (group, 'true' if last_group is None else 'false'))
-                    last_group = group
+                groups_enabled = options.get('show_groups_for', {}).get(options['sort_by'], False)
+                if groups_enabled:
+                    group = self.get_group_key(img, options['sort_by'])
+                    if group != last_group:
+                        self.js("add_group('%s', %s)" % (group, 'true' if last_group is None else 'false'))
+                        last_group = group
 
                 if self.last_folder_change_time != thread_change_time or thread_folder != self.folder:
                     return
