@@ -466,6 +466,7 @@ function on_clickable(event) {
 
 function show_captions(visible) {
     $('.caption').toggleClass('caption_above', visible);
+    select('command:captions:' + (visible ? 'false' : 'true'));
 }
 
 $(function() {

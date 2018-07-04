@@ -262,7 +262,9 @@ class Ojo():
         if not options['show_hidden']:
             images = filter(lambda f: not os.path.basename(f).startswith('.'), images)
 
-        if options['sort_by'] == 'name':
+        if options['sort_by'] == 'extension':
+            key = lambda f: os.path.splitext(f)[1] + '_' + os.path.basename(f).lower()
+        elif options['sort_by'] == 'name':
             key = lambda f: os.path.basename(f).lower()
         elif options['sort_by'] == 'date':
             key = lambda f: os.stat(f).st_mtime
@@ -291,7 +293,7 @@ class Ojo():
             options['sort_order'] = key
         else:
             options['sort_by'] = key
-            m = {'name': 'asc', 'date': 'asc', 'size': 'desc'}
+            m = {'extension': 'asc', 'name': 'asc', 'date': 'asc', 'size': 'desc'}
             options['sort_order'] = m[key]
         config.save_options()
         self.change_to_folder(self.folder, self.folder_history_position)
@@ -623,23 +625,41 @@ class Ojo():
 
         by = options['sort_by']
         order = options['sort_order']
-        mapby = {'name': 'name', 'date': 'date', 'size': 'file size'}
+        mapby = {
+            'extension': 'type',
+            'name': 'name',
+            'date': 'date',
+            'size': 'file size',
+        }
         mapord = {
-            "desc": {'name': 'Z to A', 'date': 'newest at top', 'size': 'big at top'},
-            "asc": {'name': 'A to Z', 'date': 'oldest at top', 'size': 'small at top'}}
-        items.append(self.get_command_item(
-            None, None, None,
-            'Sorted by %s, %s' % (mapby[by], mapord[order][by])))
-        for sort in ('name', 'date', 'size'):
+            "desc": {
+                'extension': 'Z to A',
+                'name': 'Z to A',
+                'date': 'newest at top',
+                'size': 'big at top',
+            },
+            "asc": {
+                'extension': 'A to Z',
+                'name': 'A to Z',
+                'date': 'oldest at top',
+                'size': 'small at top'
+            }
+        }
+        for sort in ('extension', 'name', 'date', 'size'):
             if sort != by:
                 items.append(self.get_command_item(
                     'command:sort:' + sort, None, None, 'Sort by ' + mapby[sort]))
+            else:
+                items.append(self.get_command_item(
+                    None, None, None,
+                    'Sort by %s, %s' % (mapby[by], mapord[order][by])))
+
         if order == 'asc':
-            m = {'name': 'Z to A', 'date': 'Newest at top', 'size': 'Big at top'}
+            m = {'extension': 'Z to A', 'name': 'Z to A', 'date': 'Newest at top', 'size': 'Big at top'}
             items.append(self.get_command_item(
                 'command:sort:desc', None, None, m[by]))
         else:
-            m = {'name': 'A to Z', 'date': 'Oldest at top', 'size': 'Small at top'}
+            m = {'extension': 'A to Z', 'name': 'A to Z', 'date': 'Oldest at top', 'size': 'Small at top'}
             items.append(self.get_command_item(
                 'command:sort:asc', None, None, m[by]))
 
