@@ -263,7 +263,7 @@ class Ojo():
             images = filter(lambda f: not os.path.basename(f).startswith('.'), images)
 
         if options['sort_by'] == 'extension':
-            key = lambda f: os.path.splitext(f)[1] + '_' + os.path.basename(f).lower()
+            key = lambda f: (os.path.splitext(f)[1] + '_' + os.path.basename(f)).lower()
         elif options['sort_by'] == 'name':
             key = lambda f: os.path.basename(f).lower()
         elif options['sort_by'] == 'date':
@@ -276,6 +276,17 @@ class Ojo():
         if options['sort_order'] == 'desc':
             images = list(reversed(images))
         return images
+
+    def get_group_key(self, image):
+        if options['sort_by'] == 'extension':
+            ext = os.path.splitext(image)[1][1:].upper()
+            return ext if ext else 'No extension'
+        elif options['sort_by'] == 'date':
+            import datetime
+            ts = os.stat(image).st_mtime
+            return datetime.datetime.fromtimestamp(ts).strftime(options['date_format'])
+        else:
+            return None
 
     def show_hidden(self, key):
         options['show_hidden'] = key == 'true'
@@ -714,7 +725,14 @@ class Ojo():
             self.js("set_image_count(%d)" % len(self.images))
             if self.selected:
                 self.update_selected_info(self.selected)
+
+            last_group = None
             for img in self.images:
+                group = self.get_group_key(img)
+                if group != last_group:
+                    self.js("add_group('%s', %s)" % (group, 'true' if last_group is None else 'false'))
+                    last_group = group
+
                 if self.last_folder_change_time != thread_change_time or thread_folder != self.folder:
                     return
                 self.js("add_image_div('%s', '%s', %s, %s)" % (

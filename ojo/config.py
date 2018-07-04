@@ -33,6 +33,8 @@ def load_options():
         'sort_order': 'asc',
         'show_hidden': False,
         'show_captions': False,
+
+        'date_format': '%d %B %Y',
     }
     for k, v in defaults.items():
         if not k in options:

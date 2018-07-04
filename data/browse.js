@@ -113,6 +113,16 @@ function add_folder(category_label, label, path, filename, icon, style, nofocus)
     $("#" + get_id(category_label)).append(elem);
 }
 
+function add_group(label, is_first) {
+    $(
+        (!is_first ? '<br/>' : '') +
+        '<h2 class="group ' + (is_first ? 'first': 'non-first') + '">' +
+        label +
+        '</h2>' +
+        '<br/>'
+    ).appendTo($('#images'));
+}
+
 function add_image_div(file, name, selected, show_caption, thumb, thumb_width) {
     if (file.indexOf(folder) !== 0) {
         return;

@@ -81,7 +81,7 @@ body {
 .item {
     position: relative;
     margin: 7px;
-    float: left;
+    display: inline-block;
     overflow: hidden;
     box-shadow: 3px 3px 5px 1px #333;
     height: 120px;
@@ -92,7 +92,22 @@ body {
     border: solid 7px #F07746;
     overflow: hidden;
     border-radius: 4px;
-    /* -webkit-transform: scale(1.12); */
+    /*-webkit-transform: scale(1.12);*/
+    /*z-index: 10;*/
+}
+
+.group {
+    color: #A19C90;
+    font-size: 18px;
+    font-weight: normal;
+    margin: 0 7px 5px;
+    padding-top: 25px;
+    display: inline-block;
+    text-shadow: 1px 1px black;
+}
+
+.group.first {
+    padding-top: 5px;
 }
 
 .selectable, .clickable {
@@ -124,7 +139,7 @@ body {
     width: 100%;
     z-index: 100;
     bottom: 0;
-    background: rgba(57, 55, 49, 0.7);
+    background: rgba(57, 55, 49, 0.8);
     padding: 10px;
     color: white;
 }
