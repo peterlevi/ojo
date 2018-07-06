@@ -1119,7 +1119,7 @@ class Ojo():
         key = key or Gdk.keyval_name(event.keyval)
         if key == 'Escape' and (self.mode == 'image' or skip_browser):
             self.exit()
-        elif key in ("F11",) or (self.mode == 'image' and key in ('f', 'F')):
+        elif key in ("F11",) or (event and event.state & Gdk.ModifierType.CONTROL_MASK == 0 and key in ('f', 'F')):
             self.toggle_fullscreen()
         elif key == 'F5':
             if event and event.state & Gdk.ModifierType.CONTROL_MASK and self.mode == "folder":
@@ -1145,6 +1145,8 @@ class Ojo():
                 self.increase_thumb_height()
             elif key == 'minus' and event and (event.state & (Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.MOD1_MASK)):
                 self.decrease_thumb_height()
+            elif key == 'f' and event and event.state & Gdk.ModifierType.CONTROL_MASK:
+                self.js("show_search(true)")
             elif key in ('Tab', 'ISO_Left_Tab'):
                 self.js("on_key('%s')" % 'Tab')
             elif not skip_browser:

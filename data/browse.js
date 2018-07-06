@@ -231,8 +231,6 @@ function change_folder(new_folder) {
     pending_add_timeouts = {};
 
     $('#search-field').val('');
-    $('#search').html('');
-    $('#search').hide();
     $('#title').html('');
     $('#folders').hide();
     $('#folders').html('');
@@ -352,7 +350,6 @@ function goto_visible(first_or_last) {
 }
 
 function on_key(key) {
-    log(key);
     var sel = $('.selected');
     if (key === 'Tab') {
         var new_selection_class = selection_class === '.item' ? '.folder' : '.item';
@@ -387,13 +384,12 @@ function on_key(key) {
     } else if (key === "End") {
         goto($(selection_class + ".selectable.match:last"));
     } else if (key === 'BackSpace') {
-        if (!search) {
+        if (!$('#search-field').is(':focus')) {
             python('ojo-handle-key:' + key)
         }
     } else if (key === 'Escape') {
-        if (search) {
-            search = '';
-            on_search();
+        if ($('#search-field').is(':focus')) {
+            show_search(false);
         } else {
             python('ojo-handle-key:' + key)
         }
@@ -417,8 +413,6 @@ function matches_search(elem) {
 function on_search() {
     log('Searching for ' + search);
     python('ojo-search:' + search);
-    $('#search').html(search);
-    $('#search').toggle(search.length > 0);
     $('.selectable')
         .filter(function() {return !matches_search($(this))})
         .removeClass("match")
@@ -488,6 +482,19 @@ function show_captions(visible) {
     select('command:captions:' + (visible ? 'false' : 'true'));
 }
 
+function show_search(visible) {
+    $('#search-box').toggle(visible);
+    if (visible) {
+        setTimeout(function() {
+            $('#search-field').focus();
+        }, 0);
+    } else {
+        search = '';
+        $('#search-field').val('');
+        on_search();
+    }
+}
+
 $(function() {
     change_folder('');
 
@@ -522,11 +529,17 @@ $(function() {
 
     $(document).on('click', '.selectable, .clickable', on_clickable);
 
-    $('#search-field').focus();
-    $('#search-field').keyup(function() {
+    $('#search-field').on('input', function() {
         if ($(this).val() !== search) {
             search = $(this).val();
             on_search();
+        }
+    });
+
+    $('#search-field').keydown(function(e) {
+        // suppress arrows, home, end in searchbox (we use them for pics navigation)
+        if (e.keyCode >= 35 && e.keyCode <= 40) {
+            e.preventDefault();
         }
     });
 });
