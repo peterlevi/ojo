@@ -166,11 +166,11 @@ div.holder {
     height: 100%;
     background-color: rgba(57, 55, 49, 0.2);
     overflow: hidden;
+    display: table-cell;
+    vertical-align: middle;
 }
 
 div.holder img {
-    width: 100%;
-    height: 100%;
 }
 
 #spinner {

@@ -135,7 +135,7 @@ function add_image_div(file, name, selected, show_caption, thumb, thumb_width) {
         "   filename='<%= name %>' " +
         (thumb ? "with_thumb=true " : "") +
         "   style='width: <%= thumb_width %>; height: <%= thumb_height %>px'>" +
-        "   <div class='holder'>" +
+        "   <div class='holder' style='height: <%= thumb_height %>px'>" +
         (thumb ? "<img src='<%= thumb %>'/>" : "") +
         "   </div>" +
         "<div class='caption <%= caption_z %>'><%= name %></div>" +
