@@ -482,7 +482,7 @@ class Ojo():
             rok = not meta['needs_rotation']
             self.js("set_dimensions('%s', '%s', '%d x %d')" % (
                 util.path2url(filename),
-                os.path.basename(filename),
+                self.safe_basename(filename),
                 meta['width' if rok else 'height'],
                 meta['height' if rok else 'width']))
 
@@ -662,7 +662,7 @@ class Ojo():
                 'size': 'small at top'
             }
         }
-        for sort in ('extension', 'name', 'date', 'size'):
+        for sort in ('name', 'extension', 'date', 'size'):
             if sort != by:
                 items.append(self.get_command_item(
                     'command:sort:' + sort, None, None, 'Sort by ' + mapby[sort]))
@@ -699,6 +699,9 @@ class Ojo():
     def refresh_category(self, category):
         import json
         self.js('refresh_category(%s)' % json.dumps(category))
+
+    def safe_basename(self, img):
+        return os.path.basename(img).replace("'", "\\'")
 
     def render_folder_view(self):
         self.web_view_loaded = True
@@ -745,7 +748,7 @@ class Ojo():
                     return
                 self.js("add_image_div('%s', '%s', %s, %s)" % (
                     util.path2url(img),
-                    os.path.basename(img),
+                    self.safe_basename(img),
                     'true' if img == self.selected else 'false',
                     'true' if options['show_captions'] else 'false',
                 ))
@@ -771,7 +774,7 @@ class Ojo():
                         (float(h) * min(w, thumbh) / w)
                     self.js("set_dimensions('%s', '%s', '%d x %d', %d)" % (
                         util.path2url(img),
-                        os.path.basename(img),
+                        self.safe_basename(img),
                         w if not needs_rotation else h,
                         h if not needs_rotation else w,
                         thumb_width))
