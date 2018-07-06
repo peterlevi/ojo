@@ -277,7 +277,10 @@ class Ojo():
             images = list(reversed(images))
         return images
 
-    def get_group_key(self, image, sort_by):
+    def get_group_key(self, image, sort_by=None):
+        if not sort_by:
+            sort_by = options['sort_by']
+
         if sort_by == 'extension':
             ext = os.path.splitext(image)[1][1:].upper()
             return ext if ext else 'No extension'
@@ -737,6 +740,7 @@ class Ojo():
 
             last_group = None
             for img in self.images:
+                group = None
                 groups_enabled = options.get('show_groups_for', {}).get(options['sort_by'], False)
                 if groups_enabled:
                     group = self.get_group_key(img, options['sort_by'])
@@ -746,11 +750,12 @@ class Ojo():
 
                 if self.last_folder_change_time != thread_change_time or thread_folder != self.folder:
                     return
-                self.js("add_image_div('%s', '%s', %s, %s)" % (
+                self.js("add_image_div('%s', '%s', %s, %s, '%s')" % (
                     util.path2url(img),
                     self.safe_basename(img),
                     'true' if img == self.selected else 'false',
                     'true' if options['show_captions'] else 'false',
+                    util._str(group) if group else '',
                 ))
                 time.sleep(0.001)
                 cached = self.thumbs.get_cached_thumbnail_path(img)
@@ -983,7 +988,9 @@ class Ojo():
     def go(self, direction, start_position=None):
         search = getattr(self, "search_text", "")
         applicable = self.images if not search else \
-            [f for f in self.images if os.path.basename(f).lower().find(search) >= 0]
+            [f for f in self.images
+             if os.path.basename(f).lower().find(search) >= 0
+             or (self.get_group_key(f) or '').find(search) >= 0]
         filename = None
         position = start_position - direction if start_position is not None \
             else applicable.index(self.selected)

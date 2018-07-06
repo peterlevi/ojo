@@ -123,7 +123,7 @@ function add_group(label, is_first) {
     ).appendTo($('#images'));
 }
 
-function add_image_div(file, name, selected, show_caption, thumb, thumb_width) {
+function add_image_div(file, name, selected, show_caption, group, thumb, thumb_width) {
     if (file.indexOf(folder) !== 0) {
         return;
     }
@@ -133,6 +133,7 @@ function add_image_div(file, name, selected, show_caption, thumb, thumb_width) {
         "   class='item selectable match' " +
         "   file='<%= file %>' " +
         "   filename='<%= name %>' " +
+        "   group='<%= group %>' " +
         (thumb ? "with_thumb=true " : "") +
         "   style='width: <%= thumb_width %>; height: <%= thumb_height %>px'>" +
         "   <div class='holder' style='height: <%= thumb_height %>px'>" +
@@ -143,6 +144,7 @@ function add_image_div(file, name, selected, show_caption, thumb, thumb_width) {
     )({
         file: encode_path(file),
         name: esc(name),
+        group: esc(group),
         thumb: thumb ? encode_path(thumb) : '',
         thumb_width:
             thumb ? 'initial' :
@@ -400,12 +402,16 @@ function on_key(key) {
 
 function matches_search(elem) {
     var nbsp = new RegExp(String.fromCharCode(160), 'g');
-    var filename = elem.attr('filename').replace(nbsp, ' ');
-    var file = elem.attr('file').replace(nbsp, ' ');
+    var filename = (elem.attr('filename') || '').replace(nbsp, ' ');
+    var file = (elem.attr('file') || '').replace(nbsp, ' ');
+    var group = (elem.attr('group') || '').replace(nbsp, ' ');
 
-    return (filename && filename.toLowerCase().indexOf(search.toLowerCase()) >= 0) ||
+    return (
+        (filename && filename.toLowerCase().indexOf(search.toLowerCase()) >= 0) ||
+        (group && group.toLowerCase().indexOf(search.toLowerCase()) >= 0) ||
         (file && file.substring(0, 'command:'.length) === 'command:' &&
-        file.substring('command:'.length + 1).toLowerCase().indexOf(search.toLowerCase()) >= 0);
+        file.substring('command:'.length + 1).toLowerCase().indexOf(search.toLowerCase()) >= 0)
+    );
 }
 
 function on_search() {
@@ -413,7 +419,10 @@ function on_search() {
     python('ojo-search:' + search);
     $('#search').html(search);
     $('#search').toggle(search.length > 0);
-    $('.selectable').filter(function() {return !matches_search($(this))}).removeClass("match").addClass("nonmatch");
+    $('.selectable')
+        .filter(function() {return !matches_search($(this))})
+        .removeClass("match")
+        .addClass("nonmatch");
     var matches = $('.selectable').filter(function() {return matches_search($(this))});
     matches.removeClass("nonmatch").addClass("match");
     var sel = $('.selected');
