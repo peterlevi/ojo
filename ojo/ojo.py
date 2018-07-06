@@ -1065,6 +1065,8 @@ class Ojo():
         elif self.mode == "folder":
             self.shown = None
             self.window.set_title(self.folder)
+            if hasattr(self, 'web_view'):
+                self.web_view.grab_focus()
 
         self.update_cursor()
         self.scroll_window.set_visible(self.mode == 'image')
@@ -1101,6 +1103,12 @@ class Ojo():
         suicide_timer.start()
 
     def process_key(self, widget=None, event=None, key=None, skip_browser=False):
+        if event:
+            # prevent processing duplicate events that happen sometimes when focusing web_view
+            if event.time == getattr(self, 'last_key_event_time', None):
+                return
+            setattr(self, 'last_key_event_time', event.time)
+
         key = key or Gdk.keyval_name(event.keyval)
         if key == 'Escape' and (self.mode == 'image' or skip_browser):
             self.exit()
@@ -1119,10 +1127,6 @@ class Ojo():
                 if os.path.isfile(prev):
                     self.set_mode('image')
         elif self.mode == 'folder':
-            if key in ("Page_Up", "Page_Down"):
-                # PageUp, PageDown are processed directly by the WebView, make sure it's focused
-                if hasattr(self, 'web_view'):
-                    self.web_view.grab_focus()
             if key == 'Left' and event and (event.state & (Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.MOD1_MASK)):
                 self.folder_history_back()
             elif key == 'Right' and event and (
