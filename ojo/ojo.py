@@ -138,6 +138,7 @@ class Ojo():
 
         self.set_zoom(False, 0.5, 0.5)
         self.mode = 'image' if os.path.isfile(path) else 'folder'
+        self.is_in_search = False
         self.last_action_time = 0
         self.last_folder_change_time = time.time()
         self.shown = None
@@ -1109,6 +1110,18 @@ class Ojo():
         suicide_timer.daemon = True
         suicide_timer.start()
 
+    def check_letter_shortcut(self, event, hw_keycodes):
+        return (
+            (self.mode == 'image' or not self.is_in_search) and
+            event and
+            event.state & Gdk.ModifierType.CONTROL_MASK == 0 and
+            event.hardware_keycode in hw_keycodes
+        )
+
+    def toggle_search(self, visible):
+        self.is_in_search = visible
+        self.js("show_search(%s)" % ('true' if visible else 'false'))
+
     def process_key(self, widget=None, event=None, key=None, skip_browser=False):
         if event:
             # prevent processing duplicate events that happen sometimes when focusing web_view
@@ -1118,8 +1131,11 @@ class Ojo():
 
         key = key or Gdk.keyval_name(event.keyval)
         if key == 'Escape' and (self.mode == 'image' or skip_browser):
-            self.exit()
-        elif key in ("F11",) or (self.mode == 'image' and key in ('f', 'F')):
+            if self.mode == 'folder' and self.is_in_search:
+                self.toggle_search(False)
+            else:
+                self.exit()
+        elif key in ("F11",) or self.check_letter_shortcut(event, [41]):  # F
             self.toggle_fullscreen()
         elif key == 'F5':
             if event and event.state & Gdk.ModifierType.CONTROL_MASK and self.mode == "folder":
@@ -1145,12 +1161,15 @@ class Ojo():
                 self.increase_thumb_height()
             elif key == 'minus' and event and (event.state & (Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.MOD1_MASK)):
                 self.decrease_thumb_height()
+            elif event and event.state & Gdk.ModifierType.CONTROL_MASK and event.hardware_keycode == 41:  # F
+                self.toggle_search(True)
             elif key in ('Tab', 'ISO_Left_Tab'):
                 self.js("on_key('%s')" % 'Tab')
             elif not skip_browser:
                 self.js("on_key('%s')" % key)
             elif key == 'BackSpace':
-                self.folder_parent()
+                if not self.is_in_search:
+                    self.folder_parent()
 
         elif key in ("Right", "Down", "Page_Down"):
             GObject.idle_add(lambda: self.go(1))
@@ -1160,11 +1179,11 @@ class Ojo():
             GObject.idle_add(lambda: self.go(1, 0))
         elif key == "End":
             GObject.idle_add(lambda: self.go(-1, len(self.images) - 1))
-        elif key in ("z", "Z"):
+        elif self.check_letter_shortcut(event, [52]):  # Z
             self.set_zoom(not self.zoom)
             self.refresh_image()
             self.update_zoomed_views()
-        elif key in ("1", "0"):
+        elif self.check_letter_shortcut(event, [10, 19]):  # 1, 0
             self.set_zoom(True)
             self.refresh_image()
             self.update_zoomed_views()
