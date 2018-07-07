@@ -14,6 +14,7 @@ body {
     /* background: rgba(77, 75, 69, 0.9); */
     background: rgba(0, 0, 0, 0);
     overflow-x: hidden;
+    overflow-y: hidden;
     padding-bottom: 20px;
 }
 
@@ -27,21 +28,58 @@ body {
 }
 
 #title {
+    position: absolute;
     color: #A19C90;
-    margin: 15px 10px 10px;
+    padding: 10px 10px 10px;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 20px;
+    z-index: 100;
+    background: rgba(57, 55, 49, 1);
+    box-shadow: 2px 0 5px black;
+}
+
+#label {
+    position: fixed;
+    width: 100%;
+    z-index: 100;
+    bottom: 0;
+    height: 20px;
+    line-height: 20px;
+    background: rgba(57, 55, 49, 1);
+    box-shadow: -2px 0 5px black;
+    padding: 10px;
+    color: white;
 }
 
 #folders {
-    display: none;
-    margin: 7px;
+    z-index: 2;
+    position: absolute;
+    top: 40px;
+    bottom: 40px;
+    left: 0;
+    width: 300px;
     background: rgba(105, 101, 93, 0.8);
     box-shadow: 3px 3px 5px 0 #333;
     padding: 20px;
-    float: left;
+    /*float: left;*/
     max-width: 500px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+#images {
+    position: absolute;
+    top: 35px;
+    bottom: 35px;
+    left: 0;
+    right: 0;
+    padding-top: 15px;
+    padding-left: 347px;
+    padding-bottom: 10px;
+    overflow: hidden;
 }
 
 .folder-category {
@@ -91,14 +129,14 @@ body {
 
 .group {
     color: #A19C90;
-    font-size: 16px;
+    font-size: 15px;
     font-weight: normal;
     padding: 30px 7px 5px;
     display: table-cell;
 }
 
 .group.first {
-    padding-top: 5px;
+    padding-top: 10px;
 }
 
 .selectable, .clickable {
@@ -123,16 +161,6 @@ body {
 
 .disabled img {
     opacity: 0.2;
-}
-
-#label {
-    position: fixed;
-    width: 100%;
-    z-index: 100;
-    bottom: 0;
-    background: rgba(57, 55, 49, 0.8);
-    padding: 10px;
-    color: white;
 }
 
 div.caption {
@@ -177,14 +205,14 @@ div.holder img {
 #search-box {
     display: none;
     position: fixed;
-    z-index: 5;
-    top: 12px;
-    right: 10px;
-    height: 30px;
+    z-index: 500;
+    top: 0;
+    right: 0;
+    height: 34px;
     width: 300px;
-    border-radius: 20px;
-    border: none;
-    background-color: rgba(49, 47, 42, 0.9);
+    border-bottom-left-radius: 20px;
+    background-color: rgba(172, 164, 150, 0.9);
+    /*background-color: black;*/
 }
 
 #search-container {
@@ -197,8 +225,8 @@ div.holder img {
     position: absolute;
     left: 10px;
     top: 8px;
-    width: 15px;
-    height: 15px;
+    width: 18px;
+    height: 18px;
     z-index: 10;
 }
 
@@ -207,11 +235,11 @@ div.holder img {
     right: 15px;
     top: 0;
     width: 250px;
-    height: 30px;
+    height: 34px;
     border: none;
     outline: none;
     background-color: transparent;
-    color: white;
+    color: black;
     font-size: 14px;
 }
 
@@ -228,4 +256,9 @@ div.holder img {
     width: 0;
     height: 3px;
     background-color: #F07746;
+}
+
+.mCSB_dragger_bar {
+    background-color: #F07746 !important;
+    /*border-radius: 0 !important;*/
 }

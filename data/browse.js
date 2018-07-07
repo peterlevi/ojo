@@ -86,7 +86,7 @@ function get_id(s) {
 }
 
 function add_folder_category(label) {
-    $("#folders").append(
+    $("#folders .mCSB_container").append(
         "<div class='folder-category' id='" + get_id(label) + "'>" +
         "<div class='folder-category-label'>" + esc(label) + "</div></div>");
 }
@@ -118,7 +118,7 @@ function add_group(label, is_first) {
         '<h2 class="group ' + (is_first ? 'first': 'non-first') + '" label="' + esc(label) + '">' +
         esc(label) +
         '</h2>'
-    ).appendTo($('#images'));
+    ).appendTo($('#images .mCSB_container'));
 }
 
 function add_image_div(file, name, selected, show_caption, group, thumb, thumb_width) {
@@ -158,7 +158,7 @@ function add_image_div(file, name, selected, show_caption, group, thumb, thumb_w
         elem.removeClass("match");
     }
 
-    $('#images').append(elem);
+    $('#images .mCSB_container').append(elem);
 
     if (thumb) {
         update_progress();
@@ -230,9 +230,8 @@ function change_folder(new_folder) {
 
     $('#search-field').val('');
     $('#title').html('');
-    $('#folders').hide();
-    $('#folders').html('');
-    $('#images').html('');
+    $('#folders .mCSB_container').html('');
+    $('#images .mCSB_container').html('');
 }
 
 function set_dimensions(file, filename, dimensions, thumb_width) {
@@ -517,6 +516,14 @@ $(function() {
 
     $(document).contextmenu(function(event) {
         event.preventDefault();
+    });
+
+    $('#folders, #images').mCustomScrollbar({
+        theme: 'minimal',
+        scrollInertia: 0,
+        advanced: {
+            updateOnContentResize: true
+        }
     });
 
     $(document).keydown(function(event) {
