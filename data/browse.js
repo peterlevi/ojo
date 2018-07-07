@@ -481,7 +481,11 @@ function show_search(visible) {
     if (visible) {
         setTimeout(function() {
             $('#search-field').focus();
-        }, 0);
+        }, 10);
+        // schedule one more to be sure, otherwise we miss the focus sometimes
+        setTimeout(function() {
+            $('#search-field').focus();
+        }, 100);
     } else {
         search = '';
         $('#search-field').val('');

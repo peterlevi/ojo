@@ -34,7 +34,7 @@ def load_options():
         'show_hidden': False,
         'show_captions': False,
 
-        'date_format': '%d %B %Y',
+        'date_format': '%-d %B %Y',
         'show_groups_for': {
             'date': True,
             'extension': True,
