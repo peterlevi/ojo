@@ -89,9 +89,8 @@ body {
     color: #A19C90;
     font-size: 18px;
     font-weight: normal;
-    margin: 0 7px 5px;
-    padding-top: 30px;
-    display: inline-block;
+    padding: 30px 7px 5px;
+    display: table-cell;
 }
 
 .group.first {

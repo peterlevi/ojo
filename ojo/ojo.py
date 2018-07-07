@@ -1150,6 +1150,9 @@ class Ojo():
                 if os.path.isfile(prev):
                     self.set_mode('image')
         elif self.mode == 'folder':
+            if hasattr(self, 'web_view'):
+                self.web_view.grab_focus()
+
             if key == 'Left' and event and (event.state & (Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.MOD1_MASK)):
                 self.folder_history_back()
             elif key == 'Right' and event and (

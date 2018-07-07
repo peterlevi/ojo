@@ -115,11 +115,9 @@ function add_folder(category_label, label, path, filename, icon, style, nofocus)
 
 function add_group(label, is_first) {
     $(
-        (!is_first ? '<br/>' : '') +
-        '<h2 class="group ' + (is_first ? 'first': 'non-first') + '">' +
-        label +
-        '</h2>' +
-        '<br/>'
+        '<h2 class="group ' + (is_first ? 'first': 'non-first') + '" label="' + esc(label) + '">' +
+        esc(label) +
+        '</h2>'
     ).appendTo($('#images'));
 }
 
@@ -254,7 +252,7 @@ function show_error(error) {
 }
 
 function select(file, dontScrollTo, elem) {
-    var el = elem || $(".selectable[file='" + encode_path(file) + "']").first();
+    var el = elem || $(".match.selectable[file='" + encode_path(file) + "']").first();
 
     if (current === file && current_elem === el[0]) {
         return;
@@ -316,8 +314,8 @@ function get_next_in_direction(elem, direction) {
     var applicable = $('.selectable.match' + selection_class).filter(function() {
         var candidate = $(this).offset().top;
         return direction < 0 ?
-            candidate < current && candidate > current - 2*thumb_height :
-            candidate > current && candidate < current + 2*thumb_height;
+            candidate < current && candidate > current - 3*thumb_height :
+            candidate > current && candidate < current + 3*thumb_height;
     });
     if (applicable.length > 0) {
         return $(_.min(applicable, function(el) {
@@ -413,12 +411,33 @@ function on_search() {
         .addClass("nonmatch");
     var matches = $('.selectable').filter(function() {return matches_search($(this))});
     matches.removeClass("nonmatch").addClass("match");
+
+    // hide/show groups
+    var firstGroup = true;
+    $('.group').map(function() {
+        var g = $(this);
+        var keep = matches.filter(function () {
+            var m = $(this);
+            return m.attr('group') === g.attr('label');
+        }).length > 0;
+        g.toggleClass('match', keep).toggleClass('nonmatch', !keep);
+        if (keep) {
+            g.toggleClass('first', firstGroup);
+            firstGroup = false;
+        } else {
+            g.removeClass('first');
+        }
+    });
+
     var sel = $('.selected');
     if (matches.length && (sel.length === 0 || !_.contains(matches, sel[0]))) {
         select(decode_path($(matches[0]).attr('file')));
     } else {
         scroll_to_selected();
     }
+
+    setTimeout(function() { scroll_to_selected() }, 200);
+
     clearTimeout(scroll_timeout);
     scroll_timeout = setTimeout(on_scroll, 200);
 }
