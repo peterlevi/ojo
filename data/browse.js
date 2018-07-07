@@ -384,15 +384,9 @@ function on_key(key) {
     } else if (key === "End") {
         goto($(selection_class + ".selectable.match:last"));
     } else if (key === 'BackSpace') {
-        if (!$('#search-field').is(':focus')) {
-            python('ojo-handle-key:' + key)
-        }
+        python('ojo-handle-key:' + key)
     } else if (key === 'Escape') {
-        if ($('#search-field').is(':focus')) {
-            show_search(false);
-        } else {
-            python('ojo-handle-key:' + key)
-        }
+        python('ojo-handle-key:' + key)
     }
 }
 
@@ -503,11 +497,14 @@ $(function() {
     });
 
     $(document).keydown(function(event) {
+        $('#search-field').focus();
         if (mode !== 'folder') {
             event.preventDefault();
-            return;
         }
-        $('#search-field').focus();
+        if (event.keyCode === 27 || (event.keyCode >= 35 && event.keyCode <= 40)) {
+            // suppress esc, arrows, home, end (we handle those in Python)
+            event.preventDefault();
+        }
     });
 
     $(window).resize(function() {
@@ -537,8 +534,8 @@ $(function() {
     });
 
     $('#search-field').keydown(function(e) {
-        // suppress arrows, home, end in searchbox (we use them for pics navigation)
-        if (e.keyCode >= 35 && e.keyCode <= 40) {
+        if (e.keyCode === 27 || (e.keyCode >= 35 && e.keyCode <= 40)) {
+            // suppress esc, arrows, home, end (we use them for pics navigation)
             e.preventDefault();
         }
     });
