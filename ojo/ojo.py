@@ -514,6 +514,8 @@ class Ojo():
                 map(lambda f: util.url2path(f.encode('utf-8')), files))
         elif action == 'ojo-handle-key':
             self.process_key(key=argument, skip_browser=True)
+        elif action == 'ojo-folder-up':
+            self.folder_parent()
         elif action == "ojo-search":
             self.search_text = argument
 

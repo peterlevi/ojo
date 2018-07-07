@@ -561,5 +561,9 @@ $(function() {
             // suppress esc, arrows, home, end (we use them for pics navigation)
             e.preventDefault();
         }
+
+        if (e.keyCode === 8 && $(this).val().length === 0) {
+            python('ojo-folder-up:')
+        }
     });
 });
