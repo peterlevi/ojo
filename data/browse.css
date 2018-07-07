@@ -9,7 +9,7 @@ img {
 
 body {
     font-size: 14px;
-    font-family: Ubuntu, sans-serif;
+    font-family: Ubuntu, "Ubuntu Condensed", sans-serif;
     /* Note: browsing transparency 14.04 vs 16.04 */
     /* background: rgba(77, 75, 69, 0.9); */
     background: rgba(0, 0, 0, 0);
@@ -38,6 +38,10 @@ body {
     box-shadow: 3px 3px 5px 0 #333;
     padding: 20px;
     float: left;
+    max-width: 500px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .folder-category {
@@ -53,7 +57,7 @@ body {
     padding-left: 20px;
     padding-right: 20px;
     color: #d3d0c5;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
 }
 
 .folder-icon {
@@ -63,7 +67,7 @@ body {
 }
 
 .folder.selected {
-    margin-bottom: 7px;
+    margin-bottom: 5px;
     border-bottom: solid 3px #F07746;
 }
 
@@ -87,7 +91,7 @@ body {
 
 .group {
     color: #A19C90;
-    font-size: 18px;
+    font-size: 16px;
     font-weight: normal;
     padding: 30px 7px 5px;
     display: table-cell;
