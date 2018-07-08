@@ -84,11 +84,9 @@ body {
     position: absolute;
     top: 40px;
     bottom: 40px;
-    left: 0;
+    left: 352px;
     right: 0;
-    padding-top: 10px;
-    padding-left: 352px;
-    padding-bottom: 10px;
+    padding: 10px 0;
     overflow-x: hidden;
     overflow-y: auto;
 }
@@ -236,7 +234,8 @@ div.holder img {
     height: 30px;
     width: 300px;
     border-radius: 20px;
-    background-color: #111;
+    background-color: #272524;
+    /*border-bottom: 3px solid #F07746;*/
 }
 
 #search-container {
@@ -275,9 +274,4 @@ div.holder img {
     width: 0;
     height: 3px;
     background-color: #F07746;
-}
-
-.mCSB_dragger_bar {
-    background-color: #F07746 !important;
-    /*border-radius: 0 !important;*/
 }
