@@ -12,9 +12,6 @@ var thumb_height = 120;
 var selection_class = '.item';
 var selected_file_per_class = {};
 
-var imagesScrollTop = 0;
-var foldersScrollTop = 0;
-
 function log(msg) {
     // console.debug(msg);
 }
@@ -89,7 +86,7 @@ function get_id(s) {
 }
 
 function add_folder_category(label) {
-    $("#folders .mCSB_container").append(
+    $("#folders").append(
         "<div class='folder-category' id='" + get_id(label) + "'>" +
         "<div class='folder-category-label'>" + esc(label) + "</div></div>");
 }
@@ -121,7 +118,7 @@ function add_group(label, is_first) {
         '<h2 class="group ' + (is_first ? 'first': 'non-first') + '" label="' + esc(label) + '">' +
         esc(label) +
         '</h2>'
-    ).appendTo($('#images .mCSB_container'));
+    ).appendTo($('#images'));
 }
 
 function add_image_div(file, name, selected, show_caption, group, thumb, thumb_width) {
@@ -161,7 +158,7 @@ function add_image_div(file, name, selected, show_caption, group, thumb, thumb_w
         elem.removeClass("match");
     }
 
-    $('#images .mCSB_container').append(elem);
+    $('#images').append(elem);
 
     if (thumb) {
         update_progress();
@@ -233,8 +230,8 @@ function change_folder(new_folder) {
 
     $('#search-field').val('');
     $('#title').html('');
-    $('#folders .mCSB_container').html('');
-    $('#images .mCSB_container').html('');
+    $('#folders').html('');
+    $('#images').html('');
 }
 
 function set_dimensions(file, filename, dimensions, thumb_width) {
@@ -277,25 +274,21 @@ function scroll_to_selected(el) {
     log('Scroll to selected');
     el = el || $('.selected');
     if (el.length) {
-        var container = el.hasClass('item') ? $('#images') : $('#folders');
-        var scrollTop = el.hasClass('item') ? imagesScrollTop : foldersScrollTop;
-
-        var top = el.position().top;
-        console.log('top  ' + top);
-        console.log('scroll  ' + scrollTop);
-        console.log('height  ' + container.height());
+        var baseDelta = el.hasClass('item') ? thumb_height : 40;
+        var container = el.closest('.scroll-container');
+        var scrollTop = container.scrollTop();
+        var top = scrollTop + el.position().top;
+        var containerHeight = container.height();
 
         var scrollTo;
-        if (top > scrollTop + container.height() - 250) {
-            console.log('case A');
-            scrollTo = top - container.height() + 250;
-        } else if (top < scrollTop + 150) {
-            console.log('case B');
-            scrollTo = Math.max(0, top - 150);
+        if (top > scrollTop + containerHeight - baseDelta * 2) {
+            scrollTo = top - containerHeight + baseDelta * 2;
+        } else if (top < scrollTop + baseDelta * 1.2) {
+            scrollTo = Math.max(0, top - baseDelta * 1.2);
         }
-        console.log('go to  ' + scrollTo);
+
         if (!_.isUndefined(scrollTo)) {
-            container.mCustomScrollbar('scrollTo', scrollTo, { timeout: 0, scrollInertia: 0 });
+            container.scrollTop(scrollTo);
         }
     }
 }
@@ -339,16 +332,18 @@ function get_next_in_direction(elem, direction) {
     }
 }
 
-function goto_visible(first_or_last) {
+function goto_visible(first_or_last, onlyClass, immediate) {
     clearTimeout(goto_visible_timeout);
-    goto_visible_timeout = setTimeout(function() {
+
+    function _go() {
         for (var attempt = 0; attempt <= 1; attempt++) {
             var visible = _.filter(
-                $('.selectable.match' + (attempt === 0 ? selection_class : '')),
+                $('.selectable.match' + (onlyClass ? onlyClass : (attempt === 0 ? selection_class : ''))),
                 function(x) {
-                    var scrollTop = $(x).hasClass('item') ? imagesScrollTop : foldersScrollTop;
-                    return $(x).position().top >= scrollTop - 5 &&
-                        $(x).offset().top + $(x).height() < scrollTop + $(x).closest('.scroll-container').height() + 5;
+                    var container = $(x).closest('.scroll-container');
+                    var scrollTop = container.scrollTop();
+                    return $(x).position().top >= -5 &&
+                        $(x).position().top + $(x).height() < container.height() + 5;
                 }
             );
             if (visible.length) {
@@ -358,7 +353,13 @@ function goto_visible(first_or_last) {
         var file = decode_path($(first_or_last ? _.first(visible) : _.last(visible)).attr('file'));
         select(file, true);
         python("ojo-select:" + file);
-    }, 100);
+    }
+
+    if (immediate) {
+        _go();
+    } else {
+        goto_visible_timeout = setTimeout(_go, 100);
+    }
 }
 
 function on_key(key) {
@@ -387,10 +388,11 @@ function on_key(key) {
             var prev = sel.prevAll('.selectable.match' + selection_class);
             goto(prev.length ? $(prev[0]) : null);
         }
-    } else if (key === "Page_Up") {
-        goto_visible(true);
-    } else if (key === "Page_Down") {
-        goto_visible($('body').scrollTop() < $('body').height() - $(window).height() - 5);
+    } else if (key === "Page_Up" || key === "Page_Down") {
+        var direction = key === "Page_Up" ? -1 : 1;
+        var container = sel.closest('.scroll-container');
+        container.scrollTop(container.scrollTop() + direction * container.height() );
+        goto_visible(true, sel.hasClass('item') ? '.item' : '.folder');
     } else if (key === "Home") {
         goto($(selection_class + ".selectable.match:first"));
     } else if (key === "End") {
@@ -453,7 +455,7 @@ function on_search() {
     setTimeout(function() { scroll_to_selected() }, 200);
 
     clearTimeout(scroll_timeout);
-    scroll_timeout = setTimeout(on_scroll, 200);
+    scroll_timeout = setTimeout(on_images_scroll, 200);
 }
 
 function distance(el1, el2) {
@@ -465,8 +467,7 @@ function distance(el1, el2) {
 function on_images_scroll() {
     var files = _.map(_.filter($('.item.match'), function(x) {
         var $x = $(x);
-        return !$x.attr('with_thumb') &&
-            $x.position().top + $x.height() >= imagesScrollTop;
+        return !$x.attr('with_thumb') && $x.position().top + $x.height() >= 0;
     }), function(x) { return decode_path($(x).attr('file')) });
     python('ojo-priority:' + JSON.stringify(files));
 }
@@ -533,34 +534,7 @@ $(function() {
         event.preventDefault();
     });
 
-    $('#folders').mCustomScrollbar({
-        theme: 'minimal',
-        scrollInertia: 0,
-        keyboard: false,
-        callbacks: {
-            onScroll: function() {
-                foldersScrollTop = -this.mcs.top;
-            }
-        }
-    });
-
-    $('#images').mCustomScrollbar({
-        theme: 'minimal',
-        scrollInertia: 0,
-        keyboard: false,
-        callbacks: {
-            onScroll: function() {
-                if (imagesScrollTop === -this.mcs.top) {
-                    return;
-                }
-                imagesScrollTop = -this.mcs.top;
-                clearTimeout(scroll_timeout);
-                scroll_timeout = setTimeout(on_images_scroll, 200);
-            }
-        }
-    });
-
-    $(window).keydown(function(e) {
+    $(document).keydown(function(e) {
         $('#search-field').focus();
         if (mode !== 'folder') {
             e.preventDefault();
@@ -571,6 +545,11 @@ $(function() {
             e.preventDefault();
             return;
         }
+    });
+
+    $('#images').scroll(function() {
+        clearTimeout(scroll_timeout);
+        scroll_timeout = setTimeout(on_images_scroll, 200);
     });
 
     $(window).resize(function() {

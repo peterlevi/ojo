@@ -8,7 +8,7 @@ img {
 }
 
 body {
-    font-size: 14px;
+    font-size: 12px;
     font-family: Ubuntu, "Ubuntu Condensed", sans-serif;
     /* Note: browsing transparency 14.04 vs 16.04 */
     /* background: rgba(77, 75, 69, 0.9); */
@@ -42,13 +42,13 @@ body {
 
 #label {
     position: fixed;
-    width: 300px;
+    width: 325px;
     z-index: 100;
     left: 10px;
     bottom: 10px;
     height: 80px;
     line-height: 20px;
-    /*background: rgba(105, 101, 93, 0.8);*/
+    /*background: rgba(67, 65, 59, 0.8);*/
     /*box-shadow: 3px 3px 5px 0 #222;*/
     padding: 10px;
     color: white;
@@ -60,15 +60,18 @@ body {
     top: 40px;
     bottom: 110px;
     left: 10px;
-    width: 300px;
+    width: 330px;
     background: rgba(105, 101, 93, 0.8);
     box-shadow: 3px 3px 5px 0 #333;
-    padding: 10px;
-    /*float: left;*/
+    padding-left: 10px;
     max-width: 500px;
     white-space: nowrap;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
     text-overflow: ellipsis;
+    border-top: 10px solid transparent;
+    border-bottom: 10px solid transparent;
+    border-right: 5px solid transparent;
 }
 
 #images {
@@ -78,9 +81,19 @@ body {
     left: 0;
     right: 0;
     padding-top: 0;
-    padding-left: 337px;
+    padding-left: 367px;
     padding-bottom: 10px;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+::-webkit-scrollbar {
+    width: 3px;
+}
+
+::-webkit-scrollbar-thumb {
+    background-color: #F07746;
+    width: 3px;
 }
 
 .folder-category {
@@ -97,6 +110,9 @@ body {
     padding-right: 20px;
     color: #d3d0c5;
     margin-bottom: 8px;
+    max-width: 280px;
+    overflow: hidden;
+    font-size: 12px;
 }
 
 .folder-icon {
@@ -212,7 +228,7 @@ div.holder img {
     height: 30px;
     width: 300px;
     border-radius: 20px;
-    background-color: rgba(172, 164, 150, 0.9);
+    background-color: rgba(49, 47, 42, 0.9);
     /*background-color: black;*/
 }
 
@@ -240,7 +256,7 @@ div.holder img {
     border: none;
     outline: none;
     background-color: transparent;
-    color: black;
+    color: white;
     font-size: 14px;
 }
 
