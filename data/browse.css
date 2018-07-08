@@ -36,19 +36,20 @@ body {
     right: 0;
     height: 20px;
     z-index: 100;
-    background: rgba(57, 55, 49, 1);
-    box-shadow: 2px 0 5px black;
+    /*background: rgba(57, 55, 49, 1);*/
+    /*box-shadow: 2px 0 5px black;*/
 }
 
 #label {
     position: fixed;
-    width: 100%;
+    width: 300px;
     z-index: 100;
-    bottom: 0;
-    height: 20px;
+    left: 10px;
+    bottom: 10px;
+    height: 80px;
     line-height: 20px;
-    background: rgba(57, 55, 49, 1);
-    box-shadow: -2px 0 5px black;
+    /*background: rgba(105, 101, 93, 0.8);*/
+    /*box-shadow: 3px 3px 5px 0 #222;*/
     padding: 10px;
     color: white;
 }
@@ -57,12 +58,12 @@ body {
     z-index: 2;
     position: absolute;
     top: 40px;
-    bottom: 40px;
-    left: 0;
+    bottom: 110px;
+    left: 10px;
     width: 300px;
     background: rgba(105, 101, 93, 0.8);
     box-shadow: 3px 3px 5px 0 #333;
-    padding: 20px;
+    padding: 10px;
     /*float: left;*/
     max-width: 500px;
     white-space: nowrap;
@@ -72,12 +73,12 @@ body {
 
 #images {
     position: absolute;
-    top: 35px;
-    bottom: 35px;
+    top: 40px;
+    bottom: 0;
     left: 0;
     right: 0;
-    padding-top: 15px;
-    padding-left: 347px;
+    padding-top: 0;
+    padding-left: 337px;
     padding-bottom: 10px;
     overflow: hidden;
 }
@@ -206,11 +207,11 @@ div.holder img {
     display: none;
     position: fixed;
     z-index: 500;
-    top: 0;
-    right: 0;
-    height: 34px;
+    top: 6px;
+    right: 10px;
+    height: 30px;
     width: 300px;
-    border-bottom-left-radius: 20px;
+    border-radius: 20px;
     background-color: rgba(172, 164, 150, 0.9);
     /*background-color: black;*/
 }
@@ -224,9 +225,9 @@ div.holder img {
 #search-icon {
     position: absolute;
     left: 10px;
-    top: 8px;
-    width: 18px;
-    height: 18px;
+    top: 7px;
+    width: 15px;
+    height: 15px;
     z-index: 10;
 }
 
@@ -235,17 +236,12 @@ div.holder img {
     right: 15px;
     top: 0;
     width: 250px;
-    height: 34px;
+    height: 30px;
     border: none;
     outline: none;
     background-color: transparent;
     color: black;
     font-size: 14px;
-}
-
-#dimensions {
-    float: right;
-    padding-right: 20px;
 }
 
 #progress {
