@@ -36,8 +36,8 @@ body {
     right: 0;
     height: 20px;
     z-index: 100;
-    background: rgba(57, 55, 49, 1);
-    box-shadow: 2px 0 5px black;
+    background: #3D3C38;
+    box-shadow: 0 2px 5px #222;
 }
 
 #label {
@@ -49,8 +49,8 @@ body {
     right: 0;
     height: 20px;
     line-height: 20px;
-    background: rgba(57, 55, 49, 1);
-    box-shadow: -2px 0 5px black;
+    background: #3D3C38;
+    box-shadow: 0 -2px 5px #222;
     padding: 10px;
     color: white;
 }
@@ -87,6 +87,7 @@ body {
     left: 352px;
     right: 0;
     padding: 10px 0;
+    padding-right: 5px;
     overflow-x: hidden;
     overflow-y: auto;
 }
@@ -234,7 +235,8 @@ div.holder img {
     height: 30px;
     width: 300px;
     border-radius: 20px;
-    background-color: #272524;
+    background-color: #302e2c;
+    box-shadow: inset 2px 2px 5px #151515;
     /*border-bottom: 3px solid #F07746;*/
 }
 

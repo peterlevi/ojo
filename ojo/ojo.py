@@ -923,10 +923,10 @@ class Ojo():
         self.margin = margin
 
         def _f():
-            self.box.set_margin_right(margin)
-            self.box.set_margin_left(margin)
-            self.box.set_margin_bottom(margin)
-            self.box.set_margin_top(margin)
+            self.scroll_window.set_margin_right(margin)
+            self.scroll_window.set_margin_left(margin)
+            self.scroll_window.set_margin_bottom(margin)
+            self.scroll_window.set_margin_top(margin)
 
         GObject.idle_add(_f)
 
