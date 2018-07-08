@@ -8,12 +8,13 @@ img {
 }
 
 body {
-    font-size: 14px;
+    font-size: 12px;
     font-family: Ubuntu, "Ubuntu Condensed", sans-serif;
     /* Note: browsing transparency 14.04 vs 16.04 */
     /* background: rgba(77, 75, 69, 0.9); */
     background: rgba(0, 0, 0, 0);
     overflow-x: hidden;
+    overflow-y: hidden;
     padding-bottom: 20px;
 }
 
@@ -23,25 +24,84 @@ body {
 
 #title span {
     cursor: pointer;
-    font-size: 18px;
+    font-size: 16px;
 }
 
 #title {
+    position: absolute;
     color: #A19C90;
-    margin: 15px 10px 10px;
+    padding: 10px 10px 10px;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 20px;
+    z-index: 100;
+    background: rgba(57, 55, 49, 1);
+    box-shadow: 2px 0 5px black;
+}
+
+#label {
+    position: fixed;
+    width: 100%;
+    z-index: 100;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    height: 20px;
+    line-height: 20px;
+    background: rgba(57, 55, 49, 1);
+    box-shadow: -2px 0 5px black;
+    padding: 10px;
+    color: white;
+}
+
+#dimensions {
+    float: right;
+    padding-right: 20px;
 }
 
 #folders {
-    display: none;
-    margin: 7px;
+    z-index: 2;
+    position: absolute;
+    top: 40px;
+    bottom: 40px;
+    left: 0;
+    width: 330px;
     background: rgba(105, 101, 93, 0.8);
     box-shadow: 3px 3px 5px 0 #333;
-    padding: 20px;
-    float: left;
+    padding-left: 10px;
     max-width: 500px;
     white-space: nowrap;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
     text-overflow: ellipsis;
+    border-top: 10px solid transparent;
+    border-bottom: 10px solid transparent;
+    border-right: 5px solid transparent;
+}
+
+#images {
+    position: absolute;
+    top: 40px;
+    bottom: 40px;
+    left: 0;
+    right: 0;
+    padding-top: 10px;
+    padding-left: 352px;
+    padding-bottom: 10px;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+::-webkit-scrollbar {
+    width: 3px;
+}
+
+::-webkit-scrollbar-thumb {
+    background-color: #F07746;
+    width: 3px;
+    border-radius: 2px;
+    box-shadow: 1px 2px 6px #444;
 }
 
 .folder-category {
@@ -54,10 +114,13 @@ body {
 }
 
 .folder {
-    padding-left: 20px;
+    padding-left: 15px;
     padding-right: 20px;
     color: #d3d0c5;
     margin-bottom: 8px;
+    max-width: 285px;
+    overflow: hidden;
+    font-size: 12px;
 }
 
 .folder-icon {
@@ -91,14 +154,14 @@ body {
 
 .group {
     color: #A19C90;
-    font-size: 16px;
+    font-size: 15px;
     font-weight: normal;
     padding: 30px 7px 5px;
     display: table-cell;
 }
 
 .group.first {
-    padding-top: 5px;
+    padding-top: 10px;
 }
 
 .selectable, .clickable {
@@ -123,16 +186,6 @@ body {
 
 .disabled img {
     opacity: 0.2;
-}
-
-#label {
-    position: fixed;
-    width: 100%;
-    z-index: 100;
-    bottom: 0;
-    background: rgba(57, 55, 49, 0.8);
-    padding: 10px;
-    color: white;
 }
 
 div.caption {
@@ -177,14 +230,13 @@ div.holder img {
 #search-box {
     display: none;
     position: fixed;
-    z-index: 5;
-    top: 12px;
+    z-index: 500;
+    top: 6px;
     right: 10px;
     height: 30px;
     width: 300px;
     border-radius: 20px;
-    border: none;
-    background-color: rgba(49, 47, 42, 0.9);
+    background-color: #111;
 }
 
 #search-container {
@@ -215,17 +267,17 @@ div.holder img {
     font-size: 14px;
 }
 
-#dimensions {
-    float: right;
-    padding-right: 20px;
-}
-
 #progress {
     position: absolute;
-    z-index: 2;
+    z-index: 500;
     bottom: 0;
     left: 0;
     width: 0;
     height: 3px;
     background-color: #F07746;
+}
+
+.mCSB_dragger_bar {
+    background-color: #F07746 !important;
+    /*border-radius: 0 !important;*/
 }
