@@ -12,6 +12,9 @@ var thumb_height = 120;
 var selection_class = '.item';
 var selected_file_per_class = {};
 
+var imagesScrollTop = 0;
+var foldersScrollTop = 0;
+
 function log(msg) {
     // console.debug(msg);
 }
@@ -274,14 +277,25 @@ function scroll_to_selected(el) {
     log('Scroll to selected');
     el = el || $('.selected');
     if (el.length) {
+        var container = el.hasClass('item') ? $('#images') : $('#folders');
+        var scrollTop = el.hasClass('item') ? imagesScrollTop : foldersScrollTop;
+
+        var top = el.position().top;
+        console.log('top  ' + top);
+        console.log('scroll  ' + scrollTop);
+        console.log('height  ' + container.height());
+
         var scrollTo;
-        if (el.offset().top > $('body').scrollTop() + $(window).height() - 250) {
-            scrollTo = el.offset().top - $(window).height() + 250;
-        } else if (el.offset().top < $('body').scrollTop() + 150) {
-            scrollTo = el.offset().top - 150;
+        if (top > scrollTop + container.height() - 250) {
+            console.log('case A');
+            scrollTo = top - container.height() + 250;
+        } else if (top < scrollTop + 150) {
+            console.log('case B');
+            scrollTo = Math.max(0, top - 150);
         }
+        console.log('go to  ' + scrollTo);
         if (!_.isUndefined(scrollTo)) {
-            $('body').scrollTop(scrollTo);
+            container.mCustomScrollbar('scrollTo', scrollTo, { timeout: 0, scrollInertia: 0 });
         }
     }
 }
@@ -332,8 +346,9 @@ function goto_visible(first_or_last) {
             var visible = _.filter(
                 $('.selectable.match' + (attempt === 0 ? selection_class : '')),
                 function(x) {
-                    return $(x).offset().top >= $('body').scrollTop() - 5 &&
-                        $(x).offset().top + $(x).height() < $('body').scrollTop() + $(window).height() + 5;
+                    var scrollTop = $(x).hasClass('item') ? imagesScrollTop : foldersScrollTop;
+                    return $(x).position().top >= scrollTop - 5 &&
+                        $(x).offset().top + $(x).height() < scrollTop + $(x).closest('.scroll-container').height() + 5;
                 }
             );
             if (visible.length) {
@@ -447,11 +462,11 @@ function distance(el1, el2) {
     return dx*dx + dy*dy
 }
 
-function on_scroll() {
+function on_images_scroll() {
     var files = _.map(_.filter($('.item.match'), function(x) {
         var $x = $(x);
         return !$x.attr('with_thumb') &&
-            $x.offset().top + $x.height() >= $('body').scrollTop();
+            $x.position().top + $x.height() >= imagesScrollTop;
     }), function(x) { return decode_path($(x).attr('file')) });
     python('ojo-priority:' + JSON.stringify(files));
 }
@@ -518,22 +533,43 @@ $(function() {
         event.preventDefault();
     });
 
-    $('#folders, #images').mCustomScrollbar({
+    $('#folders').mCustomScrollbar({
         theme: 'minimal',
         scrollInertia: 0,
-        advanced: {
-            updateOnContentResize: true
+        keyboard: false,
+        callbacks: {
+            onScroll: function() {
+                foldersScrollTop = -this.mcs.top;
+            }
         }
     });
 
-    $(document).keydown(function(event) {
+    $('#images').mCustomScrollbar({
+        theme: 'minimal',
+        scrollInertia: 0,
+        keyboard: false,
+        callbacks: {
+            onScroll: function() {
+                if (imagesScrollTop === -this.mcs.top) {
+                    return;
+                }
+                imagesScrollTop = -this.mcs.top;
+                clearTimeout(scroll_timeout);
+                scroll_timeout = setTimeout(on_images_scroll, 200);
+            }
+        }
+    });
+
+    $(window).keydown(function(e) {
         $('#search-field').focus();
         if (mode !== 'folder') {
-            event.preventDefault();
+            e.preventDefault();
+            return;
         }
-        if (event.keyCode === 27 || (event.keyCode >= 35 && event.keyCode <= 40)) {
+        if (e.keyCode === 9 || e.keyCode === 27 || (e.keyCode >= 35 && e.keyCode <= 40)) {
             // suppress esc, arrows, home, end (we handle those in Python)
-            event.preventDefault();
+            e.preventDefault();
+            return;
         }
     });
 
@@ -541,17 +577,6 @@ $(function() {
         if (current) {
             select(current);
         }
-    });
-
-    var lastScrollTop = -1;
-    $(window).scroll(function() {
-        if ($('body').scrollTop() === lastScrollTop) {
-            return;
-        }
-        lastScrollTop = $('body').scrollTop();
-
-        clearTimeout(scroll_timeout);
-        scroll_timeout = setTimeout(on_scroll, 200);
     });
 
     $(document).on('click', '.selectable, .clickable', on_clickable);
