@@ -227,7 +227,7 @@ div.holder img {
 }
 
 #search-box {
-    display: none;
+    opacity: 0;
     position: fixed;
     z-index: 500;
     top: 6px;

@@ -32,7 +32,7 @@ sudo apt-get install ojo
 
 #### Browse and image modes
 `Enter` - toggles between single image / browse mode  
-`F11` / `F` - toggles fullscreen  
+`F11` - toggles fullscreen  
 `Esc` / `Alt-F4` - exit  
 
 #### Image mode:
@@ -54,7 +54,9 @@ Press and hold mouse to zoom to specific point at 100%, then hold and move to "l
 `Ctrl +/=` / `Ctrl -` - increase / decrease size of the thumbnails  
 `F5` - reload current folder (file changes are not reflected automatically)  
 `Ctrl-F5` - refresh/recreate all thumbnails in the current folder  
-`Ctrl-F` - Enter search/filter mode - enter text to filter images, folders and commands.
+  
+`Ctrl-F` or `type text directly` - enter search/filter mode.  
+Use this to filter images, folders and commands.  
 E.g. type `.jpg` to see just JPEG files. Or type `date` to focus the `Sort by date` command.
 The filtered view over the images remains if you go into Image mode and start cycling the images.
 Press `Esc` to clear the filter and exit search mode (but keep in mind a second `Esc` will exit Ojo).

@@ -334,6 +334,7 @@ class Ojo():
         else:
             self.folder_history_position = modify_history_position
         self.search_text = ""
+        self.toggle_search(False)
         self.images = self.get_image_list()
 
     def get_back_folder(self):
@@ -518,6 +519,8 @@ class Ojo():
             self.folder_parent()
         elif action == "ojo-search":
             self.search_text = argument
+            if self.search_text:
+                self.toggle_search(True)
 
     def render_browser(self):
         from gi.repository import WebKit
@@ -1112,11 +1115,10 @@ class Ojo():
         suicide_timer.daemon = True
         suicide_timer.start()
 
-    def check_letter_shortcut(self, event, hw_keycodes):
+    def check_letter_shortcut(self, event, hw_keycodes, mask=0):
         return (
-            (self.mode == 'image' or not self.is_in_search) and
             event and
-            event.state & Gdk.ModifierType.CONTROL_MASK == 0 and
+            (mask == event.state == 0 or (event.state & mask != 0)) and
             event.hardware_keycode in hw_keycodes
         )
 
@@ -1137,7 +1139,7 @@ class Ojo():
                 self.toggle_search(False)
             else:
                 self.exit()
-        elif key in ("F11",) or self.check_letter_shortcut(event, [41]):  # F
+        elif key == "F11":
             self.toggle_fullscreen()
         elif key == 'F5':
             if event and event.state & Gdk.ModifierType.CONTROL_MASK and self.mode == "folder":
@@ -1166,7 +1168,7 @@ class Ojo():
                 self.increase_thumb_height()
             elif key == 'minus' and event and (event.state & (Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.MOD1_MASK)):
                 self.decrease_thumb_height()
-            elif event and event.state & Gdk.ModifierType.CONTROL_MASK and event.hardware_keycode == 41:  # F
+            elif self.check_letter_shortcut(event, [41], mask=Gdk.ModifierType.CONTROL_MASK):  # Ctrl-F
                 self.toggle_search(True)
             elif key in ('Tab', 'ISO_Left_Tab'):
                 self.js("on_key('%s')" % 'Tab')

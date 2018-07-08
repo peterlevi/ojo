@@ -511,16 +511,16 @@ function show_captions(visible) {
 }
 
 function show_search(visible) {
-    $('#search-box').toggle(visible);
+    $('#search-box').css('opacity', visible ? 1 : 0);
     if (visible) {
-        setTimeout(function() {
+        setTimeout(function () {
             $('#search-field').focus();
         }, 10);
         // schedule one more to be sure, otherwise we miss the focus sometimes
-        setTimeout(function() {
+        setTimeout(function () {
             $('#search-field').focus();
         }, 100);
-    } else {
+    } else if (search !== '') {
         search = '';
         $('#search-field').val('');
         on_search();
@@ -571,10 +571,6 @@ $(function() {
         if (e.keyCode === 27 || (e.keyCode >= 35 && e.keyCode <= 40)) {
             // suppress esc, arrows, home, end (we use them for pics navigation)
             e.preventDefault();
-        }
-
-        if (e.keyCode === 8 && $(this).val().length === 0) {
-            python('ojo-folder-up:')
         }
     });
 });
