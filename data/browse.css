@@ -24,7 +24,7 @@ body {
 
 #title span {
     cursor: pointer;
-    font-size: 18px;
+    font-size: 16px;
 }
 
 #title {
@@ -36,30 +36,36 @@ body {
     right: 0;
     height: 20px;
     z-index: 100;
-    /*background: rgba(57, 55, 49, 1);*/
-    /*box-shadow: 2px 0 5px black;*/
+    background: rgba(57, 55, 49, 1);
+    box-shadow: 2px 0 5px black;
 }
 
 #label {
     position: fixed;
-    width: 325px;
+    width: 100%;
     z-index: 100;
-    left: 10px;
-    bottom: 10px;
-    height: 80px;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    height: 20px;
     line-height: 20px;
-    /*background: rgba(67, 65, 59, 0.8);*/
-    /*box-shadow: 3px 3px 5px 0 #222;*/
+    background: rgba(57, 55, 49, 1);
+    box-shadow: -2px 0 5px black;
     padding: 10px;
     color: white;
+}
+
+#dimensions {
+    float: right;
+    padding-right: 20px;
 }
 
 #folders {
     z-index: 2;
     position: absolute;
     top: 40px;
-    bottom: 110px;
-    left: 10px;
+    bottom: 40px;
+    left: 0;
     width: 330px;
     background: rgba(105, 101, 93, 0.8);
     box-shadow: 3px 3px 5px 0 #333;
@@ -77,11 +83,11 @@ body {
 #images {
     position: absolute;
     top: 40px;
-    bottom: 0;
+    bottom: 40px;
     left: 0;
     right: 0;
-    padding-top: 0;
-    padding-left: 362px;
+    padding-top: 10px;
+    padding-left: 352px;
     padding-bottom: 10px;
     overflow-x: hidden;
     overflow-y: auto;
@@ -94,6 +100,8 @@ body {
 ::-webkit-scrollbar-thumb {
     background-color: #F07746;
     width: 3px;
+    border-radius: 2px;
+    box-shadow: 1px 2px 6px #444;
 }
 
 .folder-category {
@@ -106,11 +114,11 @@ body {
 }
 
 .folder {
-    padding-left: 20px;
+    padding-left: 15px;
     padding-right: 20px;
     color: #d3d0c5;
     margin-bottom: 8px;
-    max-width: 280px;
+    max-width: 285px;
     overflow: hidden;
     font-size: 12px;
 }
@@ -228,8 +236,7 @@ div.holder img {
     height: 30px;
     width: 300px;
     border-radius: 20px;
-    background-color: rgba(49, 47, 42, 0.9);
-    /*background-color: black;*/
+    background-color: #111;
 }
 
 #search-container {
@@ -241,7 +248,7 @@ div.holder img {
 #search-icon {
     position: absolute;
     left: 10px;
-    top: 7px;
+    top: 8px;
     width: 15px;
     height: 15px;
     z-index: 10;
@@ -262,7 +269,7 @@ div.holder img {
 
 #progress {
     position: absolute;
-    z-index: 2;
+    z-index: 500;
     bottom: 0;
     left: 0;
     width: 0;
