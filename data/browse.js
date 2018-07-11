@@ -391,8 +391,16 @@ function on_key(key) {
     } else if (key === "Page_Up" || key === "Page_Down") {
         var direction = key === "Page_Up" ? -1 : 1;
         var container = sel.closest('.scroll-container');
-        container.scrollTop(container.scrollTop() + direction * container.height() );
-        goto_visible(true, sel.hasClass('item') ? '.item' : '.folder');
+        container.scrollTop(container.scrollTop() + direction * container.height());
+        setTimeout(function() {
+            if (container.scrollTop() === 0 ||
+                container.scrollTop() + container.outerHeight() === container.prop('scrollHeight')) {
+                // reached the top or bottom
+                goto_visible(key === "Page_Up", sel.hasClass('item') ? '.item' : '.folder', true);
+            } else {
+                goto_visible(true, sel.hasClass('item') ? '.item' : '.folder', false);
+            }
+        }, 0);
     } else if (key === "Home") {
         goto($(selection_class + ".selectable.match:first"));
     } else if (key === "End") {
