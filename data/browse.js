@@ -359,11 +359,7 @@ function goto_visible(first_or_last, onlyClass, immediate) {
         python("ojo-select:" + file);
     }
 
-    if (immediate) {
-        _go();
-    } else {
-        goto_visible_timeout = setTimeout(_go, 100);
-    }
+    goto_visible_timeout = setTimeout(_go, immediate ? 10 : 100);
 }
 
 function on_key(key) {
@@ -395,10 +391,13 @@ function on_key(key) {
     } else if (key === "Page_Up" || key === "Page_Down") {
         var direction = key === "Page_Up" ? -1 : 1;
         var container = sel.closest('.scroll-container');
-        container.scrollTop(container.scrollTop() + direction * container.height());
+        container.scrollTop(container.scrollTop() + direction * container.outerHeight());
+
         setTimeout(function() {
             if (container.scrollTop() === 0 ||
-                container.scrollTop() + container.outerHeight() === container.prop('scrollHeight')) {
+                container.scrollTop() + container.outerHeight() === container.prop('scrollHeight') ||
+                container.scrollTop() + container.height() === container.prop('scrollHeight')
+            ) {
                 // reached the top or bottom
                 goto_visible(key === "Page_Up", sel.hasClass('item') ? '.item' : '.folder', true);
             } else {

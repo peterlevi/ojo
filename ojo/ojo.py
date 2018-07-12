@@ -754,10 +754,10 @@ class Ojo():
 
         if options['show_groups_for'].get(by, False):
             items.append(self.get_command_item(
-                'command:groups:false', None, None, 'Hide group labels'))
+                'command:groups:false', None, None, 'Hide group labels for this sorting'))
         else:
             items.append(self.get_command_item(
-                'command:groups:true', None, None, 'Show group labels'))
+                'command:groups:true', None, None, 'Show group labels for this sorting'))
 
         if options['show_hidden']:
             items.append(self.get_command_item(
