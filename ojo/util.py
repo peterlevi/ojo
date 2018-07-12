@@ -75,6 +75,18 @@ def url2path(url):
     return urllib.url2pathname(url)[7:]
 
 
+def escape_gtk(fn):
+    def escape_gtk_fn(*args, **kwargs):
+        import threading
+
+        def _go():
+            fn(*args, **kwargs)
+
+        threading.Timer(0, _go).start()
+
+    return escape_gtk_fn
+
+
 if __name__ == "__main__":
     print get_folder_icon('/', 16)
 

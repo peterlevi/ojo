@@ -37,6 +37,7 @@ def load_options():
         'date_format': '%-d %B %Y',
         'show_groups_for': {
             'date': True,
+            'exif_date': True,
             'extension': True,
             'name': False,
             'size': True,

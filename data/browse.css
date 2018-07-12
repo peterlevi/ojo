@@ -55,6 +55,14 @@ body {
     color: white;
 }
 
+#label .spinner {
+    float: left;
+    margin-top: -5px;
+    margin-left: -5px;
+    width: 30px;
+    height: 30px;
+}
+
 #dimensions {
     float: right;
     padding-right: 20px;

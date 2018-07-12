@@ -250,6 +250,10 @@ function show_error(error) {
     $('#filename').html(error);
 }
 
+function show_spinner(msg) {
+    $('#filename').html('<img src="images/spinner.svg" class="spinner"/>' + msg);
+}
+
 function select(file, dontScrollTo, elem) {
     var el = elem || $(".match.selectable[file='" + encode_path(file) + "']").first();
 
@@ -513,12 +517,12 @@ function on_clickable(event) {
 }
 
 
-function show_captions(visible) {
+function toggle_captions(visible) {
     $('.caption').toggleClass('caption_above', visible);
     select('command:captions:' + (visible ? 'false' : 'true'));
 }
 
-function show_search(visible) {
+function toggle_search(visible) {
     $('#search-box').css('opacity', visible ? 1 : 0);
     if (visible) {
         setTimeout(function () {

@@ -269,13 +269,27 @@ class Ojo():
             key = lambda f: os.path.basename(f).lower()
         elif options['sort_by'] == 'date':
             key = lambda f: os.stat(f).st_mtime
+        elif options['sort_by'] == 'exif_date':
+            import datetime
+            default = datetime.datetime(1900, 1, 1)
+
+            def _exif_date(f):
+                m = metadata.get(f)
+                if not m:
+                    return default
+                return m['exif'].get('Exif.Photo.DateTimeOriginal', default)
+
+            dates = {image: _exif_date(image) for image in images}
+            key = lambda f: dates[f]
         elif options['sort_by'] == 'size':
             key = lambda f: os.stat(f).st_size
         else:
             key = lambda f: f
+
         images = sorted(images, key=key)
         if options['sort_order'] == 'desc':
             images = list(reversed(images))
+
         return images
 
     def get_group_key(self, image, sort_by=None):
@@ -289,6 +303,14 @@ class Ojo():
             import datetime
             ts = os.stat(image).st_mtime
             return datetime.datetime.fromtimestamp(ts).strftime(options['date_format'])
+        elif sort_by == 'exif_date':
+            m = metadata.get(image)
+            if not m:
+                return 'No EXIF date'
+            d = m['exif'].get('Exif.Photo.DateTimeOriginal', None)
+            if not d:
+                return 'No EXIF date'
+            return d.strftime(options['date_format'])
         elif sort_by == 'name':
             return os.path.basename(image)[0].upper()
         elif sort_by == 'size':
@@ -298,23 +320,34 @@ class Ojo():
         else:
             return None
 
-    def show_hidden(self, key):
+    def toggle_hidden(self, key):
         options['show_hidden'] = key == 'true'
         config.save_options()
         self.change_to_folder(self.folder, self.folder_history_position)
 
-    def show_captions(self, key):
+    def toggle_groups(self, key):
+        options['show_groups_for'][options['sort_by']] = key == 'true'
+        config.save_options()
+        self.change_to_folder(self.folder, self.folder_history_position)
+
+    def toggle_captions(self, key):
         options['show_captions'] = key == 'true'
         config.save_options()
         self.refresh_category(self.build_options_category())
-        self.js('show_captions(%s)' % key)
+        self.js('toggle_captions(%s)' % key)
 
     def sort(self, key):
         if key in ('asc', 'desc'):
             options['sort_order'] = key
         else:
             options['sort_by'] = key
-            m = {'extension': 'asc', 'name': 'asc', 'date': 'asc', 'size': 'desc'}
+            m = {
+                'extension': 'asc',
+                'name': 'asc',
+                'date': 'asc',
+                'exif_date': 'asc',
+                'size': 'desc'
+            }
             options['sort_order'] = m[key]
         config.save_options()
         self.change_to_folder(self.folder, self.folder_history_position)
@@ -333,9 +366,9 @@ class Ojo():
                 self.folder_history_position = 0
         else:
             self.folder_history_position = modify_history_position
+        self.images = self.get_image_list()
         self.search_text = ""
         self.toggle_search(False)
-        self.images = self.get_image_list()
 
     def get_back_folder(self):
         i = self.folder_history_position
@@ -371,25 +404,32 @@ class Ojo():
             self.change_to_folder(self.get_parent_folder())
 
     def change_to_folder(self, path, modify_history_position=None):
-        # make sure we fail early if there are permission issues:
-        os.listdir(path)
+        import threading
 
-        self.thumbs.reset_queues()
-        self.pix_cache[False].clear()
-        self.pix_cache[True].clear()
-        metadata.clear_cache()
+        def _go():
+            # make sure we fail early if there are permission issues:
+            os.listdir(path)
 
-        import gc
-        collected = gc.collect()
-        logging.debug("GC collected: %d" % collected)
+            self.thumbs.reset_queues()
+            self.pix_cache[False].clear()
+            self.pix_cache[True].clear()
 
-        old_folder = self.folder
-        self.set_folder(path, modify_history_position)
-        self.selected = old_folder if self.folder == util.get_parent(old_folder) else \
-            self.images[0] if self.images else self.get_parent_folder()
-        self.set_mode("folder")
-        self.last_folder_change_time = time.time()
-        self.render_folder_view()
+            # TODO: we may want to call metadata.clear_cache() here, or use a LRU policy for it
+
+            import gc
+            collected = gc.collect()
+            logging.debug("GC collected: %d" % collected)
+
+            old_folder = self.folder
+            self.set_folder(path, modify_history_position)
+            self.selected = old_folder if self.folder == util.get_parent(old_folder) else \
+                self.images[0] if self.images else self.get_parent_folder()
+            self.set_mode("folder")
+            self.last_folder_change_time = time.time()
+            self.render_folder_view()
+
+        self.show_loading_folder_msg()
+        threading.Timer(0, _go).start()
 
     def check_kill(self):
         global killed
@@ -431,6 +471,7 @@ class Ojo():
         self.folder_history_position = 0
 
         try:
+            self.show_loading_folder_msg()
             self.set_folder(os.path.dirname(self.selected))
         except OSError as e:
             logging.exception('Could not open %s' % self.selected)
@@ -469,6 +510,12 @@ class Ojo():
         import thumbs
         self.thumbs = thumbs.Thumbs(ojo=self)
         self.thumbs.start()
+
+    def show_loading_folder_msg(self):
+        if options['sort_by'] == 'exif_date':
+            self.js('show_spinner("Sorting by EXIF date, please wait...")')
+        else:
+            self.js('show_spinner("Listing folder...")')
 
     def filter_hidden(self, files):
         return files if options['show_hidden'] else filter(
@@ -600,8 +647,9 @@ class Ojo():
             'add-bookmark': self.add_bookmark,
             'remove-bookmark': self.remove_bookmark,
             'sort': self.sort,
-            'hidden': self.show_hidden,
-            'captions': self.show_captions,
+            'hidden': self.toggle_hidden,
+            'groups': self.toggle_groups,
+            'captions': self.toggle_captions,
         }
         m[parts[0]](*parts[1:])
 
@@ -654,7 +702,8 @@ class Ojo():
         mapby = {
             'extension': 'type',
             'name': 'name',
-            'date': 'date',
+            'date': 'file date',
+            'exif_date': 'EXIF date',
             'size': 'file size',
         }
         mapord = {
@@ -662,16 +711,18 @@ class Ojo():
                 'extension': 'Z to A',
                 'name': 'Z to A',
                 'date': 'newest at top',
+                'exif_date': 'newest at top',
                 'size': 'big at top',
             },
             "asc": {
                 'extension': 'A to Z',
                 'name': 'A to Z',
                 'date': 'oldest at top',
+                'exif_date': 'oldest at top',
                 'size': 'small at top'
             }
         }
-        for sort in ('name', 'extension', 'date', 'size'):
+        for sort in ('name', 'extension', 'date', 'exif_date', 'size'):
             if sort != by:
                 items.append(self.get_command_item(
                     'command:sort:' + sort, None, None, 'Sort by ' + mapby[sort]))
@@ -681,13 +732,32 @@ class Ojo():
                     'Sort by %s, %s' % (mapby[by], mapord[order][by])))
 
         if order == 'asc':
-            m = {'extension': 'Z to A', 'name': 'Z to A', 'date': 'Newest at top', 'size': 'Big at top'}
+            m = {
+                'extension': 'Z to A',
+                'name': 'Z to A',
+                'date': 'Newest at top',
+                'exif_date': 'Newest at top',
+                'size': 'Big at top'
+            }
             items.append(self.get_command_item(
                 'command:sort:desc', None, None, m[by]))
         else:
-            m = {'extension': 'A to Z', 'name': 'A to Z', 'date': 'Oldest at top', 'size': 'Small at top'}
+            m = {
+                'extension': 'A to Z',
+                'name': 'A to Z',
+                'date': 'Oldest at top',
+                'exif_date': 'Oldest at top',
+                'size': 'Small at top'
+            }
             items.append(self.get_command_item(
                 'command:sort:asc', None, None, m[by]))
+
+        if options['show_groups_for'].get(by, False):
+            items.append(self.get_command_item(
+                'command:groups:false', None, None, 'Hide group labels'))
+        else:
+            items.append(self.get_command_item(
+                'command:groups:true', None, None, 'Show group labels'))
 
         if options['show_hidden']:
             items.append(self.get_command_item(
@@ -885,7 +955,6 @@ class Ojo():
         def _queue_thread():
             logging.info("Starting cache thread")
             while True:
-                # TODO: Do we want a proper LRU policy, or this is good enough?
                 if len(self.pix_cache[False]) > CACHE_SIZE:
                     _reduce_to_latest(self.pix_cache[False], CACHE_SIZE / 2)
                 if len(self.pix_cache[True]) > CACHE_SIZE:
@@ -1072,24 +1141,27 @@ class Ojo():
                 Gdk.Cursor.new_for_display(Gdk.Display.get_default(), cursor))
 
     def set_mode(self, mode):
-        self.mode = mode
-        if self.mode == "image" and self.selected != self.shown:
-            self.show(self.selected)
-        elif self.mode == "folder":
-            self.shown = None
-            self.window.set_title(self.folder)
-            if hasattr(self, 'web_view'):
-                self.web_view.grab_focus()
+        def _go():
+            self.mode = mode
+            if self.mode == "image" and self.selected != self.shown:
+                self.show(self.selected)
+            elif self.mode == "folder":
+                self.shown = None
+                self.window.set_title(self.folder)
+                if hasattr(self, 'web_view'):
+                    self.web_view.grab_focus()
 
-        self.update_cursor()
-        self.scroll_window.set_visible(self.mode == 'image')
-        self.image.set_visible(self.mode == 'image')
-        self.browser.set_visible(self.mode == 'folder')
-        self.update_margins()
-        self.js("set_mode('%s')" % self.mode)
+            self.update_cursor()
+            self.scroll_window.set_visible(self.mode == 'image')
+            self.image.set_visible(self.mode == 'image')
+            self.browser.set_visible(self.mode == 'folder')
+            self.update_margins()
+            self.js("set_mode('%s')" % self.mode)
 
-        if self.mode == 'folder' and not self.manually_resized:
-            self.resize_and_center(*self.get_recommended_size())
+            if self.mode == 'folder' and not self.manually_resized:
+                self.resize_and_center(*self.get_recommended_size())
+
+        GObject.idle_add(_go)
 
     def exit(self, *args):
         """
@@ -1124,7 +1196,7 @@ class Ojo():
 
     def toggle_search(self, visible):
         self.is_in_search = visible
-        self.js("show_search(%s)" % ('true' if visible else 'false'))
+        self.js("toggle_search(%s)" % ('true' if visible else 'false'))
 
     def process_key(self, widget=None, event=None, key=None, skip_browser=False):
         if event:

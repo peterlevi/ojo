@@ -2,6 +2,10 @@ import imaging
 
 
 class Metadata:
+    EXIF_KEYS = [
+        'Exif.Photo.DateTimeOriginal'
+    ]  # Add additional keys we'd like to show
+
     def __init__(self):
         self.cache = {}
 
@@ -28,13 +32,20 @@ class Metadata:
             meta = ImageMetadata(filename)
             meta.read()
 
+            exif = {}
+            for key in Metadata.EXIF_KEYS:
+                v = meta.get(key, None)
+                if v:
+                    exif[key] = v.value
+
             # also cache the most important part
             self.cache[filename] = {
                 'needs_orientation': imaging.needs_orientation(meta),
                 'needs_rotation': imaging.needs_rotation(meta),
                 'width': meta.dimensions[0],
                 'height': meta.dimensions[1],
-                'orientation': meta['Exif.Image.Orientation'].value if 'Exif.Image.Orientation' in meta else None
+                'orientation': meta['Exif.Image.Orientation'].value if 'Exif.Image.Orientation' in meta else None,
+                'exif': exif,
             }
 
             return meta
