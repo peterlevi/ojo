@@ -60,7 +60,7 @@ function refresh_category(category) {
         if (category.no_labels) {
             style = 'display: inline; ' + (first ? 'padding-right: 0' : 'padding: 0;');  //TODO we don't want inlined CSS
         }
-        add_folder(category.label, item.label, item.path, item.filename, item.icon, style, item.nofocus);
+        add_folder(category.label, item.label, item.path, item.filename, item.group, item.icon, style, item.nofocus);
         first = false;
     });
     if (category.no_labels) {
@@ -82,27 +82,29 @@ function set_title(crumbs) {
 }
 
 function get_id(s) {
-    return s.replace(/[^a-z0-9]/gi,'')
+    return s.replace(/[^A-Za-z0-9]/gi,'')
 }
 
 function add_folder_category(label) {
     $("#folders").append(
-        "<div class='folder-category' id='" + get_id(label) + "'>" +
+        "<div class='folder-category' id='" + get_id(label) + "' label='" + esc(label) + "'" + "'>" +
         "<div class='folder-category-label'>" + esc(label) + "</div></div>");
 }
 
-function add_folder(category_label, label, path, filename, icon, style, nofocus) {
+function add_folder(category_label, label, path, filename, group, icon, style, nofocus) {
     var elem = $(_.template(
         "<div " +
         "   class='folder match' " +
         "   file='<%= path %>' " +
         "   filename='<%= filename %>' " +
+        "   group='<%= group %>' " +
         "   style='<%= style %>'>" +
         "<%= label %>" +
         "</div>")
     ({
         path: encode_path(path),
         filename: esc(filename),
+        group: esc(group || ''),
         label: esc(label),
         style: style
     }));
@@ -142,7 +144,7 @@ function add_image_div(file, name, selected, show_caption, group, thumb, thumb_w
     )({
         file: encode_path(file),
         name: esc(name),
-        group: esc(group),
+        group: esc(group || ''),
         thumb: thumb ? encode_path(thumb) : '',
         thumb_width:
             thumb ? 'initial' :
@@ -446,18 +448,21 @@ function on_search() {
 
     // hide/show groups
     var firstGroup = true;
-    $('.group').map(function() {
+    $('.group, .folder-category').map(function() {
         var g = $(this);
-        var keep = matches.filter(function () {
+        var keep = search.trim() === '' || matches.filter(function () {
             var m = $(this);
             return m.attr('group') === g.attr('label');
         }).length > 0;
         g.toggleClass('match', keep).toggleClass('nonmatch', !keep);
-        if (keep) {
-            g.toggleClass('first', firstGroup);
-            firstGroup = false;
-        } else {
-            g.removeClass('first');
+
+        if ($(this).hasClass('group')) {
+            if (keep) {
+                g.toggleClass('first', firstGroup);
+                firstGroup = false;
+            } else {
+                g.removeClass('first');
+            }
         }
     });
 

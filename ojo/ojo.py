@@ -604,17 +604,22 @@ class Ojo():
         if self.folder == '/':
             return None
         else:
-            return dict(self.get_folder_item(self.get_parent_folder()), label='..', filename='..')
+            return dict(
+                self.get_folder_item(self.get_parent_folder(), group='Subfolders'),
+                label='..',
+                filename='..'
+            )
 
-    def get_folder_item(self, path):
+    def get_folder_item(self, path, group=''):
         return {
             'label': _u(os.path.basename(path) or path),
             'path': util.path2url(path),
             'filename': os.path.basename(path) or path,
-            'icon': util.path2url(util.get_folder_icon(path, 16))
+            'icon': util.path2url(util.get_folder_icon(path, 16)),
+            'group': group,
         }
 
-    def get_command_item(self, command, path, icon, label='', nofocus=False):
+    def get_command_item(self, command, path, icon, group='', label='', nofocus=False):
         icon_url = None
         if icon:
             try:
@@ -626,6 +631,7 @@ class Ojo():
             'label': label,
             'path': command,
             'filename': os.path.basename(path) if path else label,
+            'group': group,
             'icon': icon_url,
             'nofocus': nofocus,
         }
@@ -681,16 +687,23 @@ class Ojo():
             self.select_in_browser(self.selected)
 
     def build_bookmarks_category(self):
-        bookmark_items = [self.get_folder_item(b) for b in
+        bookmark_items = [self.get_folder_item(b, group='Bookmarks') for b in
                           sorted(config.bookmarks,
                                  key=lambda p: os.path.basename(p).lower())
                           if os.path.isdir(b)]
         if _u(self.folder) in config.bookmarks:
             bookmark_items.append(
-                self.get_command_item('command:remove-bookmark', None, 'remove', 'Remove current'))
+                self.get_command_item(
+                    'command:remove-bookmark', None,
+                    icon='remove',
+                    group='Bookmarks',
+                    label='Remove current'))
         else:
             bookmark_items.append(self.get_command_item(
-                'command:add-bookmark', None, 'add', 'Add current'))
+                'command:add-bookmark', None,
+                icon='add',
+                group='Bookmarks',
+                label='Add current'))
         bookmarks_category = {'label': 'Bookmarks', 'items': bookmark_items}
         return bookmarks_category
 
@@ -725,11 +738,14 @@ class Ojo():
         for sort in ('name', 'extension', 'date', 'exif_date', 'size'):
             if sort != by:
                 items.append(self.get_command_item(
-                    'command:sort:' + sort, None, None, 'Sort by ' + mapby[sort]))
+                    'command:sort:' + sort, None, None,
+                    group='Options',
+                    label='Sort by ' + mapby[sort]))
             else:
                 items.append(self.get_command_item(
                     None, None, None,
-                    'Sort by %s, %s' % (mapby[by], mapord[order][by])))
+                    group='Options',
+                    label='Sort by %s, %s' % (mapby[by], mapord[order][by])))
 
         if order == 'asc':
             m = {
@@ -740,7 +756,9 @@ class Ojo():
                 'size': 'Big at top'
             }
             items.append(self.get_command_item(
-                'command:sort:desc', None, None, m[by]))
+                'command:sort:desc', None, None,
+                group='Options',
+                label='Order: ' + m[by]))
         else:
             m = {
                 'extension': 'A to Z',
@@ -750,30 +768,47 @@ class Ojo():
                 'size': 'Small at top'
             }
             items.append(self.get_command_item(
-                'command:sort:asc', None, None, m[by]))
+                'command:sort:asc', None, None,
+                group='Options',
+                label=m[by]))
 
         if options['show_groups_for'].get(by, False):
             items.append(self.get_command_item(
-                'command:groups:false', None, None, 'Hide group labels for this sorting'))
+                'command:groups:false', None, None,
+                group='Options',
+                label='Hide group labels for this sorting'))
         else:
             items.append(self.get_command_item(
-                'command:groups:true', None, None, 'Show group labels for this sorting'))
+                'command:groups:true', None, None,
+                group='Options',
+                label='Show group labels for this sorting'))
 
         if options['show_hidden']:
             items.append(self.get_command_item(
-                'command:hidden:false', None, None, 'Hide hidden files'))
+                'command:hidden:false', None, None,
+                group='Options',
+                label='Hide hidden files'))
         else:
             items.append(self.get_command_item(
-                'command:hidden:true', None, None, 'Show hidden files'))
+                'command:hidden:true', None, None,
+                group='Options',
+                label='Show hidden files'))
 
         if options['show_captions']:
             items.append(self.get_command_item(
-                'command:captions:false', None, None, 'Hide captions'))
+                'command:captions:false', None, None,
+                group='Options',
+                label='Hide captions'))
         else:
             items.append(self.get_command_item(
-                'command:captions:true', None, None, 'Show captions'))
+                'command:captions:true', None, None,
+                group='Options',
+                label='Show captions'))
 
-        return {'label': 'Options', 'items': items}
+        return {
+            'label': 'Options',
+            'items': items
+        }
 
     def refresh_category(self, category):
         import json
@@ -874,13 +909,16 @@ class Ojo():
         nav_items = [
             self.get_command_item(
                 'command:back' if self.get_back_folder() else None,
-                self.get_back_folder(), 'back', nofocus=True),
+                self.get_back_folder(), 'back',
+                group='Navigate', nofocus=True),
             self.get_command_item(
                 'command:forward' if self.get_forward_folder() else None,
-                self.get_forward_folder(), 'forward', nofocus=True),
+                self.get_forward_folder(), 'forward',
+                group='Navigate', nofocus=True),
             self.get_command_item(
                 'command:up' if parent_folder else None,
-                parent_folder, 'up', nofocus=True)
+                parent_folder, 'up',
+                group='Navigate', nofocus=True)
         ]
 
         categories = [{
@@ -897,7 +935,8 @@ class Ojo():
 
         parent_item = self.get_parent_folder_item()
         special_items = [parent_item] if parent_item else []
-        subfolder_items = special_items + [self.get_folder_item(sub) for sub in subfolders]
+        subfolder_items = special_items + \
+                          [self.get_folder_item(sub, group='Subfolders') for sub in subfolders]
 
         if subfolder_items:
             categories.append({
