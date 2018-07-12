@@ -421,12 +421,17 @@ function matches_search(elem) {
     var file = (elem.attr('file') || '').replace(nbsp, ' ');
     var group = (elem.attr('group') || '').replace(nbsp, ' ');
 
-    return (
-        (filename && filename.toLowerCase().indexOf(search.toLowerCase()) >= 0) ||
-        (group && group.toLowerCase().indexOf(search.toLowerCase()) >= 0) ||
-        (file && file.substring(0, 'command:'.length) === 'command:' &&
-        file.substring('command:'.length + 1).toLowerCase().indexOf(search.toLowerCase()) >= 0)
-    );
+    var words = search.split(' ').filter(Boolean);
+
+    return _.every(words, function (word) {
+        var wordLow = word.toLowerCase();
+        return (
+            (filename && filename.toLowerCase().indexOf(wordLow) >= 0) ||
+            (group && group.toLowerCase().indexOf(wordLow) >= 0) ||
+            (file && file.substring(0, 'command:'.length) === 'command:' &&
+                file.substring('command:'.length + 1).toLowerCase().indexOf(wordLow) >= 0)
+        );
+    });
 }
 
 function on_search() {

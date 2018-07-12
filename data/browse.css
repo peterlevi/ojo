@@ -196,6 +196,7 @@ body {
 }
 
 div.caption {
+    opacity: 0;
     position: absolute;
     width: 100%;
     height: 20px;
@@ -209,6 +210,7 @@ div.caption {
 }
 
 div.caption.caption_above {
+    opacity: 1;
     z-index: 2;
 }
 
