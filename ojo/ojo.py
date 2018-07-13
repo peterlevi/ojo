@@ -920,7 +920,7 @@ class Ojo():
             self.get_command_item(
                 'command:up' if parent_folder else None,
                 parent_folder, 'up',
-                group='Navigate', nofocus=True)
+                group='Navigate', nofocus=True),
         ]
 
         categories = [{
@@ -1240,6 +1240,9 @@ class Ojo():
         self.js("toggle_search(%s, %s)" % ('true' if visible else 'false',
                                            'true' if bypass_search else 'false'))
 
+    def ctrl_key(self, event):
+        return event and (event.state & (Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.MOD1_MASK))
+
     def process_key(self, widget=None, event=None, key=None, skip_browser=False):
         if event:
             # prevent processing duplicate events that happen sometimes when focusing web_view
@@ -1256,7 +1259,7 @@ class Ojo():
         elif key == "F11":
             self.toggle_fullscreen()
         elif key == 'F5':
-            if event and event.state & Gdk.ModifierType.CONTROL_MASK and self.mode == "folder":
+            if self.ctrl_key(event) and self.mode == "folder":
                 self.thumbs.clear_thumbnails(self.folder)
             self.show(self.selected if self.mode == 'image' else self.folder)
         elif key == 'Return':
@@ -1271,20 +1274,21 @@ class Ojo():
             if hasattr(self, 'web_view'):
                 self.web_view.grab_focus()
 
-            if key == 'Left' and event and (event.state & (Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.MOD1_MASK)):
+            if key == 'Left' and self.ctrl_key(event):
                 self.folder_history_back()
-            elif key == 'Right' and event and (
-                    event.state & (Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.MOD1_MASK)):
+            elif key == 'Right' and self.ctrl_key(event):
                 self.folder_history_forward()
-            elif key == 'Up' and event and (event.state & (Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.MOD1_MASK)):
+            elif key == 'Up' and self.ctrl_key(event):
                 self.folder_parent()
-            elif (key == 'plus' or key == 'equal') and event and (event.state & (Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.MOD1_MASK)):
+            elif key == 'slash' and self.ctrl_key(event):
+                self.change_to_folder('/')
+            elif (key == 'plus' or key == 'equal') and self.ctrl_key(event):
                 self.increase_thumb_height()
-            elif key == 'minus' and event and (event.state & (Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.MOD1_MASK)):
+            elif key == 'minus' and self.ctrl_key(event):
                 self.decrease_thumb_height()
             elif self.check_letter_shortcut(event, [41], mask=Gdk.ModifierType.CONTROL_MASK):  # Ctrl-F
                 self.toggle_search(True)
-            elif key in ('Tab', 'ISO_Left_Tab'):
+            elif key in ('Tab', 'ISO_Left_Tab') and not skip_browser:
                 self.js("on_key('%s')" % 'Tab')
             elif not skip_browser:
                 self.js("on_key('%s')" % key)

@@ -49,7 +49,8 @@ Press and hold mouse to zoom to specific point at 100%, then hold and move to "l
 `Home` / `End` - go to first/last image or folder
 `Tab` / `Shift-Tab` - switch focus between files and folders list   
 `Enter` - select currently active link  
-`Backspace` / `Alt-Up` - move one folder up  
+`Backspace` / `Alt-Up` / `Ctrl-Up` - move one folder up  
+`Ctrl-/` - jump to the filesystem root  
 `Alt-Left` / `Alt-Right` - go back / go forward in history  
 `Ctrl +/=` / `Ctrl -` - increase / decrease size of the thumbnails  
 `F5` - reload current folder (file changes are not reflected automatically)  
