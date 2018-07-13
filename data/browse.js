@@ -531,7 +531,7 @@ function toggle_captions(visible) {
     select('command:captions:' + (visible ? 'false' : 'true'));
 }
 
-function toggle_search(visible) {
+function toggle_search(visible, bypass_search) {
     $('#search-box').css('opacity', visible ? 1 : 0);
     if (visible) {
         setTimeout(function () {
@@ -544,7 +544,9 @@ function toggle_search(visible) {
     } else if (search !== '') {
         search = '';
         $('#search-field').val('');
-        on_search();
+        if (!bypass_search) {
+            on_search();
+        }
     }
 }
 

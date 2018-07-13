@@ -352,7 +352,7 @@ class Ojo():
         config.save_options()
         self.change_to_folder(self.folder, self.folder_history_position)
 
-    def set_folder(self, path, modify_history_position=None):
+    def set_folder(self, path, modify_history_position=None, bypass_search=False):
         path = os.path.realpath(path)
         options['folder'] = path
         config.save_options()
@@ -368,7 +368,7 @@ class Ojo():
             self.folder_history_position = modify_history_position
         self.images = self.get_image_list()
         self.search_text = ""
-        self.toggle_search(False)
+        self.toggle_search(False, bypass_search)
 
     def get_back_folder(self):
         i = self.folder_history_position
@@ -421,7 +421,7 @@ class Ojo():
             logging.debug("GC collected: %d" % collected)
 
             old_folder = self.folder
-            self.set_folder(path, modify_history_position)
+            self.set_folder(path, modify_history_position, bypass_search=True)
             self.selected = old_folder if self.folder == util.get_parent(old_folder) else \
                 self.images[0] if self.images else self.get_parent_folder()
             self.set_mode("folder")
@@ -610,9 +610,9 @@ class Ojo():
                 filename='..'
             )
 
-    def get_folder_item(self, path, group=''):
+    def get_folder_item(self, path, group='', label=None):
         return {
-            'label': _u(os.path.basename(path) or path),
+            'label': label or _u(os.path.basename(path) or path),
             'path': util.path2url(path),
             'filename': os.path.basename(path) or path,
             'icon': util.path2url(util.get_folder_icon(path, 16)),
@@ -1233,9 +1233,10 @@ class Ojo():
             event.hardware_keycode in hw_keycodes
         )
 
-    def toggle_search(self, visible):
+    def toggle_search(self, visible, bypass_search=False):
         self.is_in_search = visible
-        self.js("toggle_search(%s)" % ('true' if visible else 'false'))
+        self.js("toggle_search(%s, %s)" % ('true' if visible else 'false',
+                                           'true' if bypass_search else 'false'))
 
     def process_key(self, widget=None, event=None, key=None, skip_browser=False):
         if event:
