@@ -568,6 +568,8 @@ class Ojo():
             self.search_text = argument
             if self.search_text:
                 self.toggle_search(True)
+        elif action == "ojo-show-search":
+            self.toggle_search(True)
 
     def render_browser(self):
         from gi.repository import WebKit

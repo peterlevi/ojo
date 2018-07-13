@@ -533,6 +533,7 @@ function toggle_captions(visible) {
 
 function toggle_search(visible, bypass_search) {
     $('#search-box').css('opacity', visible ? 1 : 0);
+    $('#search-button').css('display', visible ? 'none' : 'initial');
     if (visible) {
         setTimeout(function () {
             $('#search-field').focus();
@@ -596,4 +597,8 @@ $(function() {
             e.preventDefault();
         }
     });
+
+    $('#search-button').click(function (e) {
+        python('ojo-show-search:');
+    })
 });

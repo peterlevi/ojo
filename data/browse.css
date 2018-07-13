@@ -236,6 +236,32 @@ div.holder img {
     left: 50%;
 }
 
+#search-button {
+    opacity: 1;
+    position: fixed;
+    z-index: 501;
+    top: 5px;
+    right: 10px;
+    width: 30px;
+    height: 30px;
+    border-radius: 30px;
+    background-color: transparent;
+    cursor: pointer;
+}
+
+#search-button:hover {
+    background-color: #302e2c;
+}
+
+#search-button img {
+    position: absolute;
+    left: 8px;
+    top: 8px;
+    width: 15px;
+    height: 15px;
+    z-index: 10;
+}
+
 #search-box {
     opacity: 0;
     position: fixed;
