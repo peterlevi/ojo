@@ -1187,6 +1187,7 @@ class Ojo():
             if self.mode == "image" and self.selected != self.shown:
                 self.show(self.selected)
             elif self.mode == "folder":
+                self.been_in_folder_mode = True
                 self.shown = None
                 self.window.set_title(self.folder)
                 if hasattr(self, 'web_view'):
@@ -1254,6 +1255,8 @@ class Ojo():
         if key == 'Escape' and (self.mode == 'image' or skip_browser):
             if self.mode == 'folder' and self.is_in_search:
                 self.toggle_search(False)
+            elif self.mode == 'image' and getattr(self, 'been_in_folder_mode', False):
+                self.set_mode('folder')
             else:
                 self.exit()
         elif key == "F11":
