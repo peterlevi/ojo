@@ -366,6 +366,7 @@ class Ojo():
                 self.folder_history_position = 0
         else:
             self.folder_history_position = modify_history_position
+        self.recent = ([path] + [r for r in self.recent if r != path])[:5]
         self.images = self.get_image_list()
         self.search_text = ""
         self.toggle_search(False, bypass_search)
@@ -468,6 +469,7 @@ class Ojo():
 
         self.check_kill()
         self.folder_history = []
+        self.recent = []
         self.folder_history_position = 0
 
         try:
@@ -688,6 +690,42 @@ class Ojo():
             self.selected = 'command:add-bookmark'
             self.select_in_browser(self.selected)
 
+    def build_navigation_category(self):
+        parent_folder = self.get_parent_folder()
+        nav_items = [
+            self.get_command_item(
+                'command:back' if self.get_back_folder() else None,
+                self.get_back_folder(), 'back',
+                group='Navigate', nofocus=True),
+            self.get_command_item(
+                'command:forward' if self.get_forward_folder() else None,
+                self.get_forward_folder(), 'forward',
+                group='Navigate', nofocus=True),
+            self.get_command_item(
+                'command:up' if parent_folder else None,
+                parent_folder, 'up',
+                group='Navigate', nofocus=True),
+        ]
+        nav_category = {'label': 'Navigate', 'no_labels': True, 'items': nav_items, }
+        return nav_category
+
+    def build_subfolders_category(self):
+        subfolders = self.filter_hidden([
+            os.path.join(self.folder, f) for f in sorted(os.listdir(self.folder))
+            if os.path.isdir(os.path.join(self.folder, f))
+        ])
+        parent_item = self.get_parent_folder_item()
+        special_items = [parent_item] if parent_item else []
+        subfolder_items = special_items + \
+                          [self.get_folder_item(sub, group='Subfolders') for sub in subfolders]
+        if subfolder_items:
+            return {
+                'label': 'Subfolders',
+                'items': subfolder_items
+            }
+        else:
+            return None
+
     def build_bookmarks_category(self):
         bookmark_items = [self.get_folder_item(b, group='Bookmarks') for b in
                           sorted(config.bookmarks,
@@ -708,6 +746,16 @@ class Ojo():
                 label='Add current'))
         bookmarks_category = {'label': 'Bookmarks', 'items': bookmark_items}
         return bookmarks_category
+
+    def build_recent_category(self):
+        recent_items = [self.get_folder_item(recent, group='Recent') for recent in self.recent[:5]]
+        if recent_items:
+            return {
+                'label': 'Recent',
+                'items': recent_items
+            }
+        else:
+            return None
 
     def build_options_category(self):
         items = []
@@ -906,59 +954,22 @@ class Ojo():
         prepare_thread.start()
 
     def build_folder_info(self):
-        parent_folder = self.get_parent_folder()
+        categories = []
 
-        nav_items = [
-            self.get_command_item(
-                'command:back' if self.get_back_folder() else None,
-                self.get_back_folder(), 'back',
-                group='Navigate', nofocus=True),
-            self.get_command_item(
-                'command:forward' if self.get_forward_folder() else None,
-                self.get_forward_folder(), 'forward',
-                group='Navigate', nofocus=True),
-            self.get_command_item(
-                'command:up' if parent_folder else None,
-                parent_folder, 'up',
-                group='Navigate', nofocus=True),
-        ]
-
-        categories = [{
-            'label': 'Navigate',
-            'no_labels': True,
-            'items': nav_items,
-        }]
+        # Navigation
+        categories.append(self.build_navigation_category())
 
         # Subfolders
-        subfolders = self.filter_hidden([
-            os.path.join(self.folder, f) for f in sorted(os.listdir(self.folder))
-            if os.path.isdir(os.path.join(self.folder, f))
-        ])
+        subfolders_category = self.build_subfolders_category()
+        if subfolders_category:
+            categories.append(subfolders_category)
 
-        parent_item = self.get_parent_folder_item()
-        special_items = [parent_item] if parent_item else []
-        subfolder_items = special_items + \
-                          [self.get_folder_item(sub, group='Subfolders') for sub in subfolders]
-
-        if subfolder_items:
-            categories.append({
-                'label': 'Subfolders',
-                'items': subfolder_items
-            })
-        # # Siblings - TODO disabled for now, they look too similar to subfolders and confuse
-        # if parent_folder:
-        #     siblings = self.filter_hidden([
-        #         os.path.join(parent_folder, f) for f in sorted(os.listdir(parent_folder))
-        #         if os.path.isdir(os.path.join(parent_folder, f))])
-        #     pos = siblings.index(self.folder)
-        #     if pos + 1 < len(siblings):
-        #         categories.append({
-        #             'label': 'Next folder',
-        #             'items': [self.get_folder_item(siblings[pos + 1])]
-        #         })
-        #
         # Bookmarks
         categories.append(self.build_bookmarks_category())
+
+        # Recent places
+        categories.append(self.build_recent_category())
+
         # Options
         categories.append(self.build_options_category())
 
