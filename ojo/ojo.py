@@ -230,7 +230,7 @@ class Ojo():
             self.on_command(self.selected[self.selected.index(':') + 1:])
         elif os.path.isdir(filename):
             self.change_to_folder(filename)
-        else:
+        elif is_image(filename):
             self.register_action()
             self.shown = filename
             self.selected = self.shown
@@ -241,6 +241,8 @@ class Ojo():
                 self.update_cursor()
                 self.select_in_browser(self.shown)
                 self.cache_around()
+        else:
+            raise Exception('Cannot open ' + filename)
 
     def refresh_image(self):
         if self.shown:
@@ -366,7 +368,7 @@ class Ojo():
                 self.folder_history_position = 0
         else:
             self.folder_history_position = modify_history_position
-        self.recent = ([path] + [r for r in self.recent if r != path])[:5]
+        self.recent = ([path] + [r for r in self.recent if r != path])[:50]
         self.images = self.get_image_list()
         self.search_text = ""
         self.toggle_search(False, bypass_search)
@@ -405,11 +407,15 @@ class Ojo():
             self.change_to_folder(self.get_parent_folder())
 
     def change_to_folder(self, path, modify_history_position=None):
+        # make sure we fail early if there are permission or mounting issues:
+        try:
+            os.listdir(path)
+        except OSError:
+            raise Exception('Cannot open ' + path)
+
         import threading
 
         def _go():
-            # make sure we fail early if there are permission issues:
-            os.listdir(path)
 
             self.thumbs.reset_queues()
             self.pix_cache[False].clear()
@@ -502,6 +508,9 @@ class Ojo():
         self.window.connect('window-state-event', self.window_state_changed)
 
         config.load_bookmarks()
+
+        from places import Places
+        self.places = Places(self.on_places_changed)
 
         GObject.idle_add(self.render_browser)
 
@@ -614,12 +623,12 @@ class Ojo():
                 filename='..'
             )
 
-    def get_folder_item(self, path, group='', label=None):
+    def get_folder_item(self, path, group='', label=None, icon=None):
         return {
             'label': label or _u(os.path.basename(path) or path),
             'path': util.path2url(path),
             'filename': os.path.basename(path) or path,
-            'icon': util.path2url(util.get_folder_icon(path, 16)),
+            'icon': util.path2url(icon or util.get_folder_icon(path, 16)),
             'group': group,
         }
 
@@ -748,7 +757,9 @@ class Ojo():
         return bookmarks_category
 
     def build_recent_category(self):
-        recent_items = [self.get_folder_item(recent, group='Recent') for recent in self.recent[:5]]
+        recent_items = [self.get_folder_item(recent, group='Recent')
+                        for recent in self.recent
+                        if os.path.isdir(recent)][:5]
         if recent_items:
             return {
                 'label': 'Recent',
@@ -756,6 +767,34 @@ class Ojo():
             }
         else:
             return None
+
+    def build_places_category(self):
+        places = self.places.get_places()
+        places_items = []
+        for place in places:
+            item = self.get_folder_item(
+                path=place['path'],
+                group='Places',
+                label=place['label'],
+                icon=place['icon'],
+            )
+            item['filename'] = place['label']
+            places_items.append(item)
+
+        return {
+            'label': 'Places',
+            'items': places_items
+        }
+
+    def on_places_changed(self):
+        try:
+            os.listdir(self.folder)
+        except OSError:
+            logging.warning("%s not accessible anymore, reverting to %s" %
+                            (self.folder, util.get_xdg_pictures_folder()))
+            self.change_to_folder(util.get_xdg_pictures_folder())
+
+        self.refresh_category(self.build_places_category())
 
     def build_options_category(self):
         items = []
@@ -964,10 +1003,13 @@ class Ojo():
         if subfolders_category:
             categories.append(subfolders_category)
 
+        # Places
+        categories.append(self.build_places_category())
+
         # Bookmarks
         categories.append(self.build_bookmarks_category())
 
-        # Recent places
+        # Recent folders
         categories.append(self.build_recent_category())
 
         # Options
