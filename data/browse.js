@@ -42,6 +42,9 @@ function render_folders(data) {
     set_title(data.crumbs);
 
     _.map(data.categories, refresh_category);
+    if (search) {
+        on_search();
+    }
     $('#folders').show();
 }
 
@@ -101,6 +104,11 @@ function add_folder(category_label, item, style) {
         "   style='<%= style %>'>" +
         "<%= label %>" +
         (item.note ? "<span class='folder-note'>" + esc(item.note) + "</span>" : '') +
+        (item.with_command ?
+            "<span class='folder-command command' " +
+            "data-command='" + item.with_command.command + "'>" + esc(item.with_command.label) + "</span>"
+            : ''
+        ) +
         "</div>")
     ({
         path: encode_path(item.path),
@@ -584,6 +592,11 @@ $(function() {
     });
 
     $(document).on('click', '.selectable, .clickable', on_clickable);
+    $(document).on('click', '.command', function (e) {
+        var cmd = $(this).attr('data-command');
+        python(cmd);
+        e.stopPropagation();
+    });
 
     $('#search-field').on('input', function() {
         if ($(this).val() !== search) {

@@ -12,11 +12,10 @@ class Places:
         "mount-removed",
     ]
 
-    def __init__(self, on_change, on_path_manually_mounted, icon_size=16):
+    def __init__(self, on_change, icon_size=16):
         self.icon_size = icon_size
         self.vm = Gio.VolumeMonitor.get()
         self.on_change_fn = on_change
-        self.on_path_manually_mounted_fn = on_path_manually_mounted
 
         for sig in Places.VOLUME_MONITOR_SIGNALS:
             self.vm.connect(sig, self.on_change)
@@ -58,24 +57,21 @@ class Places:
             if volume.can_mount():
                 volume_id = volume.get_identifier(Gio.VOLUME_IDENTIFIER_KIND_UNIX_DEVICE)
                 places.append({
-                    'path': 'command:mount:' + volume_id,
                     'label': volume.get_name(),
-                    'needs_mounting': True,
+                    'not_mounted': True,
+                    'mount_id': volume_id,
                     'icon': self.get_icon(volume)
                 })
 
     def add_mount(self, mount, places):
-        item = {
-            'path': mount.get_default_location().get_path(),
+        path = mount.get_default_location().get_path()
+        places.append({
+            'path': path,
             'label': mount.get_name(),
             'icon': self.get_icon(mount),
-        }
-        # TODO:
-        # if mount.can_unmount():
-        #     item['with_command'] = {
-        #         'command': 'command:unmount:' + ...
-        #     }
-        places.append(item)
+            'can_unmount': mount.can_unmount(),
+            'unmount_id': None if not mount.can_unmount() else path,
+        })
 
     def get_icon(self, g_item):
         try:
@@ -84,26 +80,43 @@ class Places:
             icon_name = 'drive-harddisk'
         return util.get_icon_path(icon_name, self.icon_size, fallback='drive-harddisk')
 
-    def mount_volume(self, volume_id):
+    def mount_volume(self, volume_id, on_mount, on_mount_argument=None):
         for volume in self.vm.get_volumes():
             if volume.get_identifier(Gio.VOLUME_IDENTIFIER_KIND_UNIX_DEVICE) == volume_id:
+                def _on_mounted(volume, *args):
+                    import time
+                    import os
+                    path = volume.get_mount().get_default_location().get_path()
+
+                    # wait up to 2 sec for the mount path to be readable
+                    wait_start = time.time()
+                    while time.time() - wait_start < 2:
+                        try:
+                            os.listdir(path)
+                            break
+                        except:
+                            time.sleep(0.2)
+
+                    on_mount(path, on_mount_argument)
+
                 volume.mount(
                     Gio.MountMountFlags.NONE,
                     None,
                     None,
-                    self.on_user_mounted,
+                    _on_mounted,
                     None,
                 )
 
-    def on_user_mounted(self, volume, *args):
-        import time
-        import os
-        path = volume.get_mount().get_default_location().get_path()
-        s = time.time()
-        while time.time() - s < 2:
-            try:
-                os.listdir(path)
-                break
-            except:
-                time.sleep(0.2)
-        self.on_path_manually_mounted_fn(path)
+    def unmount_mount(self, mount_path, on_unmount=None):
+        for mount in self.vm.get_mounts():
+            if not mount.is_shadowed() and mount.get_default_location().get_path() == mount_path:
+
+                def _on_unmount(*args):
+                    success = True
+                    for mount in self.vm.get_mounts():
+                        if not mount.is_shadowed() and mount.get_default_location().get_path() == mount_path:
+                            success = False
+                    if on_unmount:
+                        on_unmount(mount_path, success)
+
+                mount.unmount_with_operation(Gio.MountUnmountFlags.NONE, None, None, _on_unmount)

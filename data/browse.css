@@ -137,11 +137,15 @@ body {
     width: 16px;
 }
 
-.folder-note {
+.folder-note, .folder-command {
     float: right;
     margin-top: 4px;
     font-style: italic;
     color: #A19C90;
+}
+
+.folder-command:hover {
+    color: white;
 }
 
 .folder.selected {

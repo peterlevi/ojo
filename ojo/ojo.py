@@ -416,7 +416,6 @@ class Ojo():
         import threading
 
         def _go():
-
             self.thumbs.reset_queues()
             self.pix_cache[False].clear()
             self.pix_cache[True].clear()
@@ -510,8 +509,7 @@ class Ojo():
         config.load_bookmarks()
 
         from places import Places
-        self.places = Places(on_change=self.on_places_changed,
-                             on_path_manually_mounted=self.change_to_folder)
+        self.places = Places(on_change=self.on_places_changed)
 
         GObject.idle_add(self.render_browser)
 
@@ -582,6 +580,10 @@ class Ojo():
                 self.toggle_search(True)
         elif action == "ojo-show-search":
             self.toggle_search(True)
+        elif action == "ojo-mount":
+            self.mount_only(argument)
+        elif action == "ojo-unmount":
+            self.unmount(argument)
 
     def render_browser(self):
         from gi.repository import WebKit
@@ -671,7 +673,7 @@ class Ojo():
             'hidden': self.toggle_hidden,
             'groups': self.toggle_groups,
             'captions': self.toggle_captions,
-            'mount': self.mount,
+            'mount_and_go': self.mount_and_go,
         }
         cmd = parts[0]
         args = parts[1:]
@@ -679,9 +681,31 @@ class Ojo():
             raise Exception("Unknown command '%s'" % cmd)
         m[cmd](*args)
 
-    def mount(self, volume_id):
+    def on_path_manually_mounted(self, path, should_go):
+        if should_go:
+            self.change_to_folder(path)
+        else:
+            def _go():
+                self.js('show_error("Mounted")')
+            GObject.idle_add(_go)
+
+    def mount_and_go(self, volume_id):
         self.js('show_spinner("One second please, mounting...")')
-        self.places.mount_volume(volume_id)
+        self.places.mount_volume(volume_id, on_mount=self.on_path_manually_mounted, on_mount_argument=True)
+
+    def mount_only(self, volume_id):
+        self.js('show_spinner("One second please, mounting...")')
+        self.places.mount_volume(volume_id, on_mount=self.on_path_manually_mounted, on_mount_argument=False)
+
+    def unmount(self, mount_path):
+        self.js('show_spinner("Unmounting...")')
+
+        def _done(path, success):
+            self.js('show_error("%s")' % (
+                'Unmounted' if success else
+                'Failed to unmount. Is another process using the volume?'))
+
+        self.places.unmount_mount(mount_path, on_unmount=_done)
 
     def get_crumbs(self):
         folder = self.folder
@@ -783,13 +807,24 @@ class Ojo():
         places = self.places.get_places()
         places_items = []
         for place in places:
+            not_mounted = place.get('not_mounted', False)
+            can_unmount = place.get('can_unmount', False)
             item = self.get_folder_item(
-                path=place['path'],
+                path=place['path'] if not not_mounted else 'command:mount_and_go:' + place['mount_id'],
                 group='Places',
                 label=place['label'],
                 icon=place['icon'],
-                note='Not mounted' if place.get('needs_mounting', False) else None,
             )
+            if not_mounted:
+                item['with_command'] = {
+                    'command': 'ojo-mount:' + place['mount_id'],
+                    'label': 'Mount'
+                }
+            elif can_unmount:
+                item['with_command'] = {
+                    'command': 'ojo-unmount:' + place['unmount_id'],
+                    'label': 'Unmount'
+                }
             item['filename'] = place['label']
             places_items.append(item)
 
@@ -806,9 +841,9 @@ class Ojo():
                             (self.folder, util.get_xdg_pictures_folder()))
             self.change_to_folder(util.get_xdg_pictures_folder())
 
-        self.refresh_category(self.build_places_category())
-        self.refresh_category(self.build_bookmarks_category())
-        self.refresh_category(self.build_recent_category())
+        import json
+        folder_info = self.build_folder_info()
+        self.js("render_folders(%s)" % json.dumps(folder_info))
 
     def build_options_category(self):
         items = []
