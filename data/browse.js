@@ -60,7 +60,7 @@ function refresh_category(category) {
         if (category.no_labels) {
             style = 'display: inline; ' + (first ? 'padding-right: 0' : 'padding: 0;');  //TODO we don't want inlined CSS
         }
-        add_folder(category.label, item.label, item.path, item.filename, item.group, item.icon, style, item.nofocus);
+        add_folder(category.label, item, style);
         first = false;
     });
     if (category.no_labels) {
@@ -91,7 +91,7 @@ function add_folder_category(label) {
         "<div class='folder-category-label'>" + esc(label) + "</div></div>");
 }
 
-function add_folder(category_label, label, path, filename, group, icon, style, nofocus) {
+function add_folder(category_label, item, style) {
     var elem = $(_.template(
         "<div " +
         "   class='folder match' " +
@@ -100,17 +100,18 @@ function add_folder(category_label, label, path, filename, group, icon, style, n
         "   group='<%= group %>' " +
         "   style='<%= style %>'>" +
         "<%= label %>" +
+        (item.note ? "<span class='folder-note'>" + esc(item.note) + "</span>" : '') +
         "</div>")
     ({
-        path: encode_path(path),
-        filename: esc(filename),
-        group: esc(group || ''),
-        label: esc(label),
+        path: encode_path(item.path),
+        filename: esc(item.filename),
+        group: esc(item.group || ''),
+        label: esc(item.label),
         style: style
     }));
-    elem.addClass(path? (nofocus? 'clickable': 'selectable') : 'disabled');
-    if (icon) {
-        elem.prepend("<img class='folder-icon' src='" + encode_path(icon) + "'/>");
+    elem.addClass(item.path? (item.nofocus? 'clickable': 'selectable') : 'disabled');
+    if (item.icon) {
+        elem.prepend("<img class='folder-icon' src='" + encode_path(item.icon) + "'/>");
     }
     $("#" + get_id(category_label)).append(elem);
 }

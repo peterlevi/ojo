@@ -510,7 +510,8 @@ class Ojo():
         config.load_bookmarks()
 
         from places import Places
-        self.places = Places(self.on_places_changed)
+        self.places = Places(on_change=self.on_places_changed,
+                             on_path_manually_mounted=self.change_to_folder)
 
         GObject.idle_add(self.render_browser)
 
@@ -623,13 +624,14 @@ class Ojo():
                 filename='..'
             )
 
-    def get_folder_item(self, path, group='', label=None, icon=None):
+    def get_folder_item(self, path, group='', label=None, icon=None, note=None):
         return {
             'label': label or _u(os.path.basename(path) or path),
             'path': util.path2url(path),
             'filename': os.path.basename(path) or path,
             'icon': util.path2url(icon or util.get_folder_icon(path, 16)),
             'group': group,
+            'note': note,
         }
 
     def get_command_item(self, command, path, icon, group='', label='', nofocus=False):
@@ -669,8 +671,17 @@ class Ojo():
             'hidden': self.toggle_hidden,
             'groups': self.toggle_groups,
             'captions': self.toggle_captions,
+            'mount': self.mount,
         }
-        m[parts[0]](*parts[1:])
+        cmd = parts[0]
+        args = parts[1:]
+        if not cmd in m:
+            raise Exception("Unknown command '%s'" % cmd)
+        m[cmd](*args)
+
+    def mount(self, volume_id):
+        self.js('show_spinner("One second please, mounting...")')
+        self.places.mount_volume(volume_id)
 
     def get_crumbs(self):
         folder = self.folder
@@ -777,6 +788,7 @@ class Ojo():
                 group='Places',
                 label=place['label'],
                 icon=place['icon'],
+                note='Not mounted' if place.get('needs_mounting', False) else None,
             )
             item['filename'] = place['label']
             places_items.append(item)
@@ -795,6 +807,8 @@ class Ojo():
             self.change_to_folder(util.get_xdg_pictures_folder())
 
         self.refresh_category(self.build_places_category())
+        self.refresh_category(self.build_bookmarks_category())
+        self.refresh_category(self.build_recent_category())
 
     def build_options_category(self):
         items = []

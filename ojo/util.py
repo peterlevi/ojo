@@ -37,9 +37,14 @@ def get_folder_icon(path, size):
         return get_icon_path('folder', size)
 
 
-def get_icon_path(icon_name, size):
+def get_icon_path(icon_name, size, fallback='folder'):
     from gi.repository import Gtk
-    return Gtk.IconTheme.get_default().lookup_icon(icon_name, size, 0).get_filename()
+    icon = Gtk.IconTheme.get_default().lookup_icon(icon_name, size, 0)
+    if not icon:
+        import logging
+        logging.warning('Could not find icon for name ' + icon_name)
+        icon = Gtk.IconTheme.get_default().lookup_icon(fallback, size, 0)
+    return icon.get_filename()
 
 
 def get_parent(file):

@@ -134,6 +134,14 @@ body {
     padding-right: 3px;
     vertical-align: text-bottom;
     display: inline;
+    width: 16px;
+}
+
+.folder-note {
+    float: right;
+    margin-top: 4px;
+    font-style: italic;
+    color: #A19C90;
 }
 
 .folder.selected {
