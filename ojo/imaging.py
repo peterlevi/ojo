@@ -72,7 +72,7 @@ def get_pixbuf(filename, width=None, height=None):
         # needs rotation
         image_width, image_height = image_height, image_width
 
-    if width is not None:
+    if width is not None and (width < image_width or height < image_height):
         # scale it
         if float(width) / height < float(image_width) / image_height:
             pixbuf = pixbuf.scale_simple(
