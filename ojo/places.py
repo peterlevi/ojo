@@ -1,4 +1,5 @@
 from gi.repository import Gio, GObject
+import os
 import util
 
 
@@ -27,7 +28,6 @@ class Places:
         GObject.idle_add(_init_vm)
 
     def on_change(self, *args):
-        print(args)
         GObject.idle_add(self.refresh_places)
 
     def get_places(self):
@@ -56,6 +56,12 @@ class Places:
             'path': '/',
             'label': 'Computer',
             'icon': util.get_icon_path('drive-harddisk', self.icon_size)
+        })
+
+        self.places.insert(0, {
+            'path': os.path.expanduser('~'),
+            'label': 'Home',
+            'icon': util.get_icon_path('user-home', self.icon_size)
         })
 
         self.on_change_fn()

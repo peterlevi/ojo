@@ -194,11 +194,26 @@ class Ojo():
                 self.show_error(e.message)
         return safe_fn
 
-    def js(self, command):
+    def js(self, command=None, commands=None):
+        all_commands = []
+        if command:
+            all_commands.append(command)
+        if commands:
+            all_commands += commands
+
         if hasattr(self, "web_view_loaded"):
-            GObject.idle_add(lambda: self.web_view.execute_script(command))
+            def _do_queue():
+                while self.js_queue:
+                    queued = self.js_queue.pop(0)
+                    self.web_view.execute_script(queued)
+                for cmd in all_commands:
+                    self.web_view.execute_script(cmd)
+            GObject.idle_add(_do_queue)
         else:
-            GObject.timeout_add(100, lambda: self.js(command))
+            for cmd in all_commands:
+                logging.debug('Postponing js: ' + cmd)
+                self.js_queue.append(cmd)
+            GObject.timeout_add(100, lambda: self.js())
 
     def select_in_browser(self, path):
         if path:
@@ -436,6 +451,7 @@ class Ojo():
             self.render_folder_view()
 
         def _go_locked():
+            # use a lock so we only have one change_folder operation running at a time
             with self.action_lock:
                 _go()
 
@@ -483,6 +499,7 @@ class Ojo():
         self.recent = []
         self.folder_history_position = 0
         self.action_lock = threading.Lock()
+        self.js_queue = []
 
         with self.action_lock:
             try:
@@ -562,7 +579,9 @@ class Ojo():
     def on_js_action(self, action, argument):
         import json
 
-        if action in ('ojo', 'ojo-select'):
+        if action == 'ojo-document-ready':
+            self.web_view_loaded = True
+        elif action in ('ojo', 'ojo-select'):
             path = argument if self.is_command(argument) else util.url2path(argument)
             self.selected = path
             GObject.idle_add(lambda: self.update_selected_info(self.selected))
@@ -840,17 +859,26 @@ class Ojo():
         }
 
     def on_places_changed(self):
-        try:
-            os.listdir(self.folder)
-        except OSError:
-            logging.warning("%s not accessible anymore, reverting to %s" %
-                            (self.folder, util.get_xdg_pictures_folder()))
-            self.change_to_folder(util.get_xdg_pictures_folder())
-            return
+        def _go():
+            try:
+                os.listdir(self.folder)
+            except OSError:
+                logging.warning("%s not accessible anymore, reverting to %s" %
+                                (self.folder, util.get_xdg_pictures_folder()))
+                self.change_to_folder(util.get_xdg_pictures_folder())
+                return
 
-        import json
-        folder_info = self.build_folder_info()
-        self.js("render_folders(%s)" % json.dumps(folder_info))
+            import json
+            self.js(commands=[
+                'ensure_category("Navigate")',
+                'ensure_category("Subfolders")',
+                'refresh_category(%s)' % json.dumps(self.build_places_category()),
+                'refresh_category(%s)' % json.dumps(self.build_bookmarks_category()),
+                'refresh_category(%s)' % json.dumps(self.build_recent_category()),
+                'on_contents_change()',
+            ])
+
+        GObject.timeout_add(300, _go)
 
     def build_options_category(self):
         items = []
@@ -975,12 +1003,15 @@ class Ojo():
         import json
 
         def _prepare_thread():
-            folder_info = self.build_folder_info()
+            def _render_folders():
+                # this call queries GTK icons, needs to run on GTK thread
+                folder_info = self.build_folder_info()
 
-            if self.last_folder_change_time != thread_change_time or thread_folder != self.folder:
-                return
-            self.js("render_folders(%s)" % json.dumps(folder_info))
-            self.select_in_browser(self.selected)
+                if self.last_folder_change_time != thread_change_time or thread_folder != self.folder:
+                    return
+                self.js("render_folders(%s)" % json.dumps(folder_info))
+                self.select_in_browser(self.selected)
+            GObject.idle_add(_render_folders)
 
             pos = self.images.index(
                 self.selected) if self.selected in self.images else 0
@@ -1256,8 +1287,9 @@ class Ojo():
         self.last_automatic_resize = time.time()
 
         self.update_cursor()
-        self.js('toggle_fullscreen(' + ('true' if full else 'false') + ')')
-        self.js('setTimeout(scroll_to_selected, 100)')
+        if not first_run:
+            self.js('toggle_fullscreen(' + ('true' if full else 'false') + ')')
+            self.js('setTimeout(scroll_to_selected, 100)')
 
     def update_margins(self):
         if options['fullscreen']:

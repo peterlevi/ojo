@@ -42,10 +42,25 @@ function render_folders(data) {
     set_title(data.crumbs);
 
     _.map(data.categories, refresh_category);
+    on_contents_change();
+    $('#folders').show();
+}
+
+function on_contents_change() {
     if (search) {
         on_search();
     }
-    $('#folders').show();
+    if (current) {
+        select(current);
+    }
+}
+
+function ensure_category(category_label) {
+    var id = '#' + get_id(category_label);
+    var elem = $(id);
+    if (!elem.length) {
+        add_folder_category(category_label);
+    }
 }
 
 function refresh_category(category) {
@@ -564,6 +579,7 @@ function toggle_search(visible, bypass_search) {
 }
 
 $(function() {
+    python('ojo-document-ready:');
     change_folder('');
 
     $(document).contextmenu(function(event) {
