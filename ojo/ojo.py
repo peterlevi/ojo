@@ -194,11 +194,26 @@ class Ojo():
                 self.show_error(e.message)
         return safe_fn
 
-    def js(self, command):
+    def js(self, command=None, commands=None):
+        all_commands = []
+        if command:
+            all_commands.append(command)
+        if commands:
+            all_commands += commands
+
         if hasattr(self, "web_view_loaded"):
-            GObject.idle_add(lambda: self.web_view.execute_script(command))
+            def _do_queue():
+                while self.js_queue:
+                    queued = self.js_queue.pop(0)
+                    self.web_view.execute_script(queued)
+                for cmd in all_commands:
+                    self.web_view.execute_script(cmd)
+            GObject.idle_add(_do_queue)
         else:
-            GObject.timeout_add(100, lambda: self.js(command))
+            for cmd in all_commands:
+                logging.debug('Postponing js: ' + cmd)
+                self.js_queue.append(cmd)
+            GObject.timeout_add(100, lambda: self.js())
 
     def select_in_browser(self, path):
         if path:
@@ -230,7 +245,7 @@ class Ojo():
             self.on_command(self.selected[self.selected.index(':') + 1:])
         elif os.path.isdir(filename):
             self.change_to_folder(filename)
-        else:
+        elif is_image(filename):
             self.register_action()
             self.shown = filename
             self.selected = self.shown
@@ -241,6 +256,8 @@ class Ojo():
                 self.update_cursor()
                 self.select_in_browser(self.shown)
                 self.cache_around()
+        else:
+            raise Exception('Cannot open ' + filename)
 
     def refresh_image(self):
         if self.shown:
@@ -366,10 +383,11 @@ class Ojo():
                 self.folder_history_position = 0
         else:
             self.folder_history_position = modify_history_position
-        self.recent = ([path] + [r for r in self.recent if r != path])[:5]
+        self.recent = ([path] + [r for r in self.recent if r != path])[:50]
         self.images = self.get_image_list()
         self.search_text = ""
         self.toggle_search(False, bypass_search)
+        self.js('show_error("")')
 
     def get_back_folder(self):
         i = self.folder_history_position
@@ -405,12 +423,15 @@ class Ojo():
             self.change_to_folder(self.get_parent_folder())
 
     def change_to_folder(self, path, modify_history_position=None):
+        # make sure we fail early if there are permission or mounting issues:
+        try:
+            os.listdir(path)
+        except OSError:
+            raise Exception('Cannot open ' + path)
+
         import threading
 
         def _go():
-            # make sure we fail early if there are permission issues:
-            os.listdir(path)
-
             self.thumbs.reset_queues()
             self.pix_cache[False].clear()
             self.pix_cache[True].clear()
@@ -429,8 +450,13 @@ class Ojo():
             self.last_folder_change_time = time.time()
             self.render_folder_view()
 
+        def _go_locked():
+            # use a lock so we only have one change_folder operation running at a time
+            with self.action_lock:
+                _go()
+
         self.show_loading_folder_msg()
-        threading.Timer(0, _go).start()
+        threading.Timer(0, _go_locked).start()
 
     def check_kill(self):
         global killed
@@ -463,6 +489,7 @@ class Ojo():
 
     def after_quick_start(self):
         import signal
+        import threading
         signal.signal(signal.SIGINT, kill)
         signal.signal(signal.SIGTERM, kill)
         signal.signal(signal.SIGQUIT, kill)
@@ -471,14 +498,17 @@ class Ojo():
         self.folder_history = []
         self.recent = []
         self.folder_history_position = 0
+        self.action_lock = threading.Lock()
+        self.js_queue = []
 
-        try:
-            self.show_loading_folder_msg()
-            self.set_folder(os.path.dirname(self.selected))
-        except OSError as e:
-            logging.exception('Could not open %s' % self.selected)
-            self.selected = util.get_xdg_pictures_folder()
-            self.set_folder(self.selected)
+        with self.action_lock:
+            try:
+                self.show_loading_folder_msg()
+                self.set_folder(os.path.dirname(self.selected))
+            except OSError as e:
+                logging.exception('Could not open %s' % self.selected)
+                self.selected = util.get_xdg_pictures_folder()
+                self.set_folder(self.selected)
 
         self.update_cursor()
         self.from_browser_time = 0
@@ -502,6 +532,9 @@ class Ojo():
         self.window.connect('window-state-event', self.window_state_changed)
 
         config.load_bookmarks()
+
+        from places import Places
+        self.places = Places(on_change=self.on_places_changed)
 
         GObject.idle_add(self.render_browser)
 
@@ -546,7 +579,9 @@ class Ojo():
     def on_js_action(self, action, argument):
         import json
 
-        if action in ('ojo', 'ojo-select'):
+        if action == 'ojo-document-ready':
+            self.web_view_loaded = True
+        elif action in ('ojo', 'ojo-select'):
             path = argument if self.is_command(argument) else util.url2path(argument)
             self.selected = path
             GObject.idle_add(lambda: self.update_selected_info(self.selected))
@@ -572,6 +607,10 @@ class Ojo():
                 self.toggle_search(True)
         elif action == "ojo-show-search":
             self.toggle_search(True)
+        elif action == "ojo-mount":
+            self.mount_only(argument)
+        elif action == "ojo-unmount":
+            self.unmount(argument)
 
     def render_browser(self):
         from gi.repository import WebKit
@@ -614,13 +653,14 @@ class Ojo():
                 filename='..'
             )
 
-    def get_folder_item(self, path, group='', label=None):
+    def get_folder_item(self, path, group='', label=None, icon=None, note=None):
         return {
             'label': label or _u(os.path.basename(path) or path),
             'path': util.path2url(path),
             'filename': os.path.basename(path) or path,
-            'icon': util.path2url(util.get_folder_icon(path, 16)),
+            'icon': util.path2url(icon or util.get_folder_icon(path, 16)),
             'group': group,
+            'note': note,
         }
 
     def get_command_item(self, command, path, icon, group='', label='', nofocus=False):
@@ -660,8 +700,37 @@ class Ojo():
             'hidden': self.toggle_hidden,
             'groups': self.toggle_groups,
             'captions': self.toggle_captions,
+            'mount_and_go': self.mount_and_go,
         }
-        m[parts[0]](*parts[1:])
+        cmd = parts[0]
+        args = parts[1:]
+        if not cmd in m:
+            raise Exception("Unknown command '%s'" % cmd)
+        m[cmd](*args)
+
+    def on_path_manually_mounted(self, path, should_go):
+        if should_go:
+            self.change_to_folder(path)
+        else:
+            self.js('show_error("Mounted")')
+
+    def mount_and_go(self, volume_id):
+        self.js('show_spinner("One second please, mounting...")')
+        self.places.mount_volume(volume_id, on_mount=self.on_path_manually_mounted, on_mount_argument=True)
+
+    def mount_only(self, volume_id):
+        self.js('show_spinner("One second please, mounting...")')
+        self.places.mount_volume(volume_id, on_mount=self.on_path_manually_mounted, on_mount_argument=False)
+
+    def unmount(self, mount_path):
+        self.js('show_spinner("Unmounting...")')
+
+        def _done(path, success):
+            self.js('show_error("%s")' % (
+                'Unmounted' if success else
+                'Failed to unmount. Is another process using the volume?'))
+
+        self.places.unmount_mount(mount_path, on_unmount=_done)
 
     def get_crumbs(self):
         folder = self.folder
@@ -748,7 +817,9 @@ class Ojo():
         return bookmarks_category
 
     def build_recent_category(self):
-        recent_items = [self.get_folder_item(recent, group='Recent') for recent in self.recent[:5]]
+        recent_items = [self.get_folder_item(recent, group='Recent')
+                        for recent in self.recent
+                        if os.path.isdir(recent)][:5]
         if recent_items:
             return {
                 'label': 'Recent',
@@ -756,6 +827,58 @@ class Ojo():
             }
         else:
             return None
+
+    def build_places_category(self):
+        places = self.places.get_places()
+        places_items = []
+        for place in places:
+            not_mounted = place.get('not_mounted', False)
+            can_unmount = place.get('can_unmount', False)
+            item = self.get_folder_item(
+                path=place['path'] if not not_mounted else 'command:mount_and_go:' + place['mount_id'],
+                group='Places',
+                label=place['label'],
+                icon=place['icon'],
+            )
+            if not_mounted:
+                item['with_command'] = {
+                    'command': 'ojo-mount:' + place['mount_id'],
+                    'label': 'Mount'
+                }
+            elif can_unmount:
+                item['with_command'] = {
+                    'command': 'ojo-unmount:' + place['unmount_id'],
+                    'label': 'Unmount'
+                }
+            item['filename'] = place['label']
+            places_items.append(item)
+
+        return {
+            'label': 'Places',
+            'items': places_items
+        }
+
+    def on_places_changed(self):
+        def _go():
+            try:
+                os.listdir(self.folder)
+            except OSError:
+                logging.warning("%s not accessible anymore, reverting to %s" %
+                                (self.folder, util.get_xdg_pictures_folder()))
+                self.change_to_folder(util.get_xdg_pictures_folder())
+                return
+
+            import json
+            self.js(commands=[
+                'ensure_category("Navigate")',
+                'ensure_category("Subfolders")',
+                'refresh_category(%s)' % json.dumps(self.build_places_category()),
+                'refresh_category(%s)' % json.dumps(self.build_bookmarks_category()),
+                'refresh_category(%s)' % json.dumps(self.build_recent_category()),
+                'on_contents_change()',
+            ])
+
+        GObject.timeout_add(300, _go)
 
     def build_options_category(self):
         items = []
@@ -880,12 +1003,15 @@ class Ojo():
         import json
 
         def _prepare_thread():
-            folder_info = self.build_folder_info()
+            def _render_folders():
+                # this call queries GTK icons, needs to run on GTK thread
+                folder_info = self.build_folder_info()
 
-            if self.last_folder_change_time != thread_change_time or thread_folder != self.folder:
-                return
-            self.js("render_folders(%s)" % json.dumps(folder_info))
-            self.select_in_browser(self.selected)
+                if self.last_folder_change_time != thread_change_time or thread_folder != self.folder:
+                    return
+                self.js("render_folders(%s)" % json.dumps(folder_info))
+                self.select_in_browser(self.selected)
+            GObject.idle_add(_render_folders)
 
             pos = self.images.index(
                 self.selected) if self.selected in self.images else 0
@@ -964,10 +1090,13 @@ class Ojo():
         if subfolders_category:
             categories.append(subfolders_category)
 
+        # Places
+        categories.append(self.build_places_category())
+
         # Bookmarks
         categories.append(self.build_bookmarks_category())
 
-        # Recent places
+        # Recent folders
         categories.append(self.build_recent_category())
 
         # Options
@@ -1158,8 +1287,9 @@ class Ojo():
         self.last_automatic_resize = time.time()
 
         self.update_cursor()
-        self.js('toggle_fullscreen(' + ('true' if full else 'false') + ')')
-        self.js('setTimeout(scroll_to_selected, 100)')
+        if not first_run:
+            self.js('toggle_fullscreen(' + ('true' if full else 'false') + ')')
+            self.js('setTimeout(scroll_to_selected, 100)')
 
     def update_margins(self):
         if options['fullscreen']:
@@ -1303,9 +1433,11 @@ class Ojo():
             elif self.check_letter_shortcut(event, [41], mask=Gdk.ModifierType.CONTROL_MASK):  # Ctrl-F
                 self.toggle_search(True)
             elif key in ('Tab', 'ISO_Left_Tab') and not skip_browser:
-                self.js("on_key('%s')" % 'Tab')
+                with self.action_lock:
+                    self.js("on_key('%s')" % 'Tab')
             elif not skip_browser:
-                self.js("on_key('%s')" % key)
+                with self.action_lock:
+                    self.js("on_key('%s')" % key)
             elif key == 'BackSpace':
                 if not self.is_in_search:
                     self.folder_parent()

@@ -42,7 +42,25 @@ function render_folders(data) {
     set_title(data.crumbs);
 
     _.map(data.categories, refresh_category);
+    on_contents_change();
     $('#folders').show();
+}
+
+function on_contents_change() {
+    if (search) {
+        on_search();
+    }
+    if (current) {
+        select(current);
+    }
+}
+
+function ensure_category(category_label) {
+    var id = '#' + get_id(category_label);
+    var elem = $(id);
+    if (!elem.length) {
+        add_folder_category(category_label);
+    }
 }
 
 function refresh_category(category) {
@@ -60,7 +78,7 @@ function refresh_category(category) {
         if (category.no_labels) {
             style = 'display: inline; ' + (first ? 'padding-right: 0' : 'padding: 0;');  //TODO we don't want inlined CSS
         }
-        add_folder(category.label, item.label, item.path, item.filename, item.group, item.icon, style, item.nofocus);
+        add_folder(category.label, item, style);
         first = false;
     });
     if (category.no_labels) {
@@ -91,7 +109,7 @@ function add_folder_category(label) {
         "<div class='folder-category-label'>" + esc(label) + "</div></div>");
 }
 
-function add_folder(category_label, label, path, filename, group, icon, style, nofocus) {
+function add_folder(category_label, item, style) {
     var elem = $(_.template(
         "<div " +
         "   class='folder match' " +
@@ -100,17 +118,23 @@ function add_folder(category_label, label, path, filename, group, icon, style, n
         "   group='<%= group %>' " +
         "   style='<%= style %>'>" +
         "<%= label %>" +
+        (item.note ? "<span class='folder-note'>" + esc(item.note) + "</span>" : '') +
+        (item.with_command ?
+            "<span class='folder-command command' " +
+            "data-command='" + item.with_command.command + "'>" + esc(item.with_command.label) + "</span>"
+            : ''
+        ) +
         "</div>")
     ({
-        path: encode_path(path),
-        filename: esc(filename),
-        group: esc(group || ''),
-        label: esc(label),
+        path: encode_path(item.path),
+        filename: esc(item.filename),
+        group: esc(item.group || ''),
+        label: esc(item.label),
         style: style
     }));
-    elem.addClass(path? (nofocus? 'clickable': 'selectable') : 'disabled');
-    if (icon) {
-        elem.prepend("<img class='folder-icon' src='" + encode_path(icon) + "'/>");
+    elem.addClass(item.path? (item.nofocus? 'clickable': 'selectable') : 'disabled');
+    if (item.icon) {
+        elem.prepend("<img class='folder-icon' src='" + encode_path(item.icon) + "'/>");
     }
     $("#" + get_id(category_label)).append(elem);
 }
@@ -322,6 +346,9 @@ function goto(elem, dontScrollTo) {
 }
 
 function get_next_in_direction(elem, direction) {
+    if (elem.length === 0) {
+        return;
+    }
     var current = elem.offset().top + (direction < 0 ? -10 : elem.height());
     var applicable = $('.selectable.match' + selection_class).filter(function() {
         var candidate = $(this).offset().top;
@@ -552,6 +579,7 @@ function toggle_search(visible, bypass_search) {
 }
 
 $(function() {
+    python('ojo-document-ready:');
     change_folder('');
 
     $(document).contextmenu(function(event) {
@@ -583,6 +611,11 @@ $(function() {
     });
 
     $(document).on('click', '.selectable, .clickable', on_clickable);
+    $(document).on('click', '.command', function (e) {
+        var cmd = $(this).attr('data-command');
+        python(cmd);
+        e.stopPropagation();
+    });
 
     $('#search-field').on('input', function() {
         if ($(this).val() !== search) {

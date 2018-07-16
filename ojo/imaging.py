@@ -105,7 +105,7 @@ def thumbnail(filename, thumb_path, width, height):
     if not os.path.exists(cache_dir):
         os.makedirs(cache_dir)
     ext = os.path.splitext(filename)[1].lower()
-    if not ext in ('.gif', '.png', '.svg', '.xpm'):
+    if ext not in ('.gif', '.png', '.svg', '.xpm'):
         try:
             use_pil()
         except Exception:
