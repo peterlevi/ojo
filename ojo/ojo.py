@@ -372,6 +372,7 @@ class Ojo():
         self.images = self.get_image_list()
         self.search_text = ""
         self.toggle_search(False, bypass_search)
+        self.js('show_error("")')
 
     def get_back_folder(self):
         i = self.folder_history_position
@@ -685,9 +686,7 @@ class Ojo():
         if should_go:
             self.change_to_folder(path)
         else:
-            def _go():
-                self.js('show_error("Mounted")')
-            GObject.idle_add(_go)
+            self.js('show_error("Mounted")')
 
     def mount_and_go(self, volume_id):
         self.js('show_spinner("One second please, mounting...")')
@@ -840,6 +839,7 @@ class Ojo():
             logging.warning("%s not accessible anymore, reverting to %s" %
                             (self.folder, util.get_xdg_pictures_folder()))
             self.change_to_folder(util.get_xdg_pictures_folder())
+            return
 
         import json
         folder_info = self.build_folder_info()
