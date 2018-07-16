@@ -435,8 +435,12 @@ class Ojo():
             self.last_folder_change_time = time.time()
             self.render_folder_view()
 
+        def _go_locked():
+            with self.action_lock:
+                _go()
+
         self.show_loading_folder_msg()
-        threading.Timer(0, _go).start()
+        threading.Timer(0, _go_locked).start()
 
     def check_kill(self):
         global killed
@@ -469,6 +473,7 @@ class Ojo():
 
     def after_quick_start(self):
         import signal
+        import threading
         signal.signal(signal.SIGINT, kill)
         signal.signal(signal.SIGTERM, kill)
         signal.signal(signal.SIGQUIT, kill)
@@ -477,14 +482,16 @@ class Ojo():
         self.folder_history = []
         self.recent = []
         self.folder_history_position = 0
+        self.action_lock = threading.Lock()
 
-        try:
-            self.show_loading_folder_msg()
-            self.set_folder(os.path.dirname(self.selected))
-        except OSError as e:
-            logging.exception('Could not open %s' % self.selected)
-            self.selected = util.get_xdg_pictures_folder()
-            self.set_folder(self.selected)
+        with self.action_lock:
+            try:
+                self.show_loading_folder_msg()
+                self.set_folder(os.path.dirname(self.selected))
+            except OSError as e:
+                logging.exception('Could not open %s' % self.selected)
+                self.selected = util.get_xdg_pictures_folder()
+                self.set_folder(self.selected)
 
         self.update_cursor()
         self.from_browser_time = 0
@@ -1394,9 +1401,11 @@ class Ojo():
             elif self.check_letter_shortcut(event, [41], mask=Gdk.ModifierType.CONTROL_MASK):  # Ctrl-F
                 self.toggle_search(True)
             elif key in ('Tab', 'ISO_Left_Tab') and not skip_browser:
-                self.js("on_key('%s')" % 'Tab')
+                with self.action_lock:
+                    self.js("on_key('%s')" % 'Tab')
             elif not skip_browser:
-                self.js("on_key('%s')" % key)
+                with self.action_lock:
+                    self.js("on_key('%s')" % key)
             elif key == 'BackSpace':
                 if not self.is_in_search:
                     self.folder_parent()

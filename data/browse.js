@@ -331,6 +331,9 @@ function goto(elem, dontScrollTo) {
 }
 
 function get_next_in_direction(elem, direction) {
+    if (elem.length === 0) {
+        return;
+    }
     var current = elem.offset().top + (direction < 0 ? -10 : elem.height());
     var applicable = $('.selectable.match' + selection_class).filter(function() {
         var candidate = $(this).offset().top;
