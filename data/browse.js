@@ -217,7 +217,9 @@ function add_image(file, thumb) {
     var item = $(".item[file='" + encode_path(file) + "']");
     if (item.length) {
         item.attr('with_thumb', true).css('width', 'initial');
-        item.find('.holder').html("<img src='" + encode_path(thumb) + "'/>");
+        item.find('.holder').html(
+            "<img src='" + encode_path(thumb) +
+            "' style='max-height: " + thumb_height + "px' />");
         update_progress();
     } else {
         pending_add_timeouts[file] = setTimeout(function () {add_image(file, thumb)}, 200);
