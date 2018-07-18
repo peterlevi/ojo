@@ -398,7 +398,7 @@ function on_key(key) {
     if (key === 'Tab') {
         var new_selection_class = selection_class === '.item' ? '.folder' : '.item';
         var new_file = selected_file_per_class[new_selection_class];
-        if (new_file) {
+        if (new_file && $(".match.selectable[file='" + encode_path(new_file) + "']").length > 0) {
             select(new_file);
         } else {
             var elem = $('.selectable.match' + new_selection_class);
@@ -497,7 +497,16 @@ function on_search() {
 
     var sel = $('.selected');
     if (matches.length && (sel.length === 0 || !_.contains(matches, sel[0]))) {
-        select(decode_path($(matches[0]).attr('file')));
+        var newSel = [];
+        if (selection_class) {
+            newSel = matches.filter(function() {
+                return $(this).hasClass(selection_class.substr(1));
+            });
+        }
+        if (newSel.length === 0) {
+            newSel = matches;
+        }
+        select(decode_path(newSel.attr('file')));
     } else {
         scroll_to_selected();
     }
