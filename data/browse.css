@@ -98,17 +98,28 @@ body {
     padding-right: 5px;
     overflow-x: hidden;
     overflow-y: auto;
+    line-height: 0;
 }
 
-::-webkit-scrollbar {
+div::-webkit-scrollbar {
+    opacity: 0.7;
     width: 3px;
 }
 
-::-webkit-scrollbar-thumb {
+div::-webkit-scrollbar-thumb {
+    opacity: 0.7;
     background-color: #F07746;
     width: 3px;
     border-radius: 2px;
     box-shadow: 1px 2px 6px #444;
+}
+
+div:hover::-webkit-scrollbar {
+    opacity: 1;
+}
+
+div:hover::-webkit-scrollbar-thumb {
+    opacity: 1;
 }
 
 .folder-category {
