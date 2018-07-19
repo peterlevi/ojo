@@ -16,7 +16,7 @@ if visual and w.get_screen().is_composited():
 o = Gtk.Overlay()
 o.set_visible(True)
 w.add(o)
-image = Gtk.Image.new_from_file('/d/Pics/Wallpapers/020.jpg')
+image = Gtk.Image.new_from_file('data/icons/scalable/apps/ojo.svg')
 image.set_visible(True)
 scroll_window = Gtk.ScrolledWindow()
 scroll_window.set_visible(True)

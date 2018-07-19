@@ -1575,13 +1575,17 @@ class Ojo():
                 Gdk.ScrollDirection.RIGHT):
             return
 
+        direction = -1 if event.direction in (Gdk.ScrollDirection.UP, Gdk.ScrollDirection.LEFT) else 1
+
         wheel_timer = getattr(self, "wheel_timer", None)
         if wheel_timer:
             GObject.source_remove(wheel_timer)
 
-        direction = -1 if event.direction in (Gdk.ScrollDirection.UP, Gdk.ScrollDirection.LEFT) \
-            else 1
-        self.wheel_timer = GObject.timeout_add(100, lambda: self.go(direction))
+        def _wheel(*args):
+            self.wheel_timer = None
+            self.go(direction)
+
+        self.wheel_timer = GObject.timeout_add(100, _wheel)
 
     def get_pixbuf(self, filename, force=False, zoom=None, width=None, height=None):
         if zoom is None:
