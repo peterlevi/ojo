@@ -23,12 +23,9 @@ import sys
 import time
 import logging
 import optparse
-import gettext
-from gettext import gettext as _
 from collections import OrderedDict
 
 import gi
-gi.require_version('WebKit', '3.0')
 gi.require_version('Gtk', '3.0')
 gi.require_version('GdkPixbuf', '2.0')
 from gi.repository import Gtk, Gdk, GdkPixbuf, GObject
@@ -48,8 +45,6 @@ from imaging import (
     is_image,
 )
 
-gettext.textdomain('ojo')
-
 LEVELS = (logging.ERROR, logging.WARNING, logging.INFO, logging.DEBUG)
 
 THUMBHEIGHTS = [80, 120, 180, 240, 320, 480]
@@ -68,11 +63,11 @@ class Ojo():
     def parse_command_line(self):
         # Support for command line options.
         parser = optparse.OptionParser(
-            version="%%prog %s" % ojoconfig.__version__, usage=(_("ojo [options]")))
+            version="%%prog %s" % ojoconfig.__version__, usage="ojo [options]")
         parser.add_option('-d', '--debug', dest='debug_mode', action='store_true',
-                          help=_('Print the maximum debugging info (implies -vv)'))
+                          help='Print the maximum debugging info (implies -vv)')
         parser.add_option('-v', '--verbose', dest='logging_level', action='count',
-                          help=_('set error_level output to warning, info, and then debug'))
+                          help='set error_level output to warning, info, and then debug')
         parser.set_defaults(logging_level=0)
         (self.command_options, self.command_args) = parser.parse_args()
 
@@ -110,8 +105,8 @@ class Ojo():
         self.image = Gtk.Image()
         self.image.set_visible(True)
         self.scroll_window.add_with_viewport(self.image)
-        self.make_transparent(self.scroll_window)
-        self.make_transparent(self.scroll_window.get_child())
+        util.make_transparent(self.scroll_window)
+        util.make_transparent(self.scroll_window.get_child())
         self.scroll_window.set_visible(True)
 
         self.box = Gtk.VBox()
@@ -195,25 +190,7 @@ class Ojo():
         return safe_fn
 
     def js(self, command=None, commands=None):
-        all_commands = []
-        if command:
-            all_commands.append(command)
-        if commands:
-            all_commands += commands
-
-        if hasattr(self, "web_view_loaded"):
-            def _do_queue():
-                while self.js_queue:
-                    queued = self.js_queue.pop(0)
-                    self.web_view.execute_script(queued)
-                for cmd in all_commands:
-                    self.web_view.execute_script(cmd)
-            GObject.idle_add(_do_queue)
-        else:
-            for cmd in all_commands:
-                logging.debug('Postponing js: ' + cmd)
-                self.js_queue.append(cmd)
-            GObject.timeout_add(100, lambda: self.js())
+        self.browser.js(command, commands)
 
     def select_in_browser(self, path):
         if path:
@@ -490,6 +467,8 @@ class Ojo():
     def after_quick_start(self):
         import signal
         import threading
+        import webview
+
         signal.signal(signal.SIGINT, kill)
         signal.signal(signal.SIGTERM, kill)
         signal.signal(signal.SIGQUIT, kill)
@@ -499,7 +478,8 @@ class Ojo():
         self.recent = []
         self.folder_history_position = 0
         self.action_lock = threading.Lock()
-        self.js_queue = []
+
+        self.browser = webview.WebView()
 
         with self.action_lock:
             try:
@@ -513,10 +493,10 @@ class Ojo():
         self.update_cursor()
         self.from_browser_time = 0
 
-        self.browser = Gtk.ScrolledWindow()
-        self.browser.set_visible(False)
-        self.make_transparent(self.browser)
-        self.box.add(self.browser)
+        self.browser_wrapper = Gtk.ScrolledWindow()
+        self.browser_wrapper.set_visible(False)
+        util.make_transparent(self.browser_wrapper)
+        self.box.add(self.browser_wrapper)
 
         self.window.connect("delete-event", self.exit)
         self.window.connect("key-press-event", self.safe(self.process_key))
@@ -556,11 +536,6 @@ class Ojo():
         return files if options['show_hidden'] else filter(
             lambda f: not os.path.basename(f).startswith('.'), files)
 
-    def make_transparent(self, widget, color='rgba(0, 0, 0, 0)'):
-        rgba = Gdk.RGBA()
-        rgba.parse(color)
-        widget.override_background_color(Gtk.StateFlags.NORMAL, rgba)
-
     def update_selected_info(self, filename):
         if self.selected != filename or not os.path.isfile(filename):
             return
@@ -576,12 +551,10 @@ class Ojo():
     def is_command(self, s):
         return s.startswith('command:')
 
-    def on_js_action(self, action, argument):
+    def on_browser_action(self, action, argument):
         import json
 
-        if action == 'ojo-document-ready':
-            self.web_view_loaded = True
-        elif action in ('ojo', 'ojo-select'):
+        if action in ('ojo', 'ojo-select'):
             path = argument if self.is_command(argument) else util.url2path(argument)
             self.selected = path
             GObject.idle_add(lambda: self.update_selected_info(self.selected))
@@ -613,35 +586,11 @@ class Ojo():
             self.unmount(argument)
 
     def render_browser(self):
-        from gi.repository import WebKit
-
-        with open(ojoconfig.get_data_file('browse.html')) as f:
-            html = f.read()
-
-        self.web_view = WebKit.WebView()
-        self.web_view.set_transparent(True)
-        self.web_view.set_can_focus(True)
-
-        def nav(wv, command):
-            logging.debug('Received command: ' + command)
-            if command:
-                command = command[command.index('|') + 1:]
-                index = command.index(':')
-                action = command[:index]
-                argument = command[index + 1:]
-                self.safe(self.on_js_action)(action, argument)
-
-        self.web_view.connect("status-bar-text-changed", nav)
-
-        self.web_view.connect('document-load-finished',
-                              lambda wf, data: self.render_folder_view())
-        self.web_view.load_string(
-            html, "text/html", "UTF-8", util.path2url(ojoconfig.get_data_path()) + '/')
-
-        self.make_transparent(self.web_view)
-        self.web_view.set_visible(True)
-        self.browser.add(self.web_view)
-        self.web_view.grab_focus()
+        self.browser.load('browse.html',
+                           on_load_fn=self.render_folder_view,
+                           on_action_fn=self.safe(self.on_browser_action))
+        self.browser.add_to(self.browser_wrapper)
+        self.browser.grab_focus()
 
     def get_parent_folder_item(self):
         if self.folder == '/':
@@ -991,7 +940,6 @@ class Ojo():
         return os.path.basename(img).replace("'", "\\'")
 
     def render_folder_view(self):
-        self.web_view_loaded = True
         self.loading_folder = True
         thread_change_time = self.last_folder_change_time
         thread_folder = self.folder
@@ -1293,12 +1241,12 @@ class Ojo():
 
     def update_margins(self):
         if options['fullscreen']:
-            self.make_transparent(
+            util.make_transparent(
                 self.window,
                 color='rgba(77, 75, 69, 1)' if self.mode == 'folder' else 'rgba(0, 0, 0, 1)')
             self.set_margins(0)
         else:
-            self.make_transparent(
+            util.make_transparent(
                 self.window,
                 # Note: for non-fullscreen browsing transparency:
                 # color='rgba(77, 75, 69, 0.9)' if self.mode == 'folder' else 'rgba(77, 75, 69, 0.9)')
@@ -1331,13 +1279,13 @@ class Ojo():
                 self.been_in_folder_mode = True
                 self.shown = None
                 self.window.set_title(self.folder)
-                if hasattr(self, 'web_view'):
-                    self.web_view.grab_focus()
+                if hasattr(self, 'browser'):
+                    self.browser.grab_focus()
 
             self.update_cursor()
             self.scroll_window.set_visible(self.mode == 'image')
             self.image.set_visible(self.mode == 'image')
-            self.browser.set_visible(self.mode == 'folder')
+            self.browser_wrapper.set_visible(self.mode == 'folder')
             self.update_margins()
             self.js("set_mode('%s')" % self.mode)
 
@@ -1415,8 +1363,8 @@ class Ojo():
                 if os.path.isfile(prev):
                     self.set_mode('image')
         elif self.mode == 'folder':
-            if hasattr(self, 'web_view'):
-                self.web_view.grab_focus()
+            if hasattr(self, 'browser'):
+                self.browser.grab_focus()
 
             if key == 'Left' and self.ctrl_key(event):
                 self.folder_history_back()

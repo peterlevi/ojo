@@ -92,6 +92,13 @@ def escape_gtk(fn):
     return escape_gtk_fn
 
 
+def make_transparent(widget, color='rgba(0, 0, 0, 0)'):
+    from gi.repository import Gdk, Gtk
+    rgba = Gdk.RGBA()
+    rgba.parse(color)
+    widget.override_background_color(Gtk.StateFlags.NORMAL, rgba)
+
+
 if __name__ == "__main__":
     print get_folder_icon('/', 16)
 

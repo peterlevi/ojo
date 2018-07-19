@@ -24,13 +24,10 @@ __all__ = [
 # files). By default, this is ../data, relative your trunk layout
 __ojo_data_directory__ = '../data/'
 __license__ = 'GPL-3'
-__version__ = 'VERSION'
+__version__ = '0.1'
 
 import os
 
-import gettext
-from gettext import gettext as _
-gettext.textdomain('ojo')
 
 class project_path_not_found(Exception):
     """Raised when we can't find the project directory."""
