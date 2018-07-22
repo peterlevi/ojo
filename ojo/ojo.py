@@ -1245,8 +1245,8 @@ class Ojo():
         search = getattr(self, "search_text", "")
         applicable = self.images if not search else \
             [f for f in self.images
-             if os.path.basename(f).lower().find(search) >= 0
-             or (self.get_group_key(f) or '').find(search) >= 0]
+             if os.path.basename(f).lower().find(search.lower()) >= 0
+             or (self.get_group_key(f) or '').find(search.lower()) >= 0]
         filename = None
         position = start_position - direction if start_position is not None \
             else applicable.index(self.selected)
