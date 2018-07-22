@@ -292,8 +292,6 @@ class Ojo():
 
             def _exif_date(f):
                 m = metadata.get(f)
-                if not m:
-                    return default
                 return m['exif'].get('Exif.Photo.DateTimeOriginal', default)
 
             dates = {image: _exif_date(image) for image in images}
@@ -322,8 +320,6 @@ class Ojo():
             return datetime.datetime.fromtimestamp(ts).strftime(options['date_format'])
         elif sort_by == 'exif_date':
             m = metadata.get(image)
-            if not m:
-                return 'No EXIF date'
             d = m['exif'].get('Exif.Photo.DateTimeOriginal', None)
             if not d:
                 return 'No EXIF date'
@@ -565,13 +561,10 @@ class Ojo():
         if self.selected != filename or not os.path.isfile(filename):
             return
         meta = metadata.get(filename)
-        if meta:
-            rok = not meta['needs_rotation']
-            self.js("set_dimensions('%s', '%s', '%d x %d')" % (
-                util.path2url(filename),
-                self.safe_basename(filename),
-                meta['width' if rok else 'height'],
-                meta['height' if rok else 'width']))
+        self.js("set_dimensions('%s', '%s', '%d x %d')" % (
+            util.path2url(filename),
+            self.safe_basename(filename),
+            meta['width'], meta['height']))
 
     def is_command(self, s):
         return s.startswith('command:')
@@ -1049,26 +1042,14 @@ class Ojo():
                 if os.path.exists(cached):
                     self.thumb_ready(img, thumb_path=cached)
                 else:
-                    try:
-                        meta = metadata.get(img)
-                        w, h = meta['width'], meta['height']
-                        needs_rotation = meta['needs_rotation']
-                    except Exception:
-                        try:
-                            # image without metadata, try to just get the size
-                            w, h = get_size(img)
-                            needs_rotation = False
-                        except Exception:
-                            continue
+                    meta = metadata.get(img)
+                    w, h = meta['width'], meta['height']
 
-                    thumb_width = \
-                        (float(w) * min(h, thumbh) / h) if not needs_rotation else \
-                        (float(h) * min(w, thumbh) / w)
+                    thumb_width = float(w) * min(h, thumbh) / h
                     self.js("set_dimensions('%s', '%s', '%d x %d', %d)" % (
                         util.path2url(img),
                         self.safe_basename(img),
-                        w if not needs_rotation else h,
-                        h if not needs_rotation else w,
+                        w, h,
                         thumb_width))
 
             self.select_in_browser(self.selected)
@@ -1604,16 +1585,11 @@ class Ojo():
                 logging.info("Cache hit: " + filename)
                 return cached[0]
 
-        orientation = None
-        image_width = image_height = None
         meta = metadata.get(filename)
-        if meta:
-            orientation = meta['orientation']
-            image_width, image_height = meta['width'], meta['height']
+        orientation = meta['orientation']
+        image_width, image_height = meta['width'], meta['height']
 
         enlarge_smaller = options['enlarge_smaller']
-        if not image_width:
-            format, image_width, image_height = GdkPixbuf.Pixbuf.get_file_info(filename)
 
         pixbuf = None
 
@@ -1639,9 +1615,6 @@ class Ojo():
             logging.debug("Loaded with PIL")
 
         pixbuf = auto_rotate_pixbuf(orientation, pixbuf)
-        if orientation in (5, 6, 7, 8):
-            # needs rotation
-            image_width, image_height = image_height, image_width
 
         if not zoom:
             target_width = image_width if zoom else (
