@@ -1,4 +1,5 @@
 import imaging
+import os
 
 
 class Metadata:
@@ -26,12 +27,16 @@ class Metadata:
 
         # no metadata, fallback to simplest default case
         w, h = imaging.get_size(filename)
+        stat = os.stat(filename)
         meta = {
+            'filename': os.path.basename(filename),
             'needs_orientation': False,
             'needs_rotation': False,
             'width': w,
             'height': h,
             'orientation': None,
+            'file_date': stat.st_mtime,
+            'file_size': stat.st_size,
             'exif': {},
         }
 
@@ -55,12 +60,16 @@ class Metadata:
 
             # also cache the most important part
             needs_rotation = imaging.needs_rotation(meta)
+            stat = os.stat(filename)
             self.cache[filename] = {
+                'filename': os.path.basename(filename),
                 'needs_orientation': imaging.needs_orientation(meta),
                 'needs_rotation': needs_rotation,
                 'width': meta.dimensions[0 if not needs_rotation else 1],
                 'height': meta.dimensions[1 if not needs_rotation else 0],
                 'orientation': meta['Exif.Image.Orientation'].value if 'Exif.Image.Orientation' in meta else None,
+                'file_date': stat.st_mtime,
+                'file_size': stat.st_size,
                 'exif': exif,
             }
 

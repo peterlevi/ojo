@@ -557,14 +557,26 @@ class Ojo():
         rgba.parse(color)
         widget.override_background_color(Gtk.StateFlags.NORMAL, rgba)
 
+    def get_file_info(self, meta):
+        import datetime
+        file_date = datetime.datetime.fromtimestamp(meta['file_date']).strftime(options['date_format'])
+
+        return {
+            'filename': meta['filename'],
+            'dimensions': '%d x %d' % (meta['width'], meta['height']),
+            'file_date': file_date,
+            'file_size': util.human_size(meta['file_size']),
+        }
+
     def update_selected_info(self, filename):
+        import json
         if self.selected != filename or not os.path.isfile(filename):
             return
         meta = metadata.get(filename)
-        self.js("set_dimensions('%s', '%s', '%d x %d')" % (
+        info = self.get_file_info(meta)
+        self.js("set_file_info('%s', %s)" % (
             util.path2url(filename),
-            self.safe_basename(filename),
-            meta['width'], meta['height']))
+            json.dumps(info)))
 
     def is_command(self, s):
         return s.startswith('command:')
@@ -917,20 +929,20 @@ class Ojo():
             m = {
                 'extension': 'Z to A',
                 'name': 'Z to A',
-                'date': 'Newest at top',
-                'exif_date': 'Newest at top',
+                'date': 'Order: Newest at top',
+                'exif_date': 'Order: Newest at top',
                 'size': 'Big at top'
             }
             items.append(self.get_command_item(
                 'command:sort:desc', None, None,
                 group='Options',
-                label='Order: ' + m[by]))
+                label=m[by]))
         else:
             m = {
                 'extension': 'A to Z',
                 'name': 'A to Z',
-                'date': 'Oldest at top',
-                'exif_date': 'Oldest at top',
+                'date': 'Order: Oldest at top',
+                'exif_date': 'Order: Oldest at top',
                 'size': 'Small at top'
             }
             items.append(self.get_command_item(
@@ -1015,8 +1027,6 @@ class Ojo():
             ])
 
             self.js("set_image_count(%d)" % len(self.images))
-            if self.selected:
-                self.update_selected_info(self.selected)
 
             last_group = None
             for img in self.images:
@@ -1038,18 +1048,21 @@ class Ojo():
                     util._str(group) if group else '',
                 ))
                 time.sleep(0.001)
+
                 cached = self.thumbs.get_cached_thumbnail_path(img)
                 if os.path.exists(cached):
                     self.thumb_ready(img, thumb_path=cached)
+                    if img == self.selected:
+                        self.update_selected_info(img)
                 else:
                     meta = metadata.get(img)
                     w, h = meta['width'], meta['height']
 
                     thumb_width = float(w) * min(h, thumbh) / h
-                    self.js("set_dimensions('%s', '%s', '%d x %d', %d)" % (
+                    info = self.get_file_info(meta)
+                    self.js("set_file_info('%s', %s, %d)" % (
                         util.path2url(img),
-                        self.safe_basename(img),
-                        w, h,
+                        json.dumps(info),
                         thumb_width))
 
             self.select_in_browser(self.selected)
