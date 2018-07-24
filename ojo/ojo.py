@@ -1610,52 +1610,18 @@ class Ojo():
                 return cached[0]
 
         meta = metadata.get(filename)
-        orientation = meta['orientation']
         image_width, image_height = meta['width'], meta['height']
 
-        enlarge_smaller = options['enlarge_smaller']
-
-        pixbuf = None
-
-        if not pixbuf:
-            try:
-                pixbuf = GdkPixbuf.Pixbuf.new_from_file(filename)
-                logging.debug("Loaded directly")
-            except GObject.GError:
-                pass  # below we'll use another method
-
-        if not pixbuf:
-            try:
-                full_meta = meta.get('full_meta',
-                                     metadata.get_full(filename))
-                preview = full_meta.previews[-1].data
-                pixbuf = pixbuf_from_data(preview)
-                logging.debug("Loaded from preview")
-            except Exception, e:
-                pass  # below we'll use another method
-
-        if not pixbuf:
-            pixbuf = pil_to_pixbuf(get_pil(filename))
-            logging.debug("Loaded with PIL")
-
-        pixbuf = auto_rotate_pixbuf(orientation, pixbuf)
-
         if not zoom:
-            target_width = image_width if zoom else (
-                width if enlarge_smaller else min(width, image_width))
-            target_height = image_height if zoom else (
-                height if enlarge_smaller else min(height, image_height))
+            enlarge_smaller = options['enlarge_smaller']
+            target_width = width if enlarge_smaller else min(width, image_width)
+            target_height = height if enlarge_smaller else min(height, image_height)
+        else:
+            target_width = target_height = None
 
-            if float(target_width) / target_height < float(image_width) / image_height:
-                pixbuf = pixbuf.scale_simple(
-                    target_width,
-                    int(float(target_width) * image_height / image_width),
-                    GdkPixbuf.InterpType.BILINEAR)
-            else:
-                pixbuf = pixbuf.scale_simple(
-                    int(float(target_height) * image_width / image_height),
-                    target_height,
-                    GdkPixbuf.InterpType.BILINEAR)
+        from imaging import get_pixbuf
+        pixbuf = get_pixbuf(filename, target_width, target_height)
+
         if filename in self.pix_cache[zoom]:
             del self.pix_cache[zoom][filename]  # we use OrderedDict for LRU, this makes sure filename will now be last
         self.pix_cache[zoom][filename] = pixbuf, width, time.time()
