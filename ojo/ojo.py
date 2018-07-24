@@ -561,11 +561,22 @@ class Ojo():
         import datetime
         file_date = datetime.datetime.fromtimestamp(meta['file_date']).strftime(options['date_format'])
 
+        try:
+            exif = meta['exif']
+            exif_info = '%s|%s|ISO %s|Focal len %s' % (
+                exif['Exif.Photo.ExposureTime'],
+                exif['Exif.Photo.FNumber'],
+                exif['Exif.Photo.ISOSpeedRatings'],
+                exif['Exif.Photo.FocalLength'],
+            )
+        except:
+            exif_info = 'EXIF info missing'
         return {
             'filename': meta['filename'],
             'dimensions': '%d x %d' % (meta['width'], meta['height']),
             'file_date': file_date,
             'file_size': util.human_size(meta['file_size']),
+            'exif_info': exif_info,
         }
 
     def update_selected_info(self, filename):

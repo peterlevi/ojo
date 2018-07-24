@@ -12,6 +12,11 @@ var thumb_height = 120;
 var selection_class = '.item';
 var selected_file_per_class = {};
 
+String.prototype.replaceAll = function(search, replacement) {
+    var target = this;
+    return target.replace(new RegExp(search, 'g'), replacement);
+};
+
 function log(msg) {
     // console.debug(msg);
 }
@@ -267,7 +272,8 @@ function set_file_info(file, info, thumb_width) {
         .attr('dimensions', esc(info.dimensions))
         .attr('filename', esc(info.filename))
         .attr('data-file-date', esc(info.file_date))
-        .attr('data-file-size', esc(info.file_size));
+        .attr('data-file-size', esc(info.file_size))
+        .attr('data-exif-info', esc(info.exif_info));
     if (thumb_width) {
         $(".item[file='" + encode_path(file) + "']").css('width', thumb_width);
     }
@@ -276,6 +282,7 @@ function set_file_info(file, info, thumb_width) {
         $("#dimensions").html(esc(info.dimensions));
         $("#file-size").html(esc(info.file_size));
         $("#file-date").html(esc(info.file_date));
+        $("#exif-info").html(esc(info.exif_info).replaceAll('\\|', '<span class="separator"></span>'));
         $('#label').show();
         $('#file-info').show();
     }

@@ -4,7 +4,12 @@ import os
 
 class Metadata:
     EXIF_KEYS = [
-        'Exif.Photo.DateTimeOriginal'
+        ('Exif.Image.Model', 'human_value'),
+        ('Exif.Photo.DateTimeOriginal', 'value'),
+        ('Exif.Photo.ExposureTime', 'human_value'),
+        ('Exif.Photo.FNumber', 'human_value'),
+        ('Exif.Photo.ISOSpeedRatings', 'human_value'),
+        ('Exif.Photo.FocalLength', 'human_value'),
     ]  # Add additional keys we'd like to show
 
     def __init__(self):
@@ -53,10 +58,10 @@ class Metadata:
             meta.read()
 
             exif = {}
-            for key in Metadata.EXIF_KEYS:
+            for key, accessor in Metadata.EXIF_KEYS:
                 v = meta.get(key, None)
                 if v:
-                    exif[key] = v.value
+                    exif[key] = getattr(v, accessor)
 
             # also cache the most important part
             needs_rotation = imaging.needs_rotation(meta)
