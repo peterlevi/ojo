@@ -23,7 +23,7 @@ def get_pil(filename, width=None, height=None):
             (max(width, height), max(width, height)), Image.ANTIALIAS)
 
         try:
-            pil_image = auto_rotate(meta['orientation'] if meta else None, pil_image)
+            pil_image = auto_rotate(meta['orientation'], pil_image)
         except Exception:
             logging.exception('Auto-rotation failed for %s' % filename)
 
@@ -36,15 +36,9 @@ def get_pil(filename, width=None, height=None):
 def get_pixbuf(filename, width=None, height=None):
     from metadata import metadata
 
-    orientation = None
-    image_width = image_height = None
     meta = metadata.get(filename)
-    if meta:
-        orientation = meta['orientation']
-        image_width, image_height = meta['width'], meta['height']
-
-    if not image_width:
-        format, image_width, image_height = GdkPixbuf.Pixbuf.get_file_info(filename)
+    orientation = meta['orientation']
+    image_width, image_height = meta['width'], meta['height']
 
     pixbuf = None
     try:
@@ -68,9 +62,6 @@ def get_pixbuf(filename, width=None, height=None):
         logging.debug("Loaded with PIL")
 
     pixbuf = auto_rotate_pixbuf(orientation, pixbuf)
-    if orientation in (5, 6, 7, 8):
-        # needs rotation
-        image_width, image_height = image_height, image_width
 
     if width is not None and (width < image_width or height < image_height):
         # scale it

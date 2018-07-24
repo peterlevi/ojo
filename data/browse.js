@@ -12,6 +12,11 @@ var thumb_height = 120;
 var selection_class = '.item';
 var selected_file_per_class = {};
 
+String.prototype.replaceAll = function(search, replacement) {
+    var target = this;
+    return target.replace(new RegExp(search, 'g'), replacement);
+};
+
 function log(msg) {
     // console.debug(msg);
 }
@@ -262,15 +267,24 @@ function change_folder(new_folder) {
     $('#images').html('');
 }
 
-function set_dimensions(file, filename, dimensions, thumb_width) {
-    $(".item[file='" + encode_path(file) + "']").attr('dimensions', dimensions).attr('filename', esc(filename));
+function set_file_info(file, info, thumb_width) {
+    $(".item[file='" + encode_path(file) + "']")
+        .attr('dimensions', esc(info.dimensions))
+        .attr('filename', esc(info.filename))
+        .attr('data-file-date', esc(info.file_date))
+        .attr('data-file-size', esc(info.file_size))
+        .attr('data-exif-info', esc(info.exif_info));
     if (thumb_width) {
         $(".item[file='" + encode_path(file) + "']").css('width', thumb_width);
     }
     if (file === current) {
-        $("#filename").html(filename);
-        $("#dimensions").html(dimensions);
+        $("#filename").html(esc(info.filename));
+        $("#dimensions").html(esc(info.dimensions));
+        $("#file-size").html(esc(info.file_size));
+        $("#file-date").html(esc(info.file_date));
+        $("#exif-info").html(esc(info.exif_info).replaceAll('\\|', '<span class="separator"></span>'));
         $('#label').show();
+        $('#file-info').show();
     }
 }
 
@@ -293,7 +307,7 @@ function select(file, dontScrollTo, elem) {
     current = file;
 
     $("#filename").html(el.attr('filename') ? el.attr('filename') : '&nbsp;');
-    $("#dimensions").html(el.attr('dimensions') ? el.attr('dimensions') : '&nbsp;');
+    $('#file-info').hide();
 
     log("Selecting " + file);
     python("ojo-select:" + file);
@@ -570,7 +584,7 @@ function toggle_captions(visible) {
 }
 
 function toggle_search(visible, bypass_search) {
-    $('#search-box').css('opacity', visible ? 1 : 0);
+    $('#search-box').css('opacity', visible ? 1 : 0).css('z-index', visible ? 500 : -1);
     $('#search-button').css('display', visible ? 'none' : 'initial');
     if (visible) {
         setTimeout(function () {
