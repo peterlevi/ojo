@@ -3,6 +3,18 @@ import os
 import logging
 from gi.repository import Gio, GdkPixbuf, GObject
 
+# supported by PIL, as per http://infohost.nmt.edu/tcc/help/pubs/pil/formats.html:
+NON_RAW_FORMATS = {
+    "bmp", "dib", "dcx", "eps", "ps", "gif", "im", "jpg", "jpe", "jpeg", "pcd", "pcx", "png", "pbm", "pgm", "ppm",
+    "psd", "tif", "tiff", "xbm", "xpm"}
+
+# RAW formats, as per https://en.wikipedia.org/wiki/Raw_image_format#Annotated_list_of_file_extensions,
+# we rely on pyexiv2 previews for these:
+RAW_FORMATS = {
+    "3fr", "ari", "arw", "srf", "sr2", "bay", "crw", "cr2", "cap", "iiq", "eip", "dcs", "dcr", "drf", "k25",
+    "kdc", "dng", "erf", "fff", "mef", "mos", "mrw", "nef", "nrw", "orf", "pef", "ptx", "pxn", "r3d", "raf",
+    "raw", "rw2", "raw", "rwl", "dng", "rwz", "srw", "x3f"}
+
 
 def get_pil(filename, width=None, height=None):
     from PIL import Image
@@ -40,26 +52,50 @@ def get_pixbuf(filename, width=None, height=None):
     orientation = meta['orientation']
     image_width, image_height = meta['width'], meta['height']
 
-    pixbuf = None
-    try:
-        pixbuf = GdkPixbuf.Pixbuf.new_from_file(filename)
-        logging.debug("Loaded directly")
-    except GObject.GError:
-        pass  # below we'll use another method
-
-    if not pixbuf:
+    def _from_preview():
         try:
             full_meta = meta.get('full_meta',
                                  metadata.get_full(filename))
-            preview = full_meta.previews[-1].data
+            preview = max(full_meta.previews, key=lambda p: p.dimensions[0]).data
             pixbuf = pixbuf_from_data(preview)
             logging.debug("Loaded from preview")
+            return pixbuf
         except Exception, e:
-            pass  # below we'll use another method
+            return None  # below we'll use another method
+
+    def _from_gdk_pixbuf():
+        try:
+            pixbuf = GdkPixbuf.Pixbuf.new_from_file(filename)
+            logging.debug("Loaded directly")
+            return pixbuf
+        except GObject.GError:
+            return None  # below we'll use another method
+
+    def _from_pil():
+        try:
+            pixbuf = pil_to_pixbuf(get_pil(filename))
+            logging.debug("Loaded with PIL")
+            return pixbuf
+        except:
+            return None
+
+    if ext(filename) in RAW_FORMATS:
+        # raw file, prefer preview with max size
+        pixbuf = _from_preview()
+        if not pixbuf:
+            pixbuf = _from_gdk_pixbuf()
+    else:
+        # ordinary image, prefer loading with GdkPixbuf directly
+        # (previews here might be present, but wrong)
+        pixbuf = _from_gdk_pixbuf()
+        if not pixbuf:
+            pixbuf = _from_preview()
 
     if not pixbuf:
-        pixbuf = pil_to_pixbuf(get_pil(filename))
-        logging.debug("Loaded with PIL")
+        pixbuf = _from_pil()
+
+    if not pixbuf:
+        raise Exception('Could not load %s' % filename)
 
     pixbuf = auto_rotate_pixbuf(orientation, pixbuf)
 
@@ -228,17 +264,7 @@ def pixbuf_to_b64(pixbuf):
 def get_supported_image_extensions():
     fn = get_supported_image_extensions
     if not hasattr(fn, "image_formats"):
-        # supported by PIL, as per http://infohost.nmt.edu/tcc/help/pubs/pil/formats.html:
-        fn.image_formats = {"bmp", "dib", "dcx", "eps", "ps", "gif", "im", "jpg", "jpe", "jpeg", "pcd",
-                              "pcx", "png", "pbm", "pgm", "ppm", "psd", "tif", "tiff", "xbm", "xpm"}
-
-        # RAW formats, as per https://en.wikipedia.org/wiki/Raw_image_format#Annotated_list_of_file_extensions,
-        # we rely on pyexiv2 previews for these:
-        fn.image_formats = fn.image_formats.union(
-            {"3fr", "ari", "arw", "srf", "sr2", "bay", "crw", "cr2", "cap", "iiq",
-             "eip", "dcs", "dcr", "drf", "k25", "kdc", "dng", "erf", "fff", "mef", "mos", "mrw",
-             "nef", "nrw", "orf", "pef", "ptx", "pxn", "r3d", "raf", "raw", "rw2", "raw", "rwl",
-             "dng", "rwz", "srw", "x3f"})
+        fn.image_formats = NON_RAW_FORMATS.union(RAW_FORMATS)
 
         # supported by GdkPixbuf:
         for l in [f.get_extensions() for f in GdkPixbuf.Pixbuf.get_formats()]:
@@ -260,12 +286,14 @@ def get_size(image):
             raise Exception('Not an image or unsupported image format')
 
 
+def ext(filename):
+    return os.path.splitext(filename)[1].lower()[1:]
+
+
 def is_image(filename):
     """Decide if something might be a supported image based on extension"""
     try:
-        return os.path.isfile(filename) and \
-               os.path.splitext(filename)[1].lower()[1:] in \
-               get_supported_image_extensions()
+        return os.path.isfile(filename) and ext(filename) in get_supported_image_extensions()
     except Exception:
         return False
 
