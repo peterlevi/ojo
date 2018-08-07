@@ -604,7 +604,6 @@ function toggle_search(visible, bypass_search) {
 }
 
 $(function() {
-    python('ojo-document-ready:');
     change_folder('');
 
     $(document).contextmenu(function(event) {
