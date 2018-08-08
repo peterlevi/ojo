@@ -2,8 +2,8 @@ import logging
 import os
 import time
 
-from config import options
-from imaging import is_image, thumbnail
+from .config import options
+from .imaging import is_image, thumbnail
 
 
 def _safe_thumbnail(filename, cached, width, height):
@@ -100,9 +100,10 @@ class Thumbs:
             return filename
 
         import hashlib
+        from .util import _bytes
         # we append modification time to ensure we're not using outdated cached images
         mtime = os.path.getmtime(filename)
-        hash = hashlib.md5(filename + str(mtime)).hexdigest()
+        hash = hashlib.md5(_bytes(filename + str(mtime))).hexdigest()
         folder = os.path.dirname(filename)
         if folder.startswith(os.sep):
             folder = folder[1:]
@@ -135,9 +136,9 @@ class Thumbs:
             callback=_thumbnail_ready)
 
     def clear_thumbnails(self, folder):
-        images = filter(
+        images = list(filter(
             is_image,
-            map(lambda f: os.path.join(folder, f), os.listdir(folder)))
+            [os.path.join(folder, f) for f in os.listdir(folder)]))
 
         for img in images:
 

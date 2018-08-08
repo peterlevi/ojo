@@ -30,13 +30,13 @@ gi.require_version('Gtk', '3.0')
 gi.require_version('GdkPixbuf', '2.0')
 from gi.repository import Gtk, Gdk, GdkPixbuf, GObject
 
-import util
-from util import _u
-import ojoconfig
-from metadata import metadata
-import config
-from config import options
-from imaging import (
+from . import util
+from .util import _u
+from . import ojoconfig
+from .metadata import metadata
+from . import config
+from .config import options
+from .imaging import (
     get_pil,
     get_size,
     auto_rotate_pixbuf,
@@ -86,7 +86,7 @@ class Ojo():
         if len(self.command_args) >= 1 and os.path.exists(self.command_args[0]):
             path = os.path.realpath(self.command_args[0])
         else:
-            path = options['folder'].encode('utf-8')
+            path = _u(options['folder'])
         logging.info("Started with: %s" % path)
         if not os.path.exists(path):
             logging.warning("%s does not exist, reverting to %s" %
@@ -181,10 +181,10 @@ class Ojo():
         def safe_fn(*args, **kwargs):
             try:
                 fn(*args, **kwargs)
-            except OSError, e:
+            except OSError as e:
                 logging.exception('OSError:')
                 self.show_error('%s %s' % (e.message, os.strerror(e.errno)))
-            except Exception, e:
+            except Exception as e:
                 logging.exception('Exception:')
                 self.show_error(e.message)
         return safe_fn
@@ -251,11 +251,11 @@ class Ojo():
             self.box.set_visible(True)
 
     def get_image_list(self):
-        images = filter(
+        images = list(filter(
             is_image,
-            map(lambda f: os.path.join(self.folder, f), os.listdir(self.folder)))
+            [os.path.join(self.folder, f) for f in os.listdir(self.folder)]))
         if not options['show_hidden']:
-            images = filter(lambda f: not os.path.basename(f).startswith('.'), images)
+            images = [f for f in images if not os.path.basename(f).startswith('.')]
 
         if options['sort_by'] == 'extension':
             key = lambda f: (os.path.splitext(f)[1] + '_' + os.path.basename(f)).lower()
@@ -463,7 +463,7 @@ class Ojo():
     def after_quick_start(self):
         import signal
         import threading
-        import webview
+        from . import webview
 
         signal.signal(signal.SIGINT, kill)
         signal.signal(signal.SIGTERM, kill)
@@ -509,7 +509,7 @@ class Ojo():
 
         config.load_bookmarks()
 
-        from places import Places
+        from .places import Places
         self.places = Places(on_change=self.on_places_changed)
 
         GObject.idle_add(self.render_browser)
@@ -518,7 +518,7 @@ class Ojo():
         if self.mode == "image":
             self.cache_around()
 
-        import thumbs
+        from . import thumbs
         self.thumbs = thumbs.Thumbs(ojo=self)
         self.thumbs.start()
 
@@ -529,8 +529,8 @@ class Ojo():
             self.js('show_spinner("Listing folder...")')
 
     def filter_hidden(self, files):
-        return files if options['show_hidden'] else filter(
-            lambda f: not os.path.basename(f).startswith('.'), files)
+        return files if options['show_hidden'] else \
+            [f for f in files if not os.path.basename(f).startswith('.')]
 
     def get_file_info(self, meta):
         import datetime
@@ -585,7 +585,7 @@ class Ojo():
         elif action == 'ojo-priority':
             files = json.loads(argument)
             self.thumbs.priority_thumbs(
-                map(lambda f: util.url2path(f.encode('utf-8')), files))
+                [util.url2path(f.encode('utf-8')) for f in files])
         elif action == 'ojo-handle-key':
             self.process_key(key=argument, skip_browser=True)
         elif action == 'ojo-folder-up':
@@ -981,7 +981,7 @@ class Ojo():
                 self.selected) if self.selected in self.images else 0
             self.thumbs.priority_thumbs([
                 x[1] for x in
-                sorted(enumerate(self.images), key=lambda (i, f): abs(i - pos))
+                sorted(enumerate(self.images), key=lambda i_f: abs(i_f[0] - pos))
                 if not os.path.exists(self.thumbs.get_cached_thumbnail_path(x[1]))
             ])
 
@@ -1078,8 +1078,8 @@ class Ojo():
 
     def start_cache_thread(self):
         import threading
-        import Queue
-        self.cache_queue = Queue.Queue()
+        import queue
+        self.cache_queue = queue.Queue()
         self.preparing_event = threading.Event()
 
         def _reduce_to_latest(cached, count):
@@ -1567,7 +1567,7 @@ class Ojo():
         else:
             target_width = target_height = None
 
-        from imaging import get_pixbuf
+        from .imaging import get_pixbuf
         pixbuf = get_pixbuf(filename, target_width, target_height)
 
         if filename in self.pix_cache[zoom]:

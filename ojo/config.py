@@ -1,7 +1,7 @@
 import os
 import logging
 
-import util
+from . import util
 
 
 class dotdict(dict):

@@ -18,15 +18,15 @@ RAW_FORMATS = {
 
 def get_pil(filename, width=None, height=None):
     from PIL import Image
-    from metadata import metadata
+    from .metadata import metadata
 
     try:
         pil_image = Image.open(filename)
     except IOError:
-        import cStringIO
+        import io
         full_meta = metadata.get_full(filename)
         pil_image = Image.open(
-            cStringIO.StringIO(full_meta.previews[-1].data))
+            io.StringIO(full_meta.previews[-1].data))
 
     if width is not None:
         meta = metadata.get(filename)
@@ -46,7 +46,7 @@ def get_pil(filename, width=None, height=None):
 
 
 def get_pixbuf(filename, width=None, height=None):
-    from metadata import metadata
+    from .metadata import metadata
 
     meta = metadata.get(filename)
     orientation = meta['orientation']
@@ -60,7 +60,7 @@ def get_pixbuf(filename, width=None, height=None):
             pixbuf = pixbuf_from_data(preview)
             logging.debug("Loaded from preview")
             return pixbuf
-        except Exception, e:
+        except Exception:
             return None  # below we'll use another method
 
     def _from_gdk_pixbuf():
@@ -120,7 +120,7 @@ def thumbnail(filename, thumb_path, width, height):
         pil = get_pil(filename, width, height)
         try:
             pil.save(thumb_path, 'JPEG')
-        except Exception, e:
+        except Exception:
             logging.exception(
                 'Could not save thumbnail in format %s:' % format)
 
@@ -147,11 +147,13 @@ def thumbnail(filename, thumb_path, width, height):
 
 
 def needs_orientation(meta):
-    return 'Exif.Image.Orientation' in meta.keys() and meta['Exif.Image.Orientation'].value != 1
+    return 'Exif.Image.Orientation' in set(meta.keys()) and \
+           meta['Exif.Image.Orientation'].value != 1
 
 
 def needs_rotation(meta):
-    return 'Exif.Image.Orientation' in meta.keys() and meta['Exif.Image.Orientation'].value in (5, 6, 7, 8)
+    return 'Exif.Image.Orientation' in set(meta.keys()) and \
+           meta['Exif.Image.Orientation'].value in (5, 6, 7, 8)
 
 
 def auto_rotate(orientation, im):
@@ -229,10 +231,10 @@ def auto_rotate_pixbuf(orientation, im):
     return result
 
 def pil_to_pixbuf(pil_image):
-    import cStringIO
+    import io
     if pil_image.mode != 'RGB':  # Fix IOError: cannot write mode P as PPM
         pil_image = pil_image.convert('RGB')
-    buff = cStringIO.StringIO()
+    buff = io.StringIO()
     pil_image.save(buff, 'ppm')
     contents = buff.getvalue()
     buff.close()
@@ -244,8 +246,8 @@ def pil_to_pixbuf(pil_image):
 
 
 def pil_to_base64(pil_image):
-    import cStringIO
-    output = cStringIO.StringIO()
+    import io
+    output = io.StringIO()
     pil_image.save(output, "PNG")
     contents = output.getvalue().encode("base64")
     output.close()
@@ -268,7 +270,7 @@ def get_supported_image_extensions():
 
         # supported by GdkPixbuf:
         for l in [f.get_extensions() for f in GdkPixbuf.Pixbuf.get_formats()]:
-            fn.image_formats = fn.image_formats.union(map(lambda e: e.lower(), l))
+            fn.image_formats = fn.image_formats.union([e.lower() for e in l])
 
     return fn.image_formats
 
