@@ -1,6 +1,6 @@
 from gi.repository import Gio, GObject
 import os
-import util
+from . import util
 
 
 class Places:

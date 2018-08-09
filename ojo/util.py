@@ -4,19 +4,23 @@ import os
 def _u(s):
     if s is None:
         return s
-    if isinstance(s, unicode):
+    elif isinstance(s, str):
         return s
+    elif isinstance(s, bytes):
+        return s.decode(encoding='utf8')
     else:
-        return unicode(s, 'utf8')
+        raise ValueError('_u expects str or bytes object')
 
 
-def _str(s):
+def _bytes(s):
     if s is None:
         return s
-    if isinstance(s, unicode):
-        return s.encode('utf8')
+    elif isinstance(s, bytes):
+        return s
+    elif isinstance(s, str):
+        return s.encode(encoding='utf8')
     else:
-        return str(s)
+        raise ValueError('_bytes expects str or bytes object')
 
 
 def get_folder_icon_name(path):
@@ -53,13 +57,16 @@ def get_parent(file):
 
 
 def get_xdg_pictures_folder():
-    import subprocess
-    import logging
     try:
-        return subprocess.check_output(['xdg-user-dir', 'PICTURES']).split('\n')[0]
-    except Exception:
-        logging.exception("Could not get path to Pictures folder")
-        return os.path.expanduser('~/Pictures')
+        from gi.repository import GLib
+        pics_folder = GLib.get_user_special_dir(GLib.USER_DIRECTORY_PICTURES)
+        if not pics_folder:
+            raise Exception("Could not get path to Pictures folder. Defaulting to ~/Pictures.")
+        return pics_folder
+    except:
+        import logging
+        logging.exception(lambda: "Could not get path to Pictures folder. Defaulting to ~/Pictures.")
+        return os.path.expanduser(u'~/Pictures')
 
 
 def makedirs(path):
@@ -71,13 +78,13 @@ def makedirs(path):
 
 
 def path2url(path):
-    import urllib
-    return 'file://' + urllib.pathname2url(_str(path))
+    import urllib.request
+    return 'file://' + urllib.request.pathname2url(path)
 
 
 def url2path(url):
-    import urllib
-    return urllib.url2pathname(url)[7:]
+    import urllib.request
+    return urllib.request.url2pathname(url)[7:]
 
 
 def escape_gtk(fn):
@@ -108,5 +115,5 @@ def make_transparent(widget, color='rgba(0, 0, 0, 0)'):
 
 
 if __name__ == "__main__":
-    print get_folder_icon('/', 16)
+    print(get_folder_icon('/', 16))
 

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- Mode: Python; coding: utf-8; indent-tabs-mode: nil; tab-width: 4 -*-
 ### BEGIN LICENSE
 # Copyright (C) 2013 Peter Levi <peterlevi@peterlevi.com>
@@ -24,16 +24,17 @@ try:
     import DistUtilsExtra.auto
     from DistUtilsExtra.command.build_icons import build_icons
 except ImportError:
-    print >> sys.stderr, 'To build ojo you need https://launchpad.net/python-distutils-extra'
+    print('To build ojo you need https://launchpad.net/python-distutils-extra', file=sys.stderr)
     sys.exit(1)
 assert DistUtilsExtra.auto.__version__ >= '2.18', 'needs DistUtilsExtra.auto >= 2.18'
+
 
 def update_config(values = {}):
 
     oldvalues = {}
     try:
-        fin = file('ojo/ojoconfig.py', 'r')
-        fout = file(fin.name + '.new', 'w')
+        fin = open('ojo/ojoconfig.py', 'r')
+        fout = open(fin.name + '.new', 'w')
 
         for line in fin:
             fields = line.split(' = ') # Separate variable from value
@@ -46,8 +47,8 @@ def update_config(values = {}):
         fout.close()
         fin.close()
         os.rename(fout.name, fin.name)
-    except (OSError, IOError), e:
-        print ("ERROR: Can't find ojo/ojoconfig.py")
+    except (OSError, IOError):
+        print("ERROR: Can't find ojo/ojoconfig.py")
         sys.exit(1)
     return oldvalues
 

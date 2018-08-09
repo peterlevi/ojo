@@ -1,10 +1,8 @@
-import gi
-gi.require_version('WebKit', '3.0')
 from gi.repository import WebKit, GObject
 
 import logging
-import util
-import ojoconfig
+from . import util
+from . import ojoconfig
 
 
 class WebView:

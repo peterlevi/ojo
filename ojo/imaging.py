@@ -16,17 +16,41 @@ RAW_FORMATS = {
     "raw", "rw2", "raw", "rwl", "dng", "rwz", "srw", "x3f"}
 
 
+def get_optimal_preview(full_meta, width=None, height=None):
+    previews = full_meta.get_preview_properties()
+
+    # filter to just jpeg and png previews (tiffs are sometimes present too)
+    previews = [p for p in previews
+                if p.get_extension() in ('.jpg', '.jpeg', '.png')]
+
+    if width is None or height is None:
+        # if no resizing required - use the biggest image
+        preview = max(previews,
+                      key=lambda p: p.get_width())
+    else:
+        # else use the smallest image that is bigger than the desired size
+        bigger = [p for p in previews if p.get_width() >= width and p.get_height() >= height]
+        if bigger:
+            preview = min(bigger, key=lambda p: p.get_width())
+        else:
+            preview = max(previews,
+                          key=lambda p: p.get_width())
+
+    return full_meta.get_preview_image(preview)
+
+
 def get_pil(filename, width=None, height=None):
     from PIL import Image
-    from metadata import metadata
+    from .metadata import metadata
 
     try:
         pil_image = Image.open(filename)
     except IOError:
-        import cStringIO
+        import io
         full_meta = metadata.get_full(filename)
+        optimal_preview = get_optimal_preview(full_meta, width, height)
         pil_image = Image.open(
-            cStringIO.StringIO(full_meta.previews[-1].data))
+            io.StringIO(optimal_preview.get_data()))
 
     if width is not None:
         meta = metadata.get(filename)
@@ -46,7 +70,7 @@ def get_pil(filename, width=None, height=None):
 
 
 def get_pixbuf(filename, width=None, height=None):
-    from metadata import metadata
+    from .metadata import metadata
 
     meta = metadata.get(filename)
     orientation = meta['orientation']
@@ -56,11 +80,11 @@ def get_pixbuf(filename, width=None, height=None):
         try:
             full_meta = meta.get('full_meta',
                                  metadata.get_full(filename))
-            preview = max(full_meta.previews, key=lambda p: p.dimensions[0]).data
-            pixbuf = pixbuf_from_data(preview)
+            optimal_preview = get_optimal_preview(full_meta, width, height)
+            pixbuf = pixbuf_from_data(optimal_preview.get_data())
             logging.debug("Loaded from preview")
             return pixbuf
-        except Exception, e:
+        except Exception:
             return None  # below we'll use another method
 
     def _from_gdk_pixbuf():
@@ -120,7 +144,7 @@ def thumbnail(filename, thumb_path, width, height):
         pil = get_pil(filename, width, height)
         try:
             pil.save(thumb_path, 'JPEG')
-        except Exception, e:
+        except Exception:
             logging.exception(
                 'Could not save thumbnail in format %s:' % format)
 
@@ -144,14 +168,6 @@ def thumbnail(filename, thumb_path, width, height):
             use_pil()
 
     return thumb_path
-
-
-def needs_orientation(meta):
-    return 'Exif.Image.Orientation' in meta.keys() and meta['Exif.Image.Orientation'].value != 1
-
-
-def needs_rotation(meta):
-    return 'Exif.Image.Orientation' in meta.keys() and meta['Exif.Image.Orientation'].value in (5, 6, 7, 8)
 
 
 def auto_rotate(orientation, im):
@@ -229,10 +245,10 @@ def auto_rotate_pixbuf(orientation, im):
     return result
 
 def pil_to_pixbuf(pil_image):
-    import cStringIO
+    import io
     if pil_image.mode != 'RGB':  # Fix IOError: cannot write mode P as PPM
         pil_image = pil_image.convert('RGB')
-    buff = cStringIO.StringIO()
+    buff = io.StringIO()
     pil_image.save(buff, 'ppm')
     contents = buff.getvalue()
     buff.close()
@@ -244,8 +260,8 @@ def pil_to_pixbuf(pil_image):
 
 
 def pil_to_base64(pil_image):
-    import cStringIO
-    output = cStringIO.StringIO()
+    import io
+    output = io.StringIO()
     pil_image.save(output, "PNG")
     contents = output.getvalue().encode("base64")
     output.close()
@@ -268,7 +284,7 @@ def get_supported_image_extensions():
 
         # supported by GdkPixbuf:
         for l in [f.get_extensions() for f in GdkPixbuf.Pixbuf.get_formats()]:
-            fn.image_formats = fn.image_formats.union(map(lambda e: e.lower(), l))
+            fn.image_formats = fn.image_formats.union([e.lower() for e in l])
 
     return fn.image_formats
 
