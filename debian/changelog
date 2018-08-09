@@ -1,5 +1,21 @@
+ojo (0.2) xenial; urgency=low
+
+  * A lot more extensive browse mode
+  * UI facelift, two Tab-switchable panes
+  * Basic EXIF info display
+  * Places, support for mounting/unmounting
+  * More sorting options. Grouping.
+  * Filename captions as an option
+  * Better search
+  * Much faster thumbnails with multiprocessing
+  * Multiple fixed bugs: image orientation, Unicode names, and more
+  * Ported to Python 3
+  * Uses GExiv2 instead of the deprecated pyexiv2
+
+ -- Peter Levi <peterlevi@peterlevi.com>  Thu, 10 Aug 2018 01:17:00 +0300
+
 ojo (0.1) trusty; urgency=low
 
   * Initial release.
 
- -- Peter Levi <peter@peter>  Tue, 30 Jul 2013 18:25:59 +0300
+ -- Peter Levi <peterlevi@peterlevi.com>  Tue, 30 Jul 2013 18:25:59 +0300
