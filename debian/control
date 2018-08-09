@@ -1,7 +1,7 @@
 Source: ojo
 Section: python
 Priority: extra
-Build-Depends: debhelper (>= 10),
+Build-Depends: debhelper (>= 9),
  dh-python,
  python3,
  python3-distutils-extra (>= 2.10)
