@@ -103,7 +103,8 @@ class Thumbs:
         from .util import _bytes
         # we append modification time to ensure we're not using outdated cached images
         mtime = os.path.getmtime(filename)
-        hash = hashlib.md5(_bytes(filename + str(mtime))).hexdigest()
+        hash = hashlib.md5(_bytes(filename + '{0:.2f}'.format(mtime))).hexdigest()
+        # we use .2 precision to keep the same behavior of getmtime as under Python 2
         folder = os.path.dirname(filename)
         if folder.startswith(os.sep):
             folder = folder[1:]
