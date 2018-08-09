@@ -28,22 +28,17 @@ from collections import OrderedDict
 import gi
 gi.require_version('Gtk', '3.0')
 gi.require_version('GdkPixbuf', '2.0')
+gi.require_version('WebKit', '3.0')
+gi.require_version('GExiv2', '0.10')
 from gi.repository import Gtk, Gdk, GdkPixbuf, GObject
 
 from . import util
 from .util import _u
 from . import ojoconfig
-from .metadata import metadata
 from . import config
 from .config import options
-from .imaging import (
-    get_pil,
-    get_size,
-    auto_rotate_pixbuf,
-    pil_to_pixbuf,
-    pixbuf_from_data,
-    is_image,
-)
+from .metadata import metadata
+from .imaging import is_image
 
 LEVELS = (logging.ERROR, logging.WARNING, logging.INFO, logging.DEBUG)
 

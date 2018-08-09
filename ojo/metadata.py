@@ -2,14 +2,25 @@ from . import imaging
 import os
 
 
+# https://lazka.github.io/pgi-docs/#GExiv2-0.10/enums.html#GExiv2.Orientation
+def needs_orientation(meta):
+    return 'Exif.Image.Orientation' in meta and \
+           int(meta.get_orientation()) not in (0, 1)
+
+
+def needs_rotation(meta):
+    return 'Exif.Image.Orientation' in meta and \
+           int(meta.get_orientation()) in (5, 6, 7, 8)
+
+
 class Metadata:
     EXIF_KEYS = [
-        ('Exif.Image.Model', 'human_value'),
-        ('Exif.Photo.DateTimeOriginal', 'value'),
-        ('Exif.Photo.ExposureTime', 'human_value'),
-        ('Exif.Photo.FNumber', 'human_value'),
-        ('Exif.Photo.ISOSpeedRatings', 'human_value'),
-        ('Exif.Photo.FocalLength', 'human_value'),
+        'Exif.Image.Model',
+        'Exif.Photo.DateTimeOriginal',
+        'Exif.Photo.ExposureTime',
+        'Exif.Photo.FNumber',
+        'Exif.Photo.ISOSpeedRatings',
+        'Exif.Photo.FocalLength',
     ]  # Add additional keys we'd like to show
 
     def __init__(self):
@@ -53,26 +64,28 @@ class Metadata:
 
     def get_full(self, filename):
         try:
-            from pyexiv2 import ImageMetadata
-            meta = ImageMetadata(filename)
-            meta.read()
+            from datetime import datetime
+            from gi.repository import GExiv2
+            meta = GExiv2.Metadata(path=filename)
 
             exif = {}
-            for key, accessor in Metadata.EXIF_KEYS:
-                v = meta.get(key, None)
-                if v:
-                    exif[key] = getattr(v, accessor)
+            for key in Metadata.EXIF_KEYS:
+                v = meta.get_tag_interpreted_string(key)
+                if v is not None:
+                    if key == 'Exif.Photo.DateTimeOriginal':
+                        v = datetime.strptime(v, '%Y:%m:%d %H:%M:%S')
+                    exif[key] = v
 
             # also cache the most important part
-            needs_rotation = imaging.needs_rotation(meta)
+            needs_rot = needs_rotation(meta)
             stat = os.stat(filename)
             self.cache[filename] = {
                 'filename': os.path.basename(filename),
-                'needs_orientation': imaging.needs_orientation(meta),
-                'needs_rotation': needs_rotation,
-                'width': meta.dimensions[0 if not needs_rotation else 1],
-                'height': meta.dimensions[1 if not needs_rotation else 0],
-                'orientation': meta['Exif.Image.Orientation'].value if 'Exif.Image.Orientation' in meta else None,
+                'needs_orientation': needs_orientation(meta),
+                'needs_rotation': needs_rot,
+                'width': meta.get_pixel_width() if not needs_rot else meta.get_pixel_height(),
+                'height': meta.get_pixel_height() if not needs_rot else meta.get_pixel_width(),
+                'orientation': int(meta.get_orientation()) if 'Exif.Image.Orientation' in meta else None,
                 'file_date': stat.st_mtime,
                 'file_size': stat.st_size,
                 'exif': exif,
