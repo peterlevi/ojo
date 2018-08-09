@@ -178,10 +178,10 @@ class Ojo():
                 fn(*args, **kwargs)
             except OSError as e:
                 logging.exception('OSError:')
-                self.show_error('%s %s' % (e.message, os.strerror(e.errno)))
+                self.show_error('%s %s' % (str(e), os.strerror(e.errno)))
             except Exception as e:
                 logging.exception('Exception:')
-                self.show_error(e.message)
+                self.show_error(str(e))
         return safe_fn
 
     def js(self, command=None, commands=None):
@@ -579,8 +579,7 @@ class Ojo():
                 GObject.idle_add(self.safe(_do))
         elif action == 'ojo-priority':
             files = json.loads(argument)
-            self.thumbs.priority_thumbs(
-                [util.url2path(f.encode('utf-8')) for f in files])
+            self.thumbs.priority_thumbs([util.url2path(f) for f in files])
         elif action == 'ojo-handle-key':
             self.process_key(key=argument, skip_browser=True)
         elif action == 'ojo-folder-up':
@@ -999,7 +998,7 @@ class Ojo():
                     self.safe_basename(img),
                     'true' if img == self.selected else 'false',
                     'true' if options['show_captions'] else 'false',
-                    util._str(group) if group else '',
+                    group if group else '',
                 ))
                 time.sleep(0.001)
 
