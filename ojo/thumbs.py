@@ -36,7 +36,7 @@ class Thumbs:
     def start(self):
         import threading
         import multiprocessing
-        self.pool = multiprocessing.Pool(processes=multiprocessing.cpu_count() - 1)
+        self.pool = multiprocessing.Pool(processes=max(1, multiprocessing.cpu_count() - 1))
 
         self.killed = False
         self.thumbs_event = threading.Event()
