@@ -8,36 +8,36 @@ img {
 }
 
 body {
-    font-size: 12px;
+    font-size: 12pt;
     font-family: Ubuntu, "Ubuntu Condensed", sans-serif;
     /* Note: browsing transparency 14.04 vs 16.04 */
     /* background: rgba(77, 75, 69, 0.9); */
     background: rgba(0, 0, 0, 0);
     overflow-x: hidden;
     overflow-y: hidden;
-    padding-bottom: 20px;
+    padding-bottom: 20pt;
 }
 
 #content {
-    margin: 4px;
+    margin: 4pt;
 }
 
 #title span {
     cursor: pointer;
-    font-size: 16px;
+    font-size: 16pt;
 }
 
 #title {
     position: absolute;
     color: #A19C90;
-    padding: 10px 10px 10px;
+    padding: 10pt 10pt 10pt;
     top: 0;
     left: 0;
     right: 0;
-    height: 20px;
+    height: 20pt;
     z-index: 100;
     background: #3D3C38;
-    box-shadow: 0 2px 5px #222;
+    box-shadow: 0 2pt 5pt #222;
 }
 
 #label {
@@ -47,24 +47,24 @@ body {
     left: 0;
     bottom: 0;
     right: 0;
-    height: 20px;
-    line-height: 20px;
+    height: 20pt;
+    line-height: 20pt;
     background: #3D3C38;
-    box-shadow: 0 -2px 5px #222;
-    padding: 10px;
+    box-shadow: 0 -2pt 5pt #222;
+    padding: 10pt;
     color: white;
 }
 
 #label .spinner {
     float: left;
-    margin-top: -5px;
-    margin-left: -5px;
-    width: 30px;
-    height: 30px;
+    margin-top: -5pt;
+    margin-left: -5pt;
+    width: 30pt;
+    height: 30pt;
 }
 
 #label .separator {
-    padding: 0 10px;
+    padding: 0 10pt;
 }
 
 #label .separator:after {
@@ -75,37 +75,37 @@ body {
 #label #file-info {
     display: none;
     float: right;
-    padding-right: 20px;
+    padding-right: 20pt;
 }
 
 #folders {
     z-index: 2;
     position: absolute;
-    top: 40px;
-    bottom: 40px;
+    top: 40pt;
+    bottom: 40pt;
     left: 0;
-    width: 330px;
+    width: 330pt;
     background: rgba(105, 101, 93, 0.8);
-    box-shadow: 3px 3px 5px 0 #333;
-    padding-left: 10px;
-    max-width: 500px;
+    box-shadow: 3pt 3pt 5pt 0 #333;
+    padding-left: 10pt;
+    max-width: 500pt;
     white-space: nowrap;
     overflow-x: hidden;
     overflow-y: auto;
     text-overflow: ellipsis;
-    border-top: 10px solid transparent;
-    border-bottom: 10px solid transparent;
-    border-right: 5px solid transparent;
+    border-top: 10pt solid transparent;
+    border-bottom: 10pt solid transparent;
+    border-right: 5pt solid transparent;
 }
 
 #images {
     position: absolute;
-    top: 40px;
-    bottom: 40px;
-    left: 352px;
+    top: 40pt;
+    bottom: 40pt;
+    left: 352pt;
     right: 0;
-    padding: 10px 0;
-    padding-right: 5px;
+    padding: 10pt 0;
+    padding-right: 5pt;
     overflow-x: hidden;
     overflow-y: auto;
     line-height: 0;
@@ -113,15 +113,15 @@ body {
 
 div::-webkit-scrollbar {
     opacity: 0.7;
-    width: 3px;
+    width: 3pt;
 }
 
 div::-webkit-scrollbar-thumb {
     opacity: 0.7;
     background-color: #F07746;
-    width: 3px;
-    border-radius: 2px;
-    box-shadow: 1px 2px 6px #444;
+    width: 3pt;
+    border-radius: 2pt;
+    box-shadow: 1pt 2pt 6pt #444;
 }
 
 div:hover::-webkit-scrollbar {
@@ -133,34 +133,34 @@ div:hover::-webkit-scrollbar-thumb {
 }
 
 .folder-category {
-    padding-bottom: 10px;
+    padding-bottom: 10pt;
 }
 
 .folder-category-label {
     color: #A19C90;
-    padding-bottom: 10px;
+    padding-bottom: 10pt;
 }
 
 .folder {
-    padding-left: 15px;
-    padding-right: 20px;
+    padding-left: 15pt;
+    padding-right: 20pt;
     color: #d3d0c5;
-    margin-bottom: 8px;
-    max-width: 285px;
+    margin-bottom: 8pt;
+    max-width: 285pt;
     overflow: hidden;
-    font-size: 12px;
+    font-size: 12pt;
 }
 
 .folder-icon {
-    padding-right: 3px;
+    padding-right: 3pt;
     vertical-align: text-bottom;
     display: inline;
-    width: 16px;
+    width: 16pt;
 }
 
 .folder-note, .folder-command {
     float: right;
-    margin-top: 4px;
+    margin-top: 4pt;
     font-style: italic;
     color: #A19C90;
 }
@@ -170,8 +170,8 @@ div:hover::-webkit-scrollbar-thumb {
 }
 
 .folder.selected {
-    margin-bottom: 5px;
-    border-bottom: solid 3px #F07746;
+    margin-bottom: 5pt;
+    border-bottom: solid 3pt #F07746;
 }
 
 .item {
@@ -194,14 +194,14 @@ div:hover::-webkit-scrollbar-thumb {
 
 .group {
     color: #A19C90;
-    font-size: 15px;
+    font-size: 15pt;
     font-weight: normal;
-    padding: 30px 7px 10px;
+    padding: 30pt 7pt 10pt;
     display: table-cell;
 }
 
 .group.first {
-    padding-top: 10px;
+    padding-top: 10pt;
 }
 
 .selectable, .clickable {
@@ -217,7 +217,7 @@ div:hover::-webkit-scrollbar-thumb {
 }
 
 .crumb.selected {
-    border-bottom: solid 3px #F07746;
+    border-bottom: solid 3pt #F07746;
 }
 
 .disabled {
@@ -232,13 +232,13 @@ div.caption {
     opacity: 0;
     position: absolute;
     width: 100%;
-    height: 20px;
+    height: 20pt;
     bottom: 0;
     color: #d3d3d3;
     background: rgba(0, 0, 0, 0.5);
-    line-height: 20px;
-    padding-left: 5px;
-    font-size: 10px;
+    line-height: 20pt;
+    padding-left: 5pt;
+    font-size: 10pt;
     z-index: -1;
 }
 
@@ -273,11 +273,11 @@ div.holder img {
     opacity: 1;
     position: fixed;
     z-index: 501;
-    top: 5px;
-    right: 10px;
-    width: 30px;
-    height: 30px;
-    border-radius: 30px;
+    top: 5pt;
+    right: 10pt;
+    width: 30pt;
+    height: 30pt;
+    border-radius: 30pt;
     background-color: transparent;
     cursor: pointer;
 }
@@ -288,10 +288,10 @@ div.holder img {
 
 #search-button img {
     position: absolute;
-    left: 8px;
-    top: 8px;
-    width: 15px;
-    height: 15px;
+    left: 8pt;
+    top: 8pt;
+    width: 15pt;
+    height: 15pt;
     z-index: 10;
 }
 
@@ -299,14 +299,14 @@ div.holder img {
     opacity: 0;
     position: fixed;
     z-index: -1;
-    top: 5px;
-    right: 10px;
-    height: 30px;
-    width: 300px;
-    border-radius: 20px;
+    top: 5pt;
+    right: 10pt;
+    height: 30pt;
+    width: 300pt;
+    border-radius: 20pt;
     background-color: #302e2c;
-    box-shadow: inset 2px 2px 5px #151515;
-    /*border-bottom: 3px solid #F07746;*/
+    box-shadow: inset 2pt 2pt 5pt #151515;
+    /*border-bottom: 3pt solid #F07746;*/
 }
 
 #search-container {
@@ -317,24 +317,24 @@ div.holder img {
 
 #search-icon {
     position: absolute;
-    left: 10px;
-    top: 8px;
-    width: 15px;
-    height: 15px;
+    left: 10pt;
+    top: 8pt;
+    width: 15pt;
+    height: 15pt;
     z-index: 10;
 }
 
 #search-field {
     position: absolute;
-    right: 15px;
+    right: 15pt;
     top: 0;
-    width: 250px;
-    height: 30px;
+    width: 250pt;
+    height: 30pt;
     border: none;
     outline: none;
     background-color: transparent;
     color: white;
-    font-size: 14px;
+    font-size: 14pt;
 }
 
 #progress {
@@ -343,6 +343,6 @@ div.holder img {
     bottom: 0;
     left: 0;
     width: 0;
-    height: 3px;
+    height: 3pt;
     background-color: #F07746;
 }

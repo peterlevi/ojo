@@ -540,7 +540,7 @@ class Ojo():
                 exif['Exif.Photo.FocalLength'],
             )
         except:
-            exif_info = 'EXIF info missing'
+            exif_info = 'No EXIF info'
         return {
             'filename': meta['filename'],
             'dimensions': '%d x %d' % (meta['width'], meta['height']),
