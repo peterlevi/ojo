@@ -26,12 +26,13 @@ class Thumbs:
     def reset_queues(self):
         self.queue = []
 
-    def stop(self):
+    def stop(self, join=False):
         self.killed = True
         self.thumbs_event.set()
         self.pool.close()
-        self.pool.join()
-        self.thread.join()
+        if join:
+            self.pool.join()
+            self.thread.join()
 
     def start(self):
         import threading

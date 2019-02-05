@@ -139,7 +139,7 @@ class Ojo():
         if os.path.isfile(path):
             self.last_automatic_resize = time.time()
             self.show(path, quick=True)
-            GObject.timeout_add(500, self.after_quick_start)
+            GObject.idle_add(self.after_quick_start)
         else:
             if not path.endswith('/'):
                 path += '/'
@@ -1300,7 +1300,7 @@ class Ojo():
         import threading
 
         def _exit(*args):
-            self.thumbs.stop()
+            self.thumbs.stop(join=False)
             GObject.idle_add(Gtk.main_quit)
 
         # attempt a standard exit
