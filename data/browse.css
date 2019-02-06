@@ -176,7 +176,7 @@ div:hover::-webkit-scrollbar-thumb {
 
 .item {
     position: relative;
-    margin: 7px;
+    margin: 8px;
     display: inline-block;
     overflow: hidden;
     box-shadow: 3px 3px 5px 1px #333;
@@ -185,7 +185,7 @@ div:hover::-webkit-scrollbar-thumb {
 
 .item.selected {
     margin: 0;
-    border: solid 7px #F07746;
+    border: solid 8px #F07746;
     overflow: hidden;
     border-radius: 4px;
     /*-webkit-transform: scale(1.12);*/
