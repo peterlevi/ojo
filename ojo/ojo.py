@@ -1300,7 +1300,8 @@ class Ojo():
         import threading
 
         def _exit(*args):
-            self.thumbs.stop(join=False)
+            self.thumbs.stop()
+            self.thumbs.join()
             GObject.idle_add(Gtk.main_quit)
 
         # attempt a standard exit
@@ -1313,7 +1314,7 @@ class Ojo():
             logging.warning('Exiting via suicide')
             os.kill(os.getpid(), 9)
 
-        suicide_timer = threading.Timer(2, _suicide)
+        suicide_timer = threading.Timer(5, _suicide)
         suicide_timer.daemon = True
         suicide_timer.start()
 
