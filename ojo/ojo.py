@@ -953,6 +953,7 @@ class Ojo():
         self.loading_folder = True
         thread_change_time = self.last_folder_change_time
         thread_folder = self.folder
+        self.js("set_font_size('%s')" % options["font_size"])
         thumbh = options['thumb_height']
         self.js("set_thumb_height(%d)" % thumbh)
         self.js("change_folder('%s')" % util.path2url(self.folder))

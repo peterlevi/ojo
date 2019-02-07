@@ -33,6 +33,10 @@ function set_mode(new_mode) {
     }
 }
 
+function set_font_size(root_font_size) {
+    $('html').css('font-size', root_font_size);
+}
+
 function set_thumb_height(new_thumb_height) {
     log('Setting thumb height: ' + new_thumb_height);
     thumb_height = new_thumb_height;

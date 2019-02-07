@@ -27,6 +27,7 @@ def load_options():
 
         'enlarge_smaller': False,
 
+        'font_size': '12pt',
         'thumb_height': 120,
 
         'sort_by': 'name',

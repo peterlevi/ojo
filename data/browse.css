@@ -3,12 +3,15 @@
     padding: 0;
 }
 
+html {
+    font-size: 12pt;
+}
+
 img {
     display: block;
 }
 
 body {
-    font-size: 12pt;
     font-family: Ubuntu, "Ubuntu Condensed", sans-serif;
     /* Note: browsing transparency 14.04 vs 16.04 */
     /* background: rgba(77, 75, 69, 0.9); */
@@ -24,7 +27,7 @@ body {
 
 #title span {
     cursor: pointer;
-    font-size: 16pt;
+    font-size: 1.25rem;
 }
 
 #title {
@@ -53,6 +56,7 @@ body {
     box-shadow: 0 -2pt 5pt #222;
     padding: 10pt;
     color: white;
+    font-size: 1rem;
 }
 
 #label .spinner {
@@ -76,6 +80,7 @@ body {
     display: none;
     float: right;
     padding-right: 20pt;
+    font-size: 1rem;
 }
 
 #folders {
@@ -139,6 +144,7 @@ div:hover::-webkit-scrollbar-thumb {
 .folder-category-label {
     color: #A19C90;
     padding-bottom: 10pt;
+    font-size: 1rem;
 }
 
 .folder {
@@ -148,7 +154,7 @@ div:hover::-webkit-scrollbar-thumb {
     margin-bottom: 8pt;
     max-width: 285pt;
     overflow: hidden;
-    font-size: 12pt;
+    font-size: 1rem;
 }
 
 .folder-icon {
@@ -194,7 +200,7 @@ div:hover::-webkit-scrollbar-thumb {
 
 .group {
     color: #A19C90;
-    font-size: 15pt;
+    font-size: 1.25rem;
     font-weight: normal;
     padding: 30pt 7pt 10pt;
     display: table-cell;
@@ -238,7 +244,7 @@ div.caption {
     background: rgba(0, 0, 0, 0.5);
     line-height: 20pt;
     padding-left: 5pt;
-    font-size: 10pt;
+    font-size: 0.833rem;
     z-index: -1;
 }
 
@@ -334,7 +340,7 @@ div.holder img {
     outline: none;
     background-color: transparent;
     color: white;
-    font-size: 14pt;
+    font-size: 1.25rem;
 }
 
 #progress {
