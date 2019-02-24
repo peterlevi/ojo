@@ -164,6 +164,10 @@ div:hover::-webkit-scrollbar-thumb {
     width: 16pt;
 }
 
+.folder-thumb {
+    margin-top: 8px;
+}
+
 .folder-note, .folder-command {
     float: right;
     margin-top: 4pt;

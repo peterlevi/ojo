@@ -1,7 +1,12 @@
 # coding=utf-8
 import os
 import logging
+import random
+
+from PIL import Image
 from gi.repository import Gio, GdkPixbuf, GObject
+
+from ojo import util
 
 # supported by PIL, as per http://infohost.nmt.edu/tcc/help/pubs/pil/formats.html:
 NON_RAW_FORMATS = {
@@ -170,6 +175,49 @@ def thumbnail(filename, thumb_path, width, height):
     return thumb_path
 
 
+def folder_thumbnail(folder, thumb_path, width, height):
+    # create the cache folder for the thumb
+    cache_dir = os.path.dirname(thumb_path)
+    if not os.path.exists(cache_dir):
+        os.makedirs(cache_dir)
+
+    images = list_images(folder)
+
+    if not images:
+        image = Image.new('RGBA', (1, 1))
+        image.save(thumb_path, 'PNG')
+        return thumb_path
+
+    from ojo.thumbs import Thumbs
+
+    random.seed(1234)
+    random.shuffle(images)
+
+    MAX_WIDTH = 400
+    MAX_IMAGES = 20
+    THUMB_HEIGHT = int(height / 3)
+    MARGIN = 10
+
+    image = Image.new('RGBA', (MAX_WIDTH + 100, THUMB_HEIGHT))
+
+    total_width = 0
+    for f in images[:MAX_IMAGES]:
+        fthumb = Thumbs.get_cached_thumbnail_path(f, height)
+        if not os.path.exists(fthumb):
+            fthumb = thumbnail(f, fthumb, 3 * height, height)
+        fthumb_image = get_pil(fthumb, MAX_WIDTH, THUMB_HEIGHT)
+        w, h = fthumb_image.size
+        if total_width + MARGIN + w > MAX_WIDTH + 100:
+            break
+
+        image.paste(fthumb_image, (total_width + MARGIN, 0, total_width + MARGIN + w, h))
+        total_width += MARGIN + w
+
+    image = image.crop((0, 0, min(MAX_WIDTH, total_width), THUMB_HEIGHT))
+    image.save(thumb_path, 'PNG')
+    return thumb_path
+
+
 def auto_rotate(orientation, im):
     from PIL import Image
     # We rotate regarding to the EXIF orientation information
@@ -313,3 +361,8 @@ def is_image(filename):
     except Exception:
         return False
 
+
+def list_images(folder):
+    return list(filter(
+        is_image,
+        [os.path.join(folder, f) for f in os.listdir(folder)]))

@@ -145,7 +145,18 @@ function add_folder(category_label, item, style) {
     if (item.icon) {
         elem.prepend("<img class='folder-icon' src='" + encode_path(item.icon) + "'/>");
     }
+    if (item.type === 'folder' && item.thumb) {
+        elem.append("<img class='folder-thumb' src='" + encode_path(item.thumb) + "'/>")
+    }
     $("#" + get_id(category_label)).append(elem);
+}
+
+function add_folderthumb(path, thumb_path) {
+    var elem = $(".folder[file='" + encode_path(path) + "']");
+    if (elem) {
+        elem.find('.folder-thumb').remove();
+        elem.append("<img class='folder-thumb' src='" + encode_path(thumb_path) + "'/>")
+    }
 }
 
 function add_group(label, is_first) {

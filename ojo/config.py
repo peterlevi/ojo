@@ -33,7 +33,8 @@ def load_options():
         'sort_by': 'name',
         'sort_order': 'asc',
         'show_hidden': False,
-        'show_captions': False,
+        'show_captions': True,
+        'show_folder_thumbs': True,
 
         'date_format': '%-d %B %Y',
         'show_groups_for': {

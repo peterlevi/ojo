@@ -38,7 +38,7 @@ from . import ojoconfig
 from . import config
 from .config import options
 from .metadata import metadata
-from .imaging import is_image
+from .imaging import is_image, list_images
 
 LEVELS = (logging.ERROR, logging.WARNING, logging.INFO, logging.DEBUG)
 
@@ -246,9 +246,7 @@ class Ojo():
             self.box.set_visible(True)
 
     def get_image_list(self):
-        images = list(filter(
-            is_image,
-            [os.path.join(self.folder, f) for f in os.listdir(self.folder)]))
+        images = list_images(self.folder)
         if not options['show_hidden']:
             images = [f for f in images if not os.path.basename(f).startswith('.')]
 
@@ -649,13 +647,20 @@ class Ojo():
             )
 
     def get_folder_item(self, path, group='', label=None, icon=None, note=None):
+        thumb = self.thumbs.get_cached_thumbnail_path(path)
+
+        if options.show_folder_thumbs and not os.path.exists(thumb):
+            self.thumbs.enqueue([path])
+
         return {
+            'type': 'folder',
             'label': label or _u(os.path.basename(path) or path),
             'path': util.path2url(path),
             'filename': os.path.basename(path) or path,
             'icon': util.path2url(icon or util.get_folder_icon(path, 16)),
             'group': group,
             'note': note,
+            'thumb': thumb if os.path.exists(thumb) else None,
         }
 
     def get_command_item(self, command, path, icon, group='', label='', nofocus=False):
@@ -667,6 +672,7 @@ class Ojo():
                 logging.exception('Could not get icon %s' % icon)
                 icon_url = None
         return {
+            'type': 'command',
             'label': label,
             'path': command,
             'filename': os.path.basename(path) if path else label,
@@ -829,12 +835,22 @@ class Ojo():
         for place in places:
             not_mounted = place.get('not_mounted', False)
             can_unmount = place.get('can_unmount', False)
-            item = self.get_folder_item(
-                path=place['path'] if not not_mounted else 'command:mount_and_go:' + place['mount_id'],
-                group='Places',
-                label=place['label'],
-                icon=place['icon'],
-            )
+
+            if not_mounted:
+                command = 'command:mount_and_go:' + place['mount_id']
+                item = self.get_command_item(
+                    command=command,
+                    path=command,
+                    group='Places',
+                    label=place['label'],
+                    icon=place['icon'])
+            else:
+                item = self.get_folder_item(
+                    path=place['path'],
+                    group='Places',
+                    label=place['label'],
+                    icon=place['icon'])
+
             if not_mounted:
                 item['with_command'] = {
                     'command': 'ojo-mount:' + place['mount_id'],
@@ -972,6 +988,17 @@ class Ojo():
                 'command:captions:true', None, None,
                 group='Options',
                 label='Show captions'))
+
+        if options['show_folder_thumbs']:
+            items.append(self.get_command_item(
+                'command:folder_thumbs:false', None, None,
+                group='Options',
+                label='Hide folder thumbs'))
+        else:
+            items.append(self.get_command_item(
+                'command:folder_thumbs:true', None, None,
+                group='Options',
+                label='Show folder thumbs'))
 
         return {
             'label': 'Options',
@@ -1147,10 +1174,14 @@ class Ojo():
         cache_thread.start()
 
     def thumb_ready(self, img, thumb_path):
-        self.js("add_image('%s', '%s')" %
-                (util.path2url(img), util.path2url(thumb_path)))
-        if img == self.selected:
-            self.select_in_browser(img)
+        if os.path.isfile(img):
+            self.js("add_image('%s', '%s')" %
+                    (util.path2url(img), util.path2url(thumb_path)))
+            if img == self.selected:
+                self.select_in_browser(img)
+        else:
+            self.js("add_folderthumb('%s', '%s')" %
+                    (util.path2url(img), util.path2url(thumb_path)))
 
     def thumb_failed(self, img, error_msg):
         self.js("remove_image_div('%s')" % util.path2url(img))

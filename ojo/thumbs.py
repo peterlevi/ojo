@@ -3,14 +3,21 @@ import os
 import time
 
 from .config import options
-from .imaging import is_image, thumbnail
+from .imaging import is_image, thumbnail, folder_thumbnail, list_images
 
 
 def _safe_thumbnail(filename, cached, width, height):
     try:
-        if os.path.exists(cached) or not is_image(filename):
+        if os.path.exists(cached):
             return cached
-        return thumbnail(filename, cached, width, height)
+
+        if os.path.isfile(filename) and not is_image(filename):
+            return cached
+
+        if os.path.isdir(filename):
+            return folder_thumbnail(filename, cached, width, height)
+        else:
+            return thumbnail(filename, cached, width, height)
     except:
         # caller will check whether the file was actually created
         return cached
@@ -20,8 +27,13 @@ class Thumbs:
     def __init__(self, ojo):
         self.ojo = ojo
 
-    def get_thumbs_cache_dir(self, height):
+    @staticmethod
+    def get_thumbs_cache_dir(height):
         return os.path.expanduser('~/.config/ojo/cache/%d' % height)
+
+    @staticmethod
+    def get_folderthumbs_cache_dir(height):
+        return os.path.expanduser('~/.config/ojo/cache/folderthumbs_%d' % height)
 
     def reset_queues(self):
         self.queue = []
@@ -96,10 +108,18 @@ class Thumbs:
         self.queue = files + [f for f in self.queue if f not in pq]
         self.thumbs_event.set()
 
-    def get_cached_thumbnail_path(self, filename, force_cache=False):
+    def enqueue(self, files):
+        self.queue = self.queue + [f for f in files if f not in self.queue]
+        self.thumbs_event.set()
+
+    @staticmethod
+    def get_cached_thumbnail_path(filename, force_cache=False, thumb_height=None):
         # Use gifs directly - webkit will handle transparency, animation, etc.
         if not force_cache and os.path.splitext(filename)[1].lower() == '.gif':
             return filename
+
+        if thumb_height is None:
+            thumb_height = options['thumb_height']
 
         import hashlib
         from .util import _bytes
@@ -111,9 +131,29 @@ class Thumbs:
         if folder.startswith(os.sep):
             folder = folder[1:]
         return os.path.join(
-            self.get_thumbs_cache_dir(options['thumb_height']),  # cache folder root
+            Thumbs.get_thumbs_cache_dir(thumb_height),  # cache folder root
             folder,  # mirror the original directory structure
             os.path.basename(filename) + '_' + hash + '.jpg')  # filename + hash of the name & time
+
+    @staticmethod
+    def get_folder_thumbnail_path(folder):
+        if not os.path.isdir(folder):
+            raise Exception('Requested folder thumb for non-folder: ' + folder)
+
+        import hashlib
+        from .util import _bytes
+
+        folder = os.path.abspath(folder)
+        hash = hashlib.md5(_bytes(folder)).hexdigest()
+
+        parent = os.path.dirname(folder)
+        if parent.startswith(os.sep):
+            parent = parent[1:]
+
+        return os.path.join(
+            Thumbs.get_folderthumbs_cache_dir(options['thumb_height']),  # folderthumbs cache folder root
+            parent,  # mirror the original directory structure
+            os.path.basename(folder) + '_' + hash + '.png')  # filename + hash of the name
 
     def add_thumbnail(self, img):
         th = options['thumb_height']
@@ -122,7 +162,8 @@ class Thumbs:
                                on_error=self.ojo.thumb_failed)
 
     def prepare_thumbnail(self, filename, width, height, on_done, on_error):
-        cached = self.get_cached_thumbnail_path(filename)
+        cached = self.get_folder_thumbnail_path(filename) if os.path.isdir(filename) \
+            else self.get_cached_thumbnail_path(filename)
 
         def _thumbnail_ready(thumb_path):
             if not os.path.isfile(thumb_path) or not os.path.getsize(thumb_path):
@@ -139,12 +180,7 @@ class Thumbs:
             callback=_thumbnail_ready)
 
     def clear_thumbnails(self, folder):
-        images = list(filter(
-            is_image,
-            [os.path.join(folder, f) for f in os.listdir(folder)]))
-
-        for img in images:
-
+        for img in list_images(folder):
             if self.killed:
                 return
 
