@@ -38,7 +38,7 @@ from . import ojoconfig
 from . import config
 from .config import options
 from .metadata import metadata
-from .imaging import is_image, list_images
+from .imaging import is_image, list_images, folder_thumb_height
 
 LEVELS = (logging.ERROR, logging.WARNING, logging.INFO, logging.DEBUG)
 
@@ -318,6 +318,14 @@ class Ojo():
         config.save_options()
         self.refresh_category(self.build_options_category())
         self.js('toggle_captions(%s)' % key)
+
+    def toggle_folder_thumbs(self, key):
+        options['show_folder_thumbs'] = key == 'true'
+        config.save_options()
+        self.refresh_category(self.build_options_category())
+        folder_info = self.build_folder_info()
+        import json
+        self.js("render_folders(%s)" % json.dumps(folder_info))
 
     def sort(self, key):
         if key in ('asc', 'desc'):
@@ -647,10 +655,12 @@ class Ojo():
             )
 
     def get_folder_item(self, path, group='', label=None, icon=None, note=None):
-        thumb = self.thumbs.get_cached_thumbnail_path(path)
-
-        if options.show_folder_thumbs and not os.path.exists(thumb):
-            self.thumbs.enqueue([path])
+        thumb = None
+        show_thumb = group == 'Subfolders' and options.show_folder_thumbs
+        if show_thumb:
+            thumb = self.thumbs.get_folder_thumbnail_path(path)
+            if not os.path.exists(thumb):
+                self.thumbs.enqueue([path])
 
         return {
             'type': 'folder',
@@ -660,7 +670,9 @@ class Ojo():
             'icon': util.path2url(icon or util.get_folder_icon(path, 16)),
             'group': group,
             'note': note,
-            'thumb': thumb if os.path.exists(thumb) else None,
+            'thumb': None if not show_thumb else (
+                thumb if os.path.exists(thumb) else
+                '~~pending~~:%d' % folder_thumb_height(options.thumb_height)),
         }
 
     def get_command_item(self, command, path, icon, group='', label='', nofocus=False):
@@ -701,6 +713,7 @@ class Ojo():
             'hidden': self.toggle_hidden,
             'groups': self.toggle_groups,
             'captions': self.toggle_captions,
+            'folder_thumbs': self.toggle_folder_thumbs,
             'mount_and_go': self.mount_and_go,
         }
         cmd = parts[0]
@@ -780,10 +793,7 @@ class Ojo():
         return nav_category
 
     def build_subfolders_category(self):
-        subfolders = self.filter_hidden([
-            os.path.join(self.folder, f) for f in sorted(os.listdir(self.folder))
-            if os.path.isdir(os.path.join(self.folder, f))
-        ])
+        subfolders = self.list_subfolders()
         parent_item = self.get_parent_folder_item()
         special_items = [parent_item] if parent_item else []
         subfolder_items = special_items + \
@@ -795,6 +805,12 @@ class Ojo():
             }
         else:
             return None
+
+    def list_subfolders(self):
+        return self.filter_hidden([
+            os.path.join(self.folder, f) for f in sorted(os.listdir(self.folder))
+            if os.path.isdir(os.path.join(self.folder, f))
+        ])
 
     def build_bookmarks_category(self):
         bookmark_items = [self.get_folder_item(b, group='Bookmarks') for b in
@@ -989,7 +1005,7 @@ class Ojo():
                 group='Options',
                 label='Show captions'))
 
-        if options['show_folder_thumbs']:
+        if options.show_folder_thumbs:
             items.append(self.get_command_item(
                 'command:folder_thumbs:false', None, None,
                 group='Options',
@@ -1180,8 +1196,9 @@ class Ojo():
             if img == self.selected:
                 self.select_in_browser(img)
         else:
-            self.js("add_folderthumb('%s', '%s')" %
-                    (util.path2url(img), util.path2url(thumb_path)))
+            if options.show_folder_thumbs:
+                self.js("add_folderthumb('%s', '%s')" %
+                        (util.path2url(img), util.path2url(thumb_path)))
 
     def thumb_failed(self, img, error_msg):
         self.js("remove_image_div('%s')" % util.path2url(img))

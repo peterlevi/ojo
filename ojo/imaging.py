@@ -175,6 +175,10 @@ def thumbnail(filename, thumb_path, width, height):
     return thumb_path
 
 
+def folder_thumb_height(thumb_height):
+    return int(thumb_height / 4)
+
+
 def folder_thumbnail(folder, thumb_path, width, height):
     # create the cache folder for the thumb
     cache_dir = os.path.dirname(thumb_path)
@@ -184,9 +188,7 @@ def folder_thumbnail(folder, thumb_path, width, height):
     images = list_images(folder)
 
     if not images:
-        image = Image.new('RGBA', (1, 1))
-        image.save(thumb_path, 'PNG')
-        return thumb_path
+        return None
 
     from ojo.thumbs import Thumbs
 
@@ -195,8 +197,8 @@ def folder_thumbnail(folder, thumb_path, width, height):
 
     MAX_WIDTH = 400
     MAX_IMAGES = 20
-    THUMB_HEIGHT = int(height / 3)
-    MARGIN = 10
+    THUMB_HEIGHT = folder_thumb_height(height)
+    MARGIN = 8
 
     image = Image.new('RGBA', (MAX_WIDTH + 100, THUMB_HEIGHT))
 
@@ -210,7 +212,7 @@ def folder_thumbnail(folder, thumb_path, width, height):
         if total_width + MARGIN + w > MAX_WIDTH + 100:
             break
 
-        image.paste(fthumb_image, (total_width + MARGIN, 0, total_width + MARGIN + w, h))
+        image.paste(fthumb_image, (total_width, 0, total_width + w, h))
         total_width += MARGIN + w
 
     image = image.crop((0, 0, min(MAX_WIDTH, total_width), THUMB_HEIGHT))

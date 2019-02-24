@@ -92,7 +92,6 @@ body {
     width: 330pt;
     background: rgba(105, 101, 93, 0.8);
     box-shadow: 3pt 3pt 5pt 0 #333;
-    padding-left: 10pt;
     max-width: 500pt;
     white-space: nowrap;
     overflow-x: hidden;
@@ -100,14 +99,13 @@ body {
     text-overflow: ellipsis;
     border-top: 10pt solid transparent;
     border-bottom: 10pt solid transparent;
-    border-right: 5pt solid transparent;
 }
 
 #images {
     position: absolute;
     top: 40pt;
     bottom: 40pt;
-    left: 352pt;
+    left: 337pt;
     right: 0;
     padding: 10pt 0;
     padding-right: 5pt;
@@ -143,18 +141,22 @@ div:hover::-webkit-scrollbar-thumb {
 
 .folder-category-label {
     color: #A19C90;
+    padding-left: 10pt;
     padding-bottom: 10pt;
     font-size: 1rem;
 }
 
 .folder {
-    padding-left: 15pt;
-    padding-right: 20pt;
+    padding: 4pt 20pt;
     color: #d3d0c5;
-    margin-bottom: 8pt;
-    max-width: 285pt;
+    /*max-width: 285pt;*/
     overflow: hidden;
     font-size: 1rem;
+}
+
+.folder.selected {
+    background-color: #F07746;
+    color: white;
 }
 
 .folder-icon {
@@ -164,8 +166,9 @@ div:hover::-webkit-scrollbar-thumb {
     width: 16pt;
 }
 
-.folder-thumb {
-    margin-top: 8px;
+.folder-thumb-placeholder {
+    margin-top: 8pt;
+    margin-bottom: 4pt;
 }
 
 .folder-note, .folder-command {
@@ -177,11 +180,6 @@ div:hover::-webkit-scrollbar-thumb {
 
 .folder-command:hover {
     color: white;
-}
-
-.folder.selected {
-    margin-bottom: 5pt;
-    border-bottom: solid 3pt #F07746;
 }
 
 .item {

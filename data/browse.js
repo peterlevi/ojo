@@ -5,6 +5,7 @@ var search = '';
 var current = '';
 var current_elem;
 var scroll_timeout;
+var folders_scroll_timeout;
 var goto_visible_timeout;
 var pending_add_timeouts = {};
 var thumb_height = 120;
@@ -146,16 +147,23 @@ function add_folder(category_label, item, style) {
         elem.prepend("<img class='folder-icon' src='" + encode_path(item.icon) + "'/>");
     }
     if (item.type === 'folder' && item.thumb) {
-        elem.append("<img class='folder-thumb' src='" + encode_path(item.thumb) + "'/>")
+        var height = parseInt(item.thumb.split(':')[1]);
+        var placeholder = $("<div class='folder-thumb-placeholder' style='min-height: " + height +"px'/>");
+        elem.append(placeholder);
+        if (item.thumb.indexOf('~~pending~~') !== 0) {
+            elem.attr('with_thumb', true);
+            placeholder.append("<img class='folder-thumb' src='" + encode_path(item.thumb) + "'/>")
+        }
     }
     $("#" + get_id(category_label)).append(elem);
 }
 
 function add_folderthumb(path, thumb_path) {
-    var elem = $(".folder[file='" + encode_path(path) + "']");
+    var elem = $(".folder[file='" + encode_path(path) + "'][group=Subfolders]");
     if (elem) {
-        elem.find('.folder-thumb').remove();
-        elem.append("<img class='folder-thumb' src='" + encode_path(thumb_path) + "'/>")
+        elem.attr('with_thumb', true);
+        elem.find('.folder-thumb-placeholder').find('.folder-thumb').remove();
+        elem.find('.folder-thumb-placeholder').append("<img class='folder-thumb' src='" + encode_path(thumb_path) + "'/>")
     }
 }
 
@@ -270,6 +278,7 @@ function change_folder(new_folder) {
     selected_file_per_class = {};
     current_elem = undefined;
     clearTimeout(scroll_timeout);
+    clearTimeout(folders_scroll_timeout);
     clearTimeout(goto_visible_timeout);
 
     _.map(_.values(pending_add_timeouts), clearTimeout);
@@ -333,7 +342,7 @@ function scroll_to_selected(el) {
     log('Scroll to selected');
     el = el || $('.selected');
     if (el.length) {
-        var baseDelta = el.hasClass('item') ? thumb_height : 40;
+        var baseDelta = el.hasClass('item') ? thumb_height : 50;
         var container = el.closest('.scroll-container');
         var scrollTop = container.scrollTop();
         var top = scrollTop + el.position().top;
@@ -551,6 +560,8 @@ function on_search(bypass_python) {
 
     clearTimeout(scroll_timeout);
     scroll_timeout = setTimeout(on_images_scroll, 200);
+    clearTimeout(folders_scroll_timeout);
+    folders_scroll_timeout = setTimeout(on_folders_scroll, 200);
 }
 
 function distance(el1, el2) {
@@ -563,6 +574,18 @@ function on_images_scroll() {
     var files = _.map(_.filter($('.item.match'), function(x) {
         var $x = $(x);
         return !$x.attr('with_thumb') && $x.position().top + $x.height() >= 0;
+    }), function(x) { return decode_path($(x).attr('file')) });
+    python('ojo-priority:' + JSON.stringify(files));
+}
+
+function on_folders_scroll() {
+    var container = $('#folders');
+    var files = _.map(_.filter($('.folder.match'), function(x) {
+        var $x = $(x);
+        return $x.attr('group') === 'Subfolders'
+            && !$x.attr('with_thumb')
+            && $x.position().top + $x.height() >= 0
+            && $x.position().top <= container.height() + 200;
     }), function(x) { return decode_path($(x).attr('file')) });
     python('ojo-priority:' + JSON.stringify(files));
 }
@@ -656,6 +679,11 @@ $(function() {
     $('#images').scroll(function() {
         clearTimeout(scroll_timeout);
         scroll_timeout = setTimeout(on_images_scroll, 200);
+    });
+
+    $('#folders').scroll(function() {
+        clearTimeout(folders_scroll_timeout);
+        folders_scroll_timeout = setTimeout(on_folders_scroll, 200);
     });
 
     $(window).resize(function() {

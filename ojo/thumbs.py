@@ -144,7 +144,8 @@ class Thumbs:
         from .util import _bytes
 
         folder = os.path.abspath(folder)
-        hash = hashlib.md5(_bytes(folder)).hexdigest()
+        mtime = os.path.getmtime(folder)
+        hash = hashlib.md5(_bytes(folder + '{0:.2f}'.format(mtime))).hexdigest()
 
         parent = os.path.dirname(folder)
         if parent.startswith(os.sep):
@@ -166,6 +167,10 @@ class Thumbs:
             else self.get_cached_thumbnail_path(filename)
 
         def _thumbnail_ready(thumb_path):
+            if thumb_path is None:
+                # valid situation for folder thumbs
+                return
+
             if not os.path.isfile(thumb_path) or not os.path.getsize(thumb_path):
                 on_error(filename, 'Could not create thumbnail')
             else:
