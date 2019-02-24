@@ -118,14 +118,14 @@ body {
 
 div::-webkit-scrollbar {
     opacity: 0.7;
-    width: 3pt;
+    width: 5pt;
 }
 
 div::-webkit-scrollbar-thumb {
     opacity: 0.7;
     background-color: #F07746;
-    width: 3pt;
-    border-radius: 2pt;
+    width: 5pt;
+    border-radius: 3pt;
     box-shadow: 1pt 2pt 6pt #444;
 }
 
@@ -308,7 +308,7 @@ div.holder img {
     top: 5pt;
     right: 10pt;
     height: 30pt;
-    width: 300pt;
+    width: 400pt;
     border-radius: 20pt;
     background-color: #302e2c;
     box-shadow: inset 2pt 2pt 5pt #151515;
@@ -334,7 +334,7 @@ div.holder img {
     position: absolute;
     right: 15pt;
     top: 0;
-    width: 250pt;
+    width: 350pt;
     height: 30pt;
     border: none;
     outline: none;

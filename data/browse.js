@@ -258,14 +258,12 @@ function change_folder(new_folder) {
     selection_class = '.item';
     selected_file_per_class = {};
     current_elem = undefined;
-    search = '';
     clearTimeout(scroll_timeout);
     clearTimeout(goto_visible_timeout);
 
     _.map(_.values(pending_add_timeouts), clearTimeout);
     pending_add_timeouts = {};
 
-    $('#search-field').val('');
     $('#title').html('');
     $('#folders').html('');
     $('#images').html('');
@@ -394,7 +392,6 @@ function goto_visible(first_or_last, onlyClass, immediate) {
                 $('.selectable.match' + (onlyClass ? onlyClass : (attempt === 0 ? selection_class : ''))),
                 function(x) {
                     var container = $(x).closest('.scroll-container');
-                    var scrollTop = container.scrollTop();
                     return $(x).position().top >= -5 &&
                         $(x).position().top + $(x).height() < container.height() + 5;
                 }
@@ -413,7 +410,12 @@ function goto_visible(first_or_last, onlyClass, immediate) {
 
 function on_key(key) {
     var sel = $('.selected');
-    if (key === 'Tab') {
+    if (key === 'slash') {
+        if (search && search !== '/' && sel.hasClass('folder')) {
+            var new_search = sel.attr('file');
+            python('ojo-search:' + new_search);
+        }
+    } else if (key === 'Tab') {
         var new_selection_class = selection_class === '.item' ? '.folder' : '.item';
         var new_file = selected_file_per_class[new_selection_class];
         if (new_file && $(".match.selectable[file='" + encode_path(new_file) + "']").length > 0) {
@@ -470,7 +472,8 @@ function matches_search(elem) {
     var file = (elem.attr('file') || '').replace(nbsp, ' ');
     var group = (elem.attr('group') || '').replace(nbsp, ' ');
 
-    var words = search.split(' ').filter(Boolean);
+    var strippedFolders = search.charAt(0) === '/' ? search.substr(search.lastIndexOf('/') + 1) : search;
+    var words = strippedFolders.split(' ').filter(Boolean);
 
     return _.every(words, function (word) {
         var wordLow = word.toLowerCase();
@@ -483,9 +486,13 @@ function matches_search(elem) {
     });
 }
 
-function on_search() {
+function on_search(bypass_python) {
     log('Searching for ' + search);
-    python('ojo-search:' + search);
+
+    if (!bypass_python) {
+        python('ojo-search:' + search);
+    }
+
     $('.selectable')
         .filter(function() {return !matches_search($(this))})
         .removeClass("match")
@@ -587,10 +594,18 @@ function toggle_captions(visible) {
     select('command:captions:' + (visible ? 'false' : 'true'));
 }
 
-function toggle_search(visible, bypass_search) {
+function toggle_search(visible, bypass_search, set_search_field_to, search_for) {
     $('#search-box').css('opacity', visible ? 1 : 0).css('z-index', visible ? 500 : -1);
     $('#search-button').css('display', visible ? 'none' : 'initial');
     if (visible) {
+        if (set_search_field_to) {
+            search = search_for;
+            $('#search-field').val(set_search_field_to);
+            if (!bypass_search) {
+                on_search(true);
+            }
+        }
+
         setTimeout(function () {
             $('#search-field').focus();
         }, 10);
@@ -598,7 +613,7 @@ function toggle_search(visible, bypass_search) {
         setTimeout(function () {
             $('#search-field').focus();
         }, 100);
-    } else if (search !== '') {
+    } else {
         search = '';
         $('#search-field').val('');
         if (!bypass_search) {

@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # -*- Mode: Python; coding: utf-8; indent-tabs-mode: nil; tab-width: 4 -*-
 ### BEGIN LICENSE
 # Copyright (C) 2013 Peter Levi <peterlevi@peterlevi.com>
@@ -390,7 +390,7 @@ class Ojo():
         if self.get_parent_folder():
             self.change_to_folder(self.get_parent_folder())
 
-    def change_to_folder(self, path, modify_history_position=None):
+    def change_to_folder(self, path, modify_history_position=None, on_ready=None):
         # make sure we fail early if there are permission or mounting issues:
         try:
             os.listdir(path)
@@ -422,6 +422,9 @@ class Ojo():
             # use a lock so we only have one change_folder operation running at a time
             with self.action_lock:
                 _go()
+
+            if on_ready:
+                on_ready()
 
         self.show_loading_folder_msg()
         threading.Timer(0, _go_locked).start()
@@ -585,15 +588,48 @@ class Ojo():
         elif action == 'ojo-folder-up':
             self.folder_parent()
         elif action == "ojo-search":
-            self.search_text = argument
-            if self.search_text:
-                self.toggle_search(True)
+            self.on_search(argument)
         elif action == "ojo-show-search":
             self.toggle_search(True)
         elif action == "ojo-mount":
             self.mount_only(argument)
         elif action == "ojo-unmount":
             self.unmount(argument)
+
+    def on_search(self, text):
+        self.search_text = text
+        if self.search_text:
+            self.toggle_search(True)
+
+        if self.search_text.startswith('/') or self.search_text.startswith('file://'):
+            self.search_text = self.search_text.strip()
+            if self.search_text.startswith('file://'):
+                self.search_text = util.url2path(self.search_text) + '/'
+            else:
+                self.search_text = self.search_text.replace('\\', '')
+            self.search_text = self.search_text.replace('//', '/')
+
+            path = self.search_text[:self.search_text.rfind('/') + 1]
+            if os.path.isdir(path) and os.path.normpath(path) != os.path.normpath(self.folder):
+                path = os.path.normpath(path)
+                try:
+                    os.listdir(path)
+                    search = self.search_text
+
+                    def _on_ready():
+                        self.search_text = search[search.rfind('/') + 1:]
+                        if is_image(search) or (os.path.isdir(search) and os.path.normpath(search) != path):
+                            self.toggle_search(
+                                True, bypass_search=True, set_search_field_to=search, search_for='')
+                            self.selected = search
+                            self.select_in_browser(search)
+                        else:
+                            self.toggle_search(
+                                True, bypass_search=True, set_search_field_to=search, search_for=self.search_text)
+
+                    self.change_to_folder(path, on_ready=_on_ready)
+                except OSError:
+                    pass
 
     def render_browser(self):
         self.browser.load('browse.html',
@@ -1191,10 +1227,13 @@ class Ojo():
 
     def go(self, direction, start_position=None):
         search = getattr(self, "search_text", "")
+        search = search[search.rfind('/') + 1:]
+        words = [w.lower() for w in search.split(' ') if w]
+
         applicable = self.images if not search else \
             [f for f in self.images
-             if os.path.basename(f).lower().find(search.lower()) >= 0
-             or (self.get_group_key(f) or '').find(search.lower()) >= 0]
+             if all(os.path.basename(f).lower().find(w) >= 0 for w in words)
+             or all((self.get_group_key(f) or '').find(w) >= 0 for w in words)]
         filename = None
         position = start_position - direction if start_position is not None \
             else applicable.index(self.selected)
@@ -1326,10 +1365,14 @@ class Ojo():
             event.hardware_keycode in hw_keycodes
         )
 
-    def toggle_search(self, visible, bypass_search=False):
+    def toggle_search(self, visible, bypass_search=False, set_search_field_to='', search_for=''):
         self.is_in_search = visible
-        self.js("toggle_search(%s, %s)" % ('true' if visible else 'false',
-                                           'true' if bypass_search else 'false'))
+        self.js("toggle_search(%s, %s, '%s', '%s')" % (
+            'true' if visible else 'false',
+            'true' if bypass_search else 'false',
+            set_search_field_to,
+            search_for
+        ))
 
     def ctrl_key(self, event):
         return event and (event.state & (Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.MOD1_MASK))
