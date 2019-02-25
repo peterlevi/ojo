@@ -179,8 +179,16 @@ def folder_thumb_height(thumb_height):
     return int(thumb_height / 4)
 
 
-def folder_thumbnail(folder, thumb_path, width, height):
-    # create the cache folder for the thumb
+def folder_thumbnail(folder, thumb_path, width, height, kill_event):
+    """
+    Create the cache folder for the thumb
+    :param folder: folder path
+    :param thumb_path: thumb path to save thumb to
+    :param width: max width of a single image thumbnail (standard non-folder one)
+    :param height: height of a single image thumbnail (standard non-folder one, as set in options)
+    :param kill_event: multiprocessing.Event that will be set when app is exiting
+    :return: thumb path, or None if folder contains no images
+    """
     cache_dir = os.path.dirname(thumb_path)
     if not os.path.exists(cache_dir):
         os.makedirs(cache_dir)
@@ -204,16 +212,21 @@ def folder_thumbnail(folder, thumb_path, width, height):
 
     total_width = 0
     for f in images[:MAX_IMAGES]:
-        fthumb = Thumbs.get_cached_thumbnail_path(f, height)
-        if not os.path.exists(fthumb):
-            fthumb = thumbnail(f, fthumb, 3 * height, height)
-        fthumb_image = get_pil(fthumb, MAX_WIDTH, THUMB_HEIGHT)
-        w, h = fthumb_image.size
-        if total_width + MARGIN + w > MAX_WIDTH + 100:
-            break
+        if kill_event.is_set():
+            return None
 
-        image.paste(fthumb_image, (total_width, 0, total_width + w, h))
-        total_width += MARGIN + w
+        try:
+            fthumb = Thumbs.get_cached_thumbnail_path(f, height)
+            if not os.path.exists(fthumb):
+                fthumb = thumbnail(f, fthumb, 3 * height, height)
+            fthumb_image = get_pil(fthumb, MAX_WIDTH, THUMB_HEIGHT)
+            w, h = fthumb_image.size
+            if total_width + MARGIN + w > MAX_WIDTH + 100:
+                break
+            image.paste(fthumb_image, (total_width, 0, total_width + w, h))
+            total_width += MARGIN + w
+        except Exception:
+            logging.exception('Failed thumbing %s' % f)
 
     image = image.crop((0, 0, min(MAX_WIDTH, total_width), THUMB_HEIGHT))
     image.save(thumb_path, 'PNG')

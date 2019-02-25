@@ -1,12 +1,13 @@
 import logging
 import os
 import time
+import multiprocessing
 
 from .config import options
 from .imaging import is_image, thumbnail, folder_thumbnail, list_images
 
 
-def _safe_thumbnail(filename, cached, width, height):
+def _safe_thumbnail(filename, cached, width, height, kill_event):
     try:
         if os.path.exists(cached):
             return cached
@@ -15,7 +16,7 @@ def _safe_thumbnail(filename, cached, width, height):
             return cached
 
         if os.path.isdir(filename):
-            return folder_thumbnail(filename, cached, width, height)
+            return folder_thumbnail(filename, cached, width, height, kill_event)
         else:
             return thumbnail(filename, cached, width, height)
     except:
@@ -40,21 +41,24 @@ class Thumbs:
 
     def stop(self):
         self.killed = True
+        self.kill_event.set()
         self.thumbs_event.set()
         self.pool.close()
+        self.folders_pool.close()
 
     def join(self):
         self.pool.join()
+        self.folders_pool.join()
         self.thread.join()
 
     def start(self):
         import threading
-        import multiprocessing
+        self.queue = []
         self.pool = multiprocessing.Pool(processes=max(1, multiprocessing.cpu_count() - 1))
-
+        self.folders_pool = multiprocessing.Pool(processes=max(1, multiprocessing.cpu_count() - 1))
         self.killed = False
+        self.kill_event = multiprocessing.Manager().Event()
         self.thumbs_event = threading.Event()
-        self.reset_queues()
 
         def _thumbs_thread():
             # delay the start to give the caching thread some time to prepare next images
@@ -163,7 +167,8 @@ class Thumbs:
                                on_error=self.ojo.thumb_failed)
 
     def prepare_thumbnail(self, filename, width, height, on_done, on_error):
-        cached = self.get_folder_thumbnail_path(filename) if os.path.isdir(filename) \
+        is_folder = os.path.isdir(filename)
+        cached = self.get_folder_thumbnail_path(filename) if is_folder \
             else self.get_cached_thumbnail_path(filename)
 
         def _thumbnail_ready(thumb_path):
@@ -179,9 +184,10 @@ class Thumbs:
         if self.killed:
             return
 
-        self.pool.apply_async(
+        pool = self.folders_pool if is_folder else self.pool
+        pool.apply_async(
             _safe_thumbnail,
-            args=(filename, cached, width, height),
+            args=(filename, cached, width, height, self.kill_event),
             callback=_thumbnail_ready)
 
     def clear_thumbnails(self, folder):

@@ -204,7 +204,8 @@ div:hover::-webkit-scrollbar-thumb {
     color: #A19C90;
     font-size: 1.25rem;
     font-weight: normal;
-    padding: 30pt 7pt 10pt;
+    font-style: italic;
+    padding: 40pt 7pt 15pt;
     display: table-cell;
 }
 
