@@ -28,13 +28,13 @@ def load_options():
         'enlarge_smaller': False,
 
         'font_size': '12pt',
-        'thumb_height': 120,
+        'thumb_height': 180,
 
         'sort_by': 'name',
         'sort_order': 'asc',
         'show_hidden': False,
         'show_captions': True,
-        'show_folder_thumbs': True,
+        'show_folder_thumbs': False,
 
         'date_format': '%-d %B %Y',
         'show_groups_for': {
