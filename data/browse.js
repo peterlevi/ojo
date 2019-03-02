@@ -342,7 +342,7 @@ function scroll_to_selected(el) {
     log('Scroll to selected');
     el = el || $('.selected');
     if (el.length) {
-        var baseDelta = el.hasClass('item') ? thumb_height : 50;
+        var baseDelta = el.hasClass('item') ? thumb_height : 80;
         var container = el.closest('.scroll-container');
         var scrollTop = container.scrollTop();
         var top = scrollTop + el.position().top;

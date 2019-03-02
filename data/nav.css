@@ -1,0 +1,29 @@
+* {
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    height: 25pt;
+}
+
+#nav-main {
+    height: 20pt;
+    font-size: 20pt;
+    background-color: rgba(0, 0, 0, 0.4);
+    color: lightgrey;
+    padding: 10pt 10pt;
+    text-align: right;
+    box-shadow: 0 2pt 5pt #222;
+}
+
+#nav-main i {
+    line-height: 20pt;
+    text-shadow: 0 0 5pt darkgrey;
+    padding: 0 10pt;
+}
+
+#nav-main i:hover {
+    color: white;
+    cursor: pointer;
+}
