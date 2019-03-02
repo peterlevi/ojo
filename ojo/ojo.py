@@ -109,7 +109,13 @@ class Ojo():
         self.box = Gtk.VBox()
         self.box.set_visible(True)
         self.box.add(self.scroll_window)
-        self.window.add(self.box)
+
+        self.overlay_box = Gtk.Overlay()
+        self.overlay_box.set_visible(True)
+        self.overlay_box.add(self.box)
+        self.window.add(self.overlay_box)
+
+        self.overlays = {}
 
         self.window.set_events(
             Gdk.EventMask.BUTTON_PRESS_MASK |
@@ -620,6 +626,12 @@ class Ojo():
             self.mount_only(argument)
         elif action == "ojo-unmount":
             self.unmount(argument)
+        elif action == 'ojo-left':
+            GObject.idle_add(lambda: self.go(-1))
+        elif action == 'ojo-right':
+            GObject.idle_add(lambda: self.go(1))
+        elif action == 'ojo-browse':
+            self.set_mode('folder')
 
     def on_search(self, text):
         self.search_text = text
@@ -662,6 +674,28 @@ class Ojo():
                            on_action_fn=self.safe(self.on_browser_action))
         self.browser.add_to(self.browser_wrapper)
         self.browser.grab_focus()
+
+    def load_overlay(self, html_path):
+        if html_path in self.overlays:
+            return
+
+        from . import webview
+        overlay_browser = webview.WebView()
+        overlay_browser.load(html_path,
+                                  on_load_fn=None,
+                                  on_action_fn=self.safe(self.on_browser_action))
+        # while len(self.overlay_box.get_children()) > 1:
+        #     self.overlay_box.get_children()[1].destroy()
+        web_view = overlay_browser.web_view
+        web_view.set_resize_mode(Gtk.ResizeMode.QUEUE)
+        web_view.set_halign(Gtk.Align.FILL)
+        web_view.set_valign(Gtk.Align.START)
+        web_view.set_visible(False)
+        self.overlay_box.add_overlay(web_view)
+        self.overlays[html_path] = web_view
+
+    def toggle_overlay(self, html_path, visible):
+        self.overlays[html_path].set_visible(visible)
 
     def get_parent_folder_item(self):
         if self.folder == '/':
@@ -1398,6 +1432,9 @@ class Ojo():
             if self.mode == "image" and self.selected != self.shown:
                 self.show(self.selected)
             elif self.mode == "folder":
+                for overlay in self.overlays.values():
+                    overlay.set_visible(False)
+
                 self.been_in_folder_mode = True
                 self.shown = None
                 self.window.set_title(self.folder)
@@ -1407,6 +1444,7 @@ class Ojo():
             self.update_cursor()
             self.scroll_window.set_visible(self.mode == 'image')
             self.image.set_visible(self.mode == 'image')
+            self.load_overlay('nav.html')
             self.browser_wrapper.set_visible(self.mode == 'folder')
             self.update_margins()
             self.js("set_mode('%s')" % self.mode)
@@ -1566,6 +1604,7 @@ class Ojo():
     def mouse_motion(self, widget, event):
         if not self.mousedown_zoomed and not self.mousedown_panning:
             self.set_cursor(Gdk.CursorType.ARROW)
+            self.toggle_overlay('nav.html', self.mode == 'image')
             return
 
         self.register_action()
