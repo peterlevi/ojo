@@ -289,7 +289,7 @@ class Ojo():
         elif sort_by == 'date':
             import datetime
             ts = os.stat(image).st_mtime
-            return datetime.datetime.fromtimestamp(ts).strftime(options['date_format'])
+            return self.format_date(ts)
         elif sort_by == 'exif_date':
             m = metadata.get(image)
             d = m['exif'].get('Exif.Photo.DateTimeOriginal', None)
@@ -304,6 +304,10 @@ class Ojo():
             return next(b[1] for b in buckets if b[0] > size)
         else:
             return None
+
+    def format_date(self, ts):
+        import datetime
+        return datetime.datetime.fromtimestamp(ts).strftime(options['date_format'])
 
     def toggle_hidden(self, key):
         options['show_hidden'] = key == 'true'
@@ -542,8 +546,7 @@ class Ojo():
             [f for f in files if not os.path.basename(f).startswith('.')]
 
     def get_file_info(self, meta):
-        import datetime
-        file_date = datetime.datetime.fromtimestamp(meta['file_date']).strftime(options['date_format'])
+        file_date = self.format_date(meta['file_date'])
 
         try:
             exif = meta['exif']
@@ -1075,7 +1078,11 @@ class Ojo():
                 if not os.path.exists(self.thumbs.get_cached_thumbnail_path(x[1]))
             ])
 
-            self.js("set_image_count(%d)" % len(self.images))
+            folder_size = util.human_size(
+                sum(os.stat(img).st_size for img in self.images)) if self.images else ''
+            latest_date = self.format_date(
+                max(os.stat(img).st_mtime for img in self.images)) if self.images else ''
+            self.js("set_image_count(%d, '%s', '%s')" % (len(self.images), folder_size, latest_date))
 
             last_group = None
             for img in self.images:

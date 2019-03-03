@@ -100,7 +100,7 @@ def escape_gtk(fn):
 
 
 def human_size(num_bytes):
-    for unit in ['bytes', 'kb', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB']:
+    for unit in ['bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB']:
         if abs(num_bytes) < 1000.0:
             return "%3.1f %s" % (num_bytes, unit)
         num_bytes /= 1000.0

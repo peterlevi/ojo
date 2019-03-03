@@ -114,9 +114,14 @@ function get_id(s) {
 }
 
 function add_folder_category(label) {
-    $("#folders").append(
-        "<div class='folder-category' id='" + get_id(label) + "' label='" + esc(label) + "'" + "'>" +
-        "<div class='folder-category-label'>" + esc(label) + "</div></div>");
+    if (label === 'Navigate') {
+        $("#title").prepend(
+            "<div class='navigation' id='" + get_id(label) + "' label='" + esc(label) + "'" + "'></div>");
+    } else {
+        $("#folders").append(
+            "<div class='folder-category' id='" + get_id(label) + "' label='" + esc(label) + "'" + "'>" +
+            "<div class='folder-category-label'>" + esc(label) + "</div></div>");
+    }
 }
 
 function add_folder(category_label, item, style) {
@@ -225,8 +230,13 @@ function add_image_div(file, name, selected, show_caption, group, thumb, thumb_w
     }
 }
 
-function set_image_count(count) {
+function set_image_count(count, folder_size, latest_date) {
     image_count = count;
+    $('#title-info').html(
+        (count > 0 ? count : 'No') + ' images' +
+        (folder_size ? '<span class="separator"/>' + folder_size : '') +
+        (latest_date ? '<span class="separator"/>' + latest_date : '')
+    );
 }
 
 function update_progress() {

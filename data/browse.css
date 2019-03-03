@@ -30,7 +30,7 @@ body {
     font-size: 1.25rem;
 }
 
-#title {
+#header {
     position: absolute;
     color: #A19C90;
     padding: 10pt 10pt 10pt;
@@ -41,6 +41,33 @@ body {
     z-index: 100;
     background: #3D3C38;
     box-shadow: 0 2pt 5pt #222;
+}
+
+.navigation {
+    display: inline-block;
+    padding: 0 30pt 0 0;
+}
+
+.navigation .folder {
+    display: inline-block;
+    padding: 4pt 0;
+    margin: 4pt 5pt 0 0;
+}
+
+#title {
+    display: inline-block;
+}
+
+#title-info {
+    display: inline-block;
+    float: right;
+    font-size: 1rem;
+    line-height: 21pt;
+    margin-right: 40pt;
+}
+
+#folder-size {
+    margin-left: 20pt;
 }
 
 #label {
@@ -67,11 +94,11 @@ body {
     height: 30pt;
 }
 
-#label .separator {
+.separator {
     padding: 0 10pt;
 }
 
-#label .separator:after {
+.separator:after {
     content: '|';
     color: #A19C90;
 }
