@@ -114,6 +114,26 @@ def make_transparent(widget, color='rgba(0, 0, 0, 0)'):
     widget.override_background_color(Gtk.StateFlags.NORMAL, rgba)
 
 
+def debounce(wait):
+    """ Decorator that will postpone a functions
+        execution until after wait seconds
+        have elapsed since the last time it was invoked. """
+    from threading import Timer
+
+    def decorator(fn):
+        def debounced(*args, **kwargs):
+            def call_it():
+                fn(*args, **kwargs)
+            try:
+                debounced.t.cancel()
+            except(AttributeError):
+                pass
+            debounced.t = Timer(wait, call_it)
+            debounced.t.start()
+        return debounced
+    return decorator
+
+
 if __name__ == "__main__":
     print(get_folder_icon('/', 16))
 
