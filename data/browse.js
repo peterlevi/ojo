@@ -342,7 +342,7 @@ function scroll_to_selected(el) {
     log('Scroll to selected');
     el = el || $('.selected');
     if (el.length) {
-        var baseDelta = el.hasClass('item') ? thumb_height : 50;
+        var baseDelta = el.hasClass('item') ? thumb_height : 80;
         var container = el.closest('.scroll-container');
         var scrollTop = container.scrollTop();
         var top = scrollTop + el.position().top;
@@ -570,24 +570,33 @@ function distance(el1, el2) {
     return dx*dx + dy*dy
 }
 
-function on_images_scroll() {
-    var files = _.map(_.filter($('.item.match'), function(x) {
+function files_needing_thumb_in_view(applicable, container) {
+    return _.map(_.filter(applicable, function (x) {
         var $x = $(x);
-        return !$x.attr('with_thumb') && $x.position().top + $x.height() >= 0;
-    }), function(x) { return decode_path($(x).attr('file')) });
-    python('ojo-priority:' + JSON.stringify(files));
+        return !$x.attr('with_thumb')
+            && $x.position().top + $x.height() >= 0
+            && $x.position().top <= container.height() + 200;
+    }), function (x) {
+        return decode_path($(x).attr('file'))
+    });
+}
+
+function on_images_scroll() {
+    var container = $('#images');
+    var applicable = $('.item.match');
+    var files = files_needing_thumb_in_view(applicable, container);
+    if (files.length > 0) {
+        python('ojo-priority:' + JSON.stringify(files));
+    }
 }
 
 function on_folders_scroll() {
     var container = $('#folders');
-    var files = _.map(_.filter($('.folder.match'), function(x) {
-        var $x = $(x);
-        return $x.attr('group') === 'Subfolders'
-            && !$x.attr('with_thumb')
-            && $x.position().top + $x.height() >= 0
-            && $x.position().top <= container.height() + 200;
-    }), function(x) { return decode_path($(x).attr('file')) });
-    python('ojo-priority:' + JSON.stringify(files));
+    var applicable = $('.folder.match[group=Subfolders]');
+    var folders = files_needing_thumb_in_view(applicable, container);
+    if (folders.length > 0) {
+        python('ojo-priority-folders:' + JSON.stringify(folders));
+    }
 }
 
 var entityMap = {

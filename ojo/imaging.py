@@ -4,9 +4,9 @@ import logging
 import random
 
 from PIL import Image
+import gi
+gi.require_version('GdkPixbuf', '2.0')
 from gi.repository import Gio, GdkPixbuf, GObject
-
-from ojo import util
 
 # supported by PIL, as per http://infohost.nmt.edu/tcc/help/pubs/pil/formats.html:
 NON_RAW_FORMATS = {
@@ -172,7 +172,7 @@ def thumbnail(filename, thumb_path, width, height):
         except Exception:
             use_pil()
 
-    return thumb_path
+    return filename, thumb_path
 
 
 def folder_thumb_height(thumb_height):
@@ -187,7 +187,7 @@ def folder_thumbnail(folder, thumb_path, width, height, kill_event):
     :param width: max width of a single image thumbnail (standard non-folder one)
     :param height: height of a single image thumbnail (standard non-folder one, as set in options)
     :param kill_event: multiprocessing.Event that will be set when app is exiting
-    :return: thumb path, or None if folder contains no images
+    :return: (folder, thumb path), or (folder, None) if folder contains no images
     """
     cache_dir = os.path.dirname(thumb_path)
     if not os.path.exists(cache_dir):
@@ -196,7 +196,7 @@ def folder_thumbnail(folder, thumb_path, width, height, kill_event):
     images = list_images(folder)
 
     if not images:
-        return None
+        return folder, None
 
     from ojo.thumbs import Thumbs
 
@@ -213,12 +213,12 @@ def folder_thumbnail(folder, thumb_path, width, height, kill_event):
     total_width = 0
     for f in images[:MAX_IMAGES]:
         if kill_event.is_set():
-            return None
+            return folder, None
 
         try:
             fthumb = Thumbs.get_cached_thumbnail_path(f, height)
             if not os.path.exists(fthumb):
-                fthumb = thumbnail(f, fthumb, 3 * height, height)
+                _, fthumb = thumbnail(f, fthumb, 3 * height, height)
             fthumb_image = get_pil(fthumb, MAX_WIDTH, THUMB_HEIGHT)
             w, h = fthumb_image.size
             if total_width + MARGIN + w > MAX_WIDTH + 100:
@@ -230,7 +230,7 @@ def folder_thumbnail(folder, thumb_path, width, height, kill_event):
 
     image = image.crop((0, 0, min(MAX_WIDTH, total_width), THUMB_HEIGHT))
     image.save(thumb_path, 'PNG')
-    return thumb_path
+    return folder, thumb_path
 
 
 def auto_rotate(orientation, im):

@@ -39,6 +39,8 @@ from . import config
 from .config import options
 from .metadata import metadata
 from .imaging import is_image, list_images, folder_thumb_height
+from .thumbs import Thumbs
+
 
 LEVELS = (logging.ERROR, logging.WARNING, logging.INFO, logging.DEBUG)
 
@@ -407,6 +409,7 @@ class Ojo():
 
         def _go():
             self.thumbs.reset_queues()
+            self.folder_thumbs.reset_queues()
             self.pix_cache[False].clear()
             self.pix_cache[True].clear()
 
@@ -525,6 +528,8 @@ class Ojo():
         from . import thumbs
         self.thumbs = thumbs.Thumbs(ojo=self)
         self.thumbs.start()
+        self.folder_thumbs = thumbs.Thumbs(ojo=self)
+        self.folder_thumbs.start()
 
     def show_loading_folder_msg(self):
         if options['sort_by'] == 'exif_date':
@@ -571,9 +576,19 @@ class Ojo():
     def is_command(self, s):
         return s.startswith('command:')
 
-    def on_browser_action(self, action, argument):
+    @util.debounce(0.05)
+    def on_priority(self, argument):
         import json
+        files = json.loads(argument)
+        self.thumbs.priority_thumbs([util.url2path(f) for f in files])
 
+    @util.debounce(0.05)
+    def on_priority_folders(self, argument):
+        import json
+        files = json.loads(argument)
+        self.folder_thumbs.priority_thumbs([util.url2path(f) for f in files])
+
+    def on_browser_action(self, action, argument):
         if action in ('ojo', 'ojo-select'):
             path = argument if self.is_command(argument) else util.url2path(argument)
             self.selected = path
@@ -587,8 +602,9 @@ class Ojo():
 
                 GObject.idle_add(self.safe(_do))
         elif action == 'ojo-priority':
-            files = json.loads(argument)
-            self.thumbs.priority_thumbs([util.url2path(f) for f in files])
+            self.on_priority(argument)
+        elif action == 'ojo-priority-folders':
+            self.on_priority_folders(argument)
         elif action == 'ojo-handle-key':
             self.process_key(key=argument, skip_browser=True)
         elif action == 'ojo-folder-up':
@@ -658,9 +674,9 @@ class Ojo():
         thumb = None
         show_thumb = group == 'Subfolders' and options.show_folder_thumbs
         if show_thumb:
-            thumb = self.thumbs.get_folder_thumbnail_path(path)
+            thumb = self.folder_thumbs.get_folder_thumbnail_path(path)
             if not os.path.exists(thumb):
-                self.thumbs.enqueue([path])
+                self.folder_thumbs.enqueue([path])
 
         return {
             'type': 'folder',
@@ -1082,7 +1098,7 @@ class Ojo():
                 ))
                 time.sleep(0.001)
 
-                cached = self.thumbs.get_cached_thumbnail_path(img)
+                cached = Thumbs.get_cached_thumbnail_path(img)
                 if os.path.exists(cached):
                     self.thumb_ready(img, thumb_path=cached)
                     if img == self.selected:
@@ -1389,22 +1405,13 @@ class Ojo():
 
         def _exit(*args):
             self.thumbs.stop()
+            self.folder_thumbs.stop()
             self.thumbs.join()
+            self.folder_thumbs.join()
             GObject.idle_add(Gtk.main_quit)
 
-        # attempt a standard exit
         threading.Timer(0, _exit).start()
 
-        # if failed, suicide with SIGKILL after 2 seconds
-        def _suicide():
-            import os
-            import logging
-            logging.warning('Exiting via suicide')
-            os.kill(os.getpid(), 9)
-
-        suicide_timer = threading.Timer(5, _suicide)
-        suicide_timer.daemon = True
-        suicide_timer.start()
 
     def check_letter_shortcut(self, event, hw_keycodes, mask=0):
         return (
