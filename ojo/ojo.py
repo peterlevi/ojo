@@ -1096,18 +1096,20 @@ class Ojo():
 
                 if self.last_folder_change_time != thread_change_time or thread_folder != self.folder:
                     return
-                self.js("add_image_div('%s', '%s', %s, %s, '%s')" % (
-                    util.path2url(img),
-                    self.safe_basename(img),
-                    'true' if img == self.selected else 'false',
-                    'true' if options['show_captions'] else 'false',
-                    group if group else '',
-                ))
+
                 time.sleep(0.001)
 
                 cached = Thumbs.get_cached_thumbnail_path(img)
                 if os.path.exists(cached):
-                    self.thumb_ready(img, thumb_path=cached)
+                    self.js("add_image_div('%s', '%s', %s, %s, '%s', '%s')" % (
+                        util.path2url(img),
+                        self.safe_basename(img),
+                        'true' if img == self.selected else 'false',
+                        'true' if options['show_captions'] else 'false',
+                        group if group else '',
+                        cached
+                    ))
+
                     if img == self.selected:
                         self.update_selected_info(img)
                 else:
@@ -1116,6 +1118,16 @@ class Ojo():
 
                     thumb_width = float(w) * min(h, thumbh) / h
                     info = self.get_file_info(meta)
+
+                    self.js("add_image_div('%s', '%s', %s, %s, '%s', undefined, %f)" % (
+                        util.path2url(img),
+                        self.safe_basename(img),
+                        'true' if img == self.selected else 'false',
+                        'true' if options['show_captions'] else 'false',
+                        group if group else '',
+                        thumb_width
+                    ))
+
                     self.js("set_file_info('%s', %s, %d)" % (
                         util.path2url(img),
                         json.dumps(info),
