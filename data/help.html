@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<!--
+### BEGIN LICENSE
+# Copyright (C) 2013 Peter Levi <peterlevi@peterlevi.com>
+# This program is free software: you can redistribute it and/or modify it
+# under the terms of the GNU General Public License version 3, as published
+# by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranties of
+# MERCHANTABILITY, SATISFACTORY QUALITY, or FITNESS FOR A PARTICULAR
+# PURPOSE.  See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along
+# with this program.  If not, see <http://www.gnu.org/licenses/>.
+### END LICENSE
+-->
+
+<html>
+
+<head>
+    <link rel="stylesheet" href="help.css" type="text/css"/>
+    <link href="lib/fontawesome/css/all.css" rel="stylesheet"> <!--load all styles -->
+</head>
+
+<body>
+<div id="help-main">
+    <span>Ojo is best controlled via the keyboard. Here are the shortcuts you need to know:</span>
+
+    <h2>Browse and image modes</h2>
+
+    <div><span class="key">F11</span>- fullscreen mode</div>
+    <div><span class="key">Alt-F4</span>- exit Ojo</div>
+
+    <h2>Image mode</h2>
+
+    <div><span class="key">Enter</span> - switch to browse mode, i.e. show all images in current folder and allow
+        navigating the folder tree
+    </div>
+    <div><span class="key">Arrows</span>and <span class="key">PgUp/PgDown</span>- move back and forth between images
+    </div>
+    <div><span class="key">Home</span>/ <span class="key">End</span>- go to first/last image</div>
+    <div>Press and hold mouse to zoom to specific point at 100%, then hold and move to "look around"</div>
+    <div><span class="key">Z</span>- toggles zoom between 100% and Fit-to-window (partial zooming is not supported yet)
+    </div>
+    <div><span class="key">Esc</span>- return to browse mode if you were there before, or exit if you just opened an image</div>
+
+    <h2>Browse mode</h2>
+
+    <div><span class="key">Enter</span> - open selected image or folder</div>
+    <div><span class="key">Arrows</span>and <span class="key">PgUp/PgDown</span>- navigate around</div>
+    <div><span class="key">Home</span>/ <span class="key">End</span>- go to first/last image or folder</div>
+    <div><span class="key">Tab</span>/ <span class="key">Shift-Tab</span>- switch focus between files and folders list
+    </div>
+    <div><span class="key">Backspace</span>/ <span class="key">Alt-Up</span>/ <span class="key">Ctrl-Up</span>- move one
+        folder up
+    </div>
+    <div><span class="key">Ctrl-/</span>- jump to the filesystem root</div>
+    <div><span class="key">Alt-Left</span>/ <span class="key">Alt-Right</span>- go back / go forward in history</div>
+    <div><span class="key">Ctrl +/=</span>/ <span class="key">Ctrl -</span>- increase / decrease size of the thumbnails
+    </div>
+    <div><span class="key">F5</span>- reload current folder (file changes are not reflected automatically)</div>
+    <div><span class="key">Ctrl-F5</span>- refresh/recreate all thumbnails in the current folder</div>
+    <div><span class="key">Ctrl-F</span>or <span class="key">type text directly</span>- enter search/filter mode.
+        Use this to filter images, folders and commands.
+        E.g. type <span class="key">.jpg</span>to see just JPEG files. Or type <span class="key">date</span>to focus the
+        <span class="key">Sort by date</span>command.
+        The filtered view over the images remains if you go into Image mode and start cycling the images.
+        Press <span class="key">Esc</span>to clear the filter and exit search mode (but keep in mind a second <span
+                class="key">Esc</span>will exit Ojo).
+    </div>
+</div>
+</body>
+
+<script src="lib/jquery-2.0.2.min.js" type="text/javascript"></script>
+<script src="lib/underscore-min.js" type="text/javascript"></script>
+<script src="help.js" type="text/javascript"></script>
+
+</html>

@@ -1,0 +1,45 @@
+* {
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    font-size: 12pt;
+}
+
+img {
+    display: block;
+}
+
+body {
+    font-family: Ubuntu, "Ubuntu Condensed", sans-serif;
+    background-color: rgba(0, 0, 0, 0.7);
+    overflow-x: hidden;
+    overflow-y: hidden;
+    height: 100vh;
+    padding: 100pt;
+    color: white;
+}
+
+#help-main {
+    height: calc(100% - 200pt);
+    overflow-y: scroll;
+}
+
+h2 {
+    margin-top: 30pt;
+}
+
+.key {
+    display: inline-block;
+    box-shadow: 1px 1px 3px black;
+    background-color: #6d6d6d;
+    color: white;
+    padding: 4pt 5pt;
+    border-radius: 3pt;
+    margin-right: 3pt;
+}
+
+#help-main div {
+    margin-top: 5pt;
+}

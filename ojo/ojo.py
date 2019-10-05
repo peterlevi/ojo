@@ -675,27 +675,28 @@ class Ojo():
         self.browser.add_to(self.browser_wrapper)
         self.browser.grab_focus()
 
-    def load_overlay(self, html_path):
+    def load_overlay(self, html_path, halign=Gtk.Align.FILL, valign=Gtk.Align.FILL):
         if html_path in self.overlays:
             return
 
         from . import webview
         overlay_browser = webview.WebView()
         overlay_browser.load(html_path,
-                                  on_load_fn=None,
-                                  on_action_fn=self.safe(self.on_browser_action))
+                             on_load_fn=None,
+                             on_action_fn=self.safe(self.on_browser_action))
         # while len(self.overlay_box.get_children()) > 1:
         #     self.overlay_box.get_children()[1].destroy()
         web_view = overlay_browser.web_view
-        web_view.set_resize_mode(Gtk.ResizeMode.QUEUE)
-        web_view.set_halign(Gtk.Align.FILL)
-        web_view.set_valign(Gtk.Align.START)
+        web_view.set_halign(halign)
+        web_view.set_valign(valign)
         web_view.set_visible(False)
         self.overlay_box.add_overlay(web_view)
         self.overlays[html_path] = web_view
+        self.toggle_overlay(html_path, True)
 
     def toggle_overlay(self, html_path, visible):
-        self.overlays[html_path].set_visible(visible)
+        if html_path in self.overlays:
+            self.overlays[html_path].set_visible(visible)
 
     def get_parent_folder_item(self):
         if self.folder == '/':
@@ -1444,7 +1445,6 @@ class Ojo():
             self.update_cursor()
             self.scroll_window.set_visible(self.mode == 'image')
             self.image.set_visible(self.mode == 'image')
-            self.load_overlay('nav.html')
             self.browser_wrapper.set_visible(self.mode == 'folder')
             self.update_margins()
             self.js("set_mode('%s')" % self.mode)
@@ -1506,6 +1506,8 @@ class Ojo():
                 self.exit()
         elif key == "F11":
             self.toggle_fullscreen()
+        elif key == "F1":
+            self.load_overlay('help.html')
         elif key == 'F5':
             if self.ctrl_key(event) and self.mode == "folder":
                 self.thumbs.clear_thumbnails(self.folder)
@@ -1604,6 +1606,8 @@ class Ojo():
     def mouse_motion(self, widget, event):
         if not self.mousedown_zoomed and not self.mousedown_panning:
             self.set_cursor(Gdk.CursorType.ARROW)
+            if self.mode == 'image':
+                self.load_overlay('nav.html', halign=Gtk.Align.FILL, valign=Gtk.Align.START)
             self.toggle_overlay('nav.html', self.mode == 'image')
             return
 
