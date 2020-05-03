@@ -4,6 +4,7 @@ import time
 import multiprocessing
 
 from .config import options
+from . import imaging
 from .imaging import is_image, thumbnail, folder_thumbnail, list_images
 
 POOL_SIZE = max(1, multiprocessing.cpu_count() - 1)
@@ -12,6 +13,7 @@ POOL_SIZE = max(1, multiprocessing.cpu_count() - 1)
 def _safe_thumbnail(filename, cached, width, height, kill_event):
     try:
         if kill_event.is_set():
+            imaging.stop_exiftool()
             return filename, cached
 
         if os.path.exists(cached):
@@ -69,7 +71,7 @@ class Thumbs:
 
         self.queue = []
         self.processing = set()
-        self.pool = multiprocessing.Pool(processes=POOL_SIZE)
+        self.pool = multiprocessing.Pool(processes=POOL_SIZE, initializer=imaging.init_exiftool)
         self.killed = False
         self.kill_event = multiprocessing.Manager().Event()
         self.thumbs_event = threading.Event()

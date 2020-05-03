@@ -18,9 +18,9 @@ bookmarks = []
 
 def load_options():
     options.clear()
-    options.update(load_json("options.json", {}))
     defaults = {
         "folder": util.get_xdg_pictures_folder(),
+        "exiftool_path": "~bundled~",
         "decorated": True,
         "maximized": False,
         "fullscreen": False,
@@ -54,9 +54,8 @@ def load_options():
             [1e18, "More than 1 GB"],
         ],
     }
-    for k, v in defaults.items():
-        if not k in options:
-            options[k] = v
+    options.update(defaults)
+    options.update(load_json("options.json", {}))
 
 
 def get_config_dir():
