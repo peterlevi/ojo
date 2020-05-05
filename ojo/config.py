@@ -1,6 +1,8 @@
 import os
 import logging
 
+from .ojoconfig import get_data_file
+
 from . import util
 
 
@@ -96,3 +98,14 @@ def save_json(filename, data):
 
     with open(get_config_file(filename), "w") as f:
         json.dump(data, f, ensure_ascii=True, indent=4, sort_keys=True)
+
+
+def get_exiftool_path():
+    path = options.get("exiftool_path")
+    if path is None or path == "~bundled~":
+        return get_data_file("ExifTool", "exiftool")
+    elif os.path.isfile(path):
+        return path
+    else:
+        return "exiftool"
+

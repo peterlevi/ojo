@@ -8,7 +8,8 @@ import gi
 from gi.repository import GdkPixbuf, Gio, GObject
 from PIL import Image
 
-from ojo.exiftool import ExifTool
+from . import config
+from .exiftool import ExifTool
 
 gi.require_version("GdkPixbuf", "2.0")
 
@@ -91,7 +92,7 @@ exiftool = None
 
 def init_exiftool():
     global exiftool
-    exiftool = ExifTool().__enter__()
+    exiftool = ExifTool(executable=config.get_exiftool_path()).start()
 
 
 # ExifTool is not Thread-safe, so we init one for every process
@@ -100,7 +101,7 @@ def init_exiftool():
 def stop_exiftool():
     global exiftool
     if exiftool:
-        exiftool.__exit__()
+        exiftool.terminate()
         exiftool = None
 
 
@@ -133,7 +134,7 @@ def get_optimal_preview(filename, to_folder, width=None, height=None):
     return preview["path"]
 
 
-def get_pil(filename, width=None, height=None):
+def get_pil(filename, width=None, height=None, fallback_to_preview=False):
     from PIL import Image
     from .metadata import metadata
 
@@ -143,6 +144,8 @@ def get_pil(filename, width=None, height=None):
     try:
         pil_image = Image.open(filename)
     except IOError:
+        if not fallback_to_preview:
+            raise
         with tempfile.TemporaryDirectory(prefix="ojo") as to_folder:
             optimal_preview = get_optimal_preview(filename, to_folder, width, height)
             pil_image = Image.open(optimal_preview)
@@ -245,7 +248,7 @@ def thumbnail(filename, thumb_path, width, height):
     if not os.path.exists(cache_dir):
         os.makedirs(cache_dir)
     ext = os.path.splitext(filename)[1].lower()
-    if ext not in (".gif", ".png", ".svg", ".xpm"):
+    if ext not in (".gif", ".png", ".svg", ".xpm") and ext[1:] not in RAW_FORMATS:
         try:
             use_pil()
         except Exception:

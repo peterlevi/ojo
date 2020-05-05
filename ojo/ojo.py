@@ -205,7 +205,6 @@ class Ojo:
         return safe_fn
 
     def js(self, command=None, commands=None):
-        print(command)
         self.browser.js(command, commands)
 
     def select_in_browser(self, path):

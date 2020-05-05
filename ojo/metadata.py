@@ -27,7 +27,6 @@ class Metadata:
             self.cache[filename] = meta
             return meta
 
-        raise Exception("NO META READ", filename)
         # no metadata, fallback to simplest default case
         w, h = imaging.get_size_simple(filename)
         stat = os.stat(filename)
@@ -74,7 +73,7 @@ class Metadata:
         except Exception:
             import logging
 
-            logging.warning("Could not parse meta-info for %s" % filename)
+            logging.exception("Could not parse meta-info for %s" % filename)
             return None
 
 
