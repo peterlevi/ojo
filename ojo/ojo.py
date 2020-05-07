@@ -620,9 +620,14 @@ class Ojo:
 
         try:
             exif = meta["exif"]
-            exif_info = "{} s|F{}|ISO {}|Focal len {}".format(
-                exif["ExposureTime"], exif["FNumber"], exif["ISO"], exif["FocalLength"]
-            )
+            exif_info = "{} s|F{}|ISO {}".format(exif["ExposureTime"], exif["FNumber"], exif["ISO"])
+            if "FocalLength" in exif:
+                exif_info += "|Focal len " + exif["FocalLength"]
+            window_width = self.window.get_window().get_width()
+            if window_width >= 1400 and "Model" in exif:
+                    exif_info += "|" + exif["Model"]
+            if window_width >= 1400 and "LensType" in exif:
+                    exif_info += "|" + exif["LensType"]
         except:
             exif_info = "No EXIF info"
         return {

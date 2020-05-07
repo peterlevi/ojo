@@ -83,7 +83,7 @@ body {
   box-shadow: 0 -2pt 5pt #222;
   padding: 10pt;
   color: white;
-  font-size: 1rem;
+  font-size: 0.9rem;
 }
 
 #label .spinner {
@@ -107,7 +107,7 @@ body {
   display: none;
   float: right;
   padding-right: 20pt;
-  font-size: 1rem;
+  font-size: 0.9rem;
 }
 
 #folders {
