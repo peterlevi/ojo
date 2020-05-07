@@ -96,18 +96,18 @@ _lock = threading.Lock()
 
 # ExifTool is not Thread-safe, so we start one for every subprocess that requires it
 def start_exiftool_process(show_version=False):
-    logging.debug('Starting exiftool in process', os.getpid())
+    logging.debug('Starting exiftool in process %d', os.getpid())
+    global exiftool
     global _lock
     with _lock:
-        global exiftool
         exiftool = ExifTool(executable=config.get_exiftool_path())
         exiftool.start(show_version)
 
 
 def stop_exiftool_process():
+    global exiftool
     global _lock
     with _lock:
-        global exiftool
         if exiftool:
             exiftool.terminate()
             exiftool = None
@@ -236,16 +236,18 @@ def get_pixbuf(filename, width=None, height=None):
 
 
 def thumbnail(filename, thumb_path, width, height):
+    _, tmp_thumb_path = tempfile.mkstemp(prefix="ojo_thumbnail_")
+
     def use_pil():
         pil = get_pil(filename, width, height)
         try:
-            pil.save(thumb_path, "JPEG")
+            pil.save(tmp_thumb_path, "JPEG")
         except Exception:
             logging.exception("Could not save thumbnail in format %s:" % format)
 
     def use_pixbuf():
         pixbuf = get_pixbuf(filename, width, height)
-        pixbuf.savev(thumb_path, "png", [], [])
+        pixbuf.savev(tmp_thumb_path, "png", [], [])
 
     cache_dir = os.path.dirname(thumb_path)
     if not os.path.exists(cache_dir):
@@ -262,6 +264,7 @@ def thumbnail(filename, thumb_path, width, height):
         except Exception:
             use_pil()
 
+    os.rename(tmp_thumb_path, thumb_path)
     return filename, thumb_path
 
 
@@ -319,7 +322,10 @@ def folder_thumbnail(folder, thumb_path, width, height, kill_event):
             logging.exception("Failed thumbing %s" % f)
 
     image = image.crop((0, 0, min(MAX_WIDTH, total_width), THUMB_HEIGHT))
-    image.save(thumb_path, "PNG")
+
+    _, tmp_thumb_path = tempfile.mkstemp(prefix="ojo_folder_thumbnail_")
+    image.save(tmp_thumb_path, "PNG")
+    os.rename(tmp_thumb_path, thumb_path)
     return folder, thumb_path
 
 

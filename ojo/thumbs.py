@@ -4,12 +4,13 @@ import multiprocessing
 import os
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 
 from . import imaging
 from .config import options
 from .util import _bytes
 
-POOL_SIZE = max(1, multiprocessing.cpu_count() - 2)
+POOL_SIZE = max(1, multiprocessing.cpu_count() - 1)
 
 
 def _safe_thumbnail(filename, cached, width, height, kill_event):
@@ -28,6 +29,7 @@ def _safe_thumbnail(filename, cached, width, height, kill_event):
         else:
             return imaging.thumbnail(filename, cached, width, height)
     except:
+        logging.exception("Error creating thumb for %s", filename)
         # caller will check whether the file was actually created
         return filename, cached
 
@@ -57,28 +59,15 @@ class Thumbs:
             self.kill_event.set()
             self.thumbs_event.set()
             if self.pool:
-                self.pool.close()
-                self.join()
+                logging.info("%s: Shutting down ThreaPoolExecutor...", self)
+                self.pool.shutdown(wait=True)
                 self.pool = None
-
-    def join(self):
-        # print('Joining pool, processing len: %d' % len(self.processing))
-        # print('CACHE: ', len(self.pool._cache), self.pool._cache)
-
-        # pool.join hangs for some reason as things remain in its internal _cache, clear it manually
-        # TODO: this depends on the internal implementation of multiprocessing.Pool
-        self.pool._cache.clear()
-
-        self.pool.join()
-        # print('Joining thread')
-        self.thread.join()
-        # print('Join done')
+                self.thread.join()
+                logging.info("%s: Stopped", self)
 
     def init_pool(self):
         with self.lock:
-            self.pool = multiprocessing.Pool(
-                processes=POOL_SIZE, initializer=imaging.start_exiftool_process
-            )
+            self.pool = ThreadPoolExecutor(max_workers=POOL_SIZE)
 
     def start(self, ojo):
         self.queue = []
@@ -226,8 +215,8 @@ class Thumbs:
             else self.get_cached_thumbnail_path(filename)
         )
 
-        def _thumbnail_ready(result):
-            filename, thumb_path = result
+        def _thumbnail_ready(future):
+            filename, thumb_path = future.result()
 
             if thumb_path is None:
                 # valid situation for folder thumbs
@@ -240,11 +229,8 @@ class Thumbs:
         if self.killed:
             return
 
-        self.pool.apply_async(
-            _safe_thumbnail,
-            args=(filename, cached, width, height, self.kill_event),
-            callback=_thumbnail_ready,
-        )
+        future = self.pool.submit(_safe_thumbnail, filename, cached, width, height, self.kill_event)
+        future.add_done_callback(_thumbnail_ready)
 
     def clear_thumbnails(self, folder):
         for img in imaging.list_images(folder):

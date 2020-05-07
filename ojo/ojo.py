@@ -69,6 +69,7 @@ class OjoThread(threading.Thread):
 
     def start(self) -> None:
         self.ojo.threads.append(self)
+        logging.debug("Threads count: %d", len(self.ojo.threads))
         super().start()
 
     def run(self) -> None:
@@ -76,7 +77,7 @@ class OjoThread(threading.Thread):
             super().run()
         finally:
             self.ojo.threads.remove(self)
-            logging.debug("Threads: ", len(self.ojo.threads), self.ojo.threads)
+            logging.debug("Threads count: %d", len(self.ojo.threads))
 
 
 class OjoTimer(threading.Timer):
@@ -124,7 +125,7 @@ class Ojo:
         if self.command_options.debug_mode:
             self.command_options.logging_level = 3
         logging.basicConfig(
-            level=LEVELS[self.command_options.logging_level],
+            level=LEVELS[max(0, min(self.command_options.logging_level, len(LEVELS) - 1))],
             format="%(asctime)s %(levelname)s %(message)s",
         )
 
@@ -1576,7 +1577,7 @@ class Ojo:
         """
         Makes sure we'll exit regardless of GTK/multithreading/multiprocessing hiccups
         """
-        logging.info("Exiting, closng window...")
+        logging.info("Exiting, closing window...")
         self.window.hide()
         logging.info("Window closed")
 
