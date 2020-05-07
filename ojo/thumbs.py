@@ -1,31 +1,32 @@
+import hashlib
 import logging
-import os
-import time
 import multiprocessing
+import os
+import threading
+import time
 
-from .config import options
 from . import imaging
-from .imaging import is_image, thumbnail, folder_thumbnail, list_images
+from .config import options
+from .util import _bytes
 
-POOL_SIZE = max(1, multiprocessing.cpu_count() - 1)
+POOL_SIZE = max(1, multiprocessing.cpu_count() - 2)
 
 
 def _safe_thumbnail(filename, cached, width, height, kill_event):
     try:
         if kill_event.is_set():
-            imaging.stop_exiftool()
             return filename, cached
 
         if os.path.exists(cached):
             return filename, cached
 
-        if os.path.isfile(filename) and not is_image(filename):
+        if os.path.isfile(filename) and not imaging.is_image(filename):
             return filename, cached
 
         if os.path.isdir(filename):
-            return folder_thumbnail(filename, cached, width, height, kill_event)
+            return imaging.folder_thumbnail(filename, cached, width, height, kill_event)
         else:
-            return thumbnail(filename, cached, width, height)
+            return imaging.thumbnail(filename, cached, width, height)
     except:
         # caller will check whether the file was actually created
         return filename, cached
@@ -34,6 +35,9 @@ def _safe_thumbnail(filename, cached, width, height, kill_event):
 class Thumbs:
     def __init__(self, ojo):
         self.ojo = ojo
+        self.pool = None
+        self.killed = False
+        self.lock = threading.Lock()
 
     @staticmethod
     def get_thumbs_cache_dir(height):
@@ -48,10 +52,14 @@ class Thumbs:
 
     def stop(self):
         self.killed = True
-        self.queue = []
-        self.kill_event.set()
-        self.thumbs_event.set()
-        self.pool.close()
+        with self.lock:
+            self.queue = []
+            self.kill_event.set()
+            self.thumbs_event.set()
+            if self.pool:
+                self.pool.close()
+                self.join()
+                self.pool = None
 
     def join(self):
         # print('Joining pool, processing len: %d' % len(self.processing))
@@ -66,13 +74,16 @@ class Thumbs:
         self.thread.join()
         # print('Join done')
 
-    def start(self):
-        import threading
+    def init_pool(self):
+        with self.lock:
+            self.pool = multiprocessing.Pool(
+                processes=POOL_SIZE, initializer=imaging.start_exiftool_process
+            )
 
+    def start(self, ojo):
         self.queue = []
         self.processing = set()
-        self.pool = multiprocessing.Pool(processes=POOL_SIZE, initializer=imaging.init_exiftool)
-        self.killed = False
+        self.pool = None
         self.kill_event = multiprocessing.Manager().Event()
         self.thumbs_event = threading.Event()
 
@@ -80,7 +91,11 @@ class Thumbs:
             # delay the start to give the caching thread some time to prepare next images
             start_time = time.time()
             while self.ojo.mode == "image" and time.time() - start_time < 2:
+                if self.killed:
+                    return
                 time.sleep(0.1)
+
+            self.init_pool()
 
             cache_dir = self.get_thumbs_cache_dir(options["thumb_height"])
             try:
@@ -107,10 +122,7 @@ class Thumbs:
                         break
 
                     # pause thumbnailing while the user is actively cycling images:
-                    while (
-                        time.time() - self.ojo.last_action_time < 1
-                        and self.ojo.mode == "image"
-                    ):
+                    while time.time() - self.ojo.last_action_time < 1 and self.ojo.mode == "image":
                         if self.killed:
                             return
                         time.sleep(0.2)
@@ -127,9 +139,11 @@ class Thumbs:
                     except Exception:
                         logging.exception("Exception in thumbs thread:")
 
-        self.thread = threading.Thread(target=_thumbs_thread)
-        self.thread.daemon = True
-        self.thread.start()
+        from .ojo import OjoThread
+
+        self.thread = OjoThread(ojo=ojo, target=_thumbs_thread)
+        if not self.killed:
+            self.thread.start()
 
     def priority_thumbs(self, files):
         if self.killed:
@@ -153,9 +167,6 @@ class Thumbs:
         if thumb_height is None:
             thumb_height = options["thumb_height"]
 
-        import hashlib
-        from .util import _bytes
-
         # we append modification time to ensure we're not using outdated cached images
         mtime = os.path.getmtime(filename)
         hash = hashlib.md5(_bytes(filename + "{0:.2f}".format(mtime))).hexdigest()
@@ -173,9 +184,6 @@ class Thumbs:
     def get_folder_thumbnail_path(folder):
         if not os.path.isdir(folder):
             raise Exception("Requested folder thumb for non-folder: " + folder)
-
-        import hashlib
-        from .util import _bytes
 
         folder = os.path.abspath(folder)
         mtime = os.path.getmtime(folder)
@@ -239,7 +247,7 @@ class Thumbs:
         )
 
     def clear_thumbnails(self, folder):
-        for img in list_images(folder):
+        for img in imaging.list_images(folder):
             if self.killed:
                 return
 

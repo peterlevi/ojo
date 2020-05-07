@@ -62,7 +62,6 @@ import os
 import subprocess
 import sys
 import threading
-import warnings
 
 try:  # Py3k compatibility
     basestring
@@ -148,11 +147,11 @@ class ExifTool(object):
 
     def __init__(self, executable=None):
         self.executable = executable or "exiftool"
-        logging.warning("ExifTool: Using exiftool executable path: %s", self.executable)
+        logging.info("ExifTool: Using exiftool executable path: %s", self.executable)
         self.running = False
         self.lock = threading.RLock()
 
-    def start(self):
+    def start(self, show_version=False):
         """Start an ``exiftool`` process in batch mode for this instance.
 
         This method will issue a ``UserWarning`` if the subprocess is
@@ -160,7 +159,7 @@ class ExifTool(object):
         """
         with self.lock:
             if self.running:
-                warnings.warn("ExifTool already running; doing nothing.")
+                logging.warning("ExifTool already running, starting again is a noop.")
                 return self
             with open(os.devnull, "w") as devnull:
                 self._process = subprocess.Popen(
@@ -170,7 +169,8 @@ class ExifTool(object):
                     stderr=devnull,
                 )
             self.running = True
-            logging.warning("ExifTool Version: %s", self.execute("-ver"))
+            if show_version and logging.getLogger().isEnabledFor(logging.INFO):
+                logging.info("ExifTool Version: %s", self.execute("-ver"))
             return self
 
     def terminate(self):
@@ -193,9 +193,6 @@ class ExifTool(object):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.terminate()
 
-    # def __del__(self):
-    #     self.terminate()
-    #
     def execute(self, *params):
         """Execute the given batch of parameters with ``exiftool``.
 
@@ -225,7 +222,7 @@ class ExifTool(object):
             fd = self._process.stdout.fileno()
             while not output[-32:].strip().endswith(sentinel):
                 output += os.read(fd, block_size)
-            return output.strip()[: -len(sentinel)]
+            return output.strip()[: -len(sentinel)].decode('utf-8')
 
     def execute_json(self, *params):
         """Execute the given batch of parameters and parse the JSON output.
@@ -250,7 +247,7 @@ class ExifTool(object):
         as Unicode strings in Python 3.x.
         """
         params = map(fsencode, params)
-        return json.loads(self.execute(b"-j", *params).decode("utf-8"))
+        return json.loads(self.execute(b"-j", *params))
 
     def get_metadata_batch(self, filenames):
         """Return all meta-data for the given files.

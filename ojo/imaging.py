@@ -1,8 +1,10 @@
 # coding=utf-8
+import io
 import logging
 import os
 import random
 import tempfile
+import threading
 
 import gi
 from gi.repository import GdkPixbuf, Gio, GObject
@@ -10,6 +12,7 @@ from PIL import Image
 
 from . import config
 from .exiftool import ExifTool
+from .metadata import metadata
 
 gi.require_version("GdkPixbuf", "2.0")
 
@@ -88,21 +91,26 @@ RAW_FORMATS = {
 
 
 exiftool = None
+_lock = threading.Lock()
 
 
-def init_exiftool():
-    global exiftool
-    exiftool = ExifTool(executable=config.get_exiftool_path()).start()
+# ExifTool is not Thread-safe, so we start one for every subprocess that requires it
+def start_exiftool_process(show_version=False):
+    logging.debug('Starting exiftool in process', os.getpid())
+    global _lock
+    with _lock:
+        global exiftool
+        exiftool = ExifTool(executable=config.get_exiftool_path())
+        exiftool.start(show_version)
 
 
-# ExifTool is not Thread-safe, so we init one for every process
-
-
-def stop_exiftool():
-    global exiftool
-    if exiftool:
-        exiftool.terminate()
-        exiftool = None
+def stop_exiftool_process():
+    global _lock
+    with _lock:
+        global exiftool
+        if exiftool:
+            exiftool.terminate()
+            exiftool = None
 
 
 def get_optimal_preview(filename, to_folder, width=None, height=None):
@@ -135,9 +143,6 @@ def get_optimal_preview(filename, to_folder, width=None, height=None):
 
 
 def get_pil(filename, width=None, height=None, fallback_to_preview=False):
-    from PIL import Image
-    from .metadata import metadata
-
     meta = metadata.get(filename)
     orientation = meta["orientation"]
 
@@ -164,8 +169,6 @@ def get_pil(filename, width=None, height=None, fallback_to_preview=False):
 
 
 def get_pixbuf(filename, width=None, height=None):
-    from .metadata import metadata
-
     meta = metadata.get(filename)
     orientation = meta["orientation"]
     image_width, image_height = meta["width"], meta["height"]
@@ -285,7 +288,7 @@ def folder_thumbnail(folder, thumb_path, width, height, kill_event):
     if not images:
         return folder, None
 
-    from ojo.thumbs import Thumbs
+    from .thumbs import Thumbs
 
     random.seed(1234)
     random.shuffle(images)
@@ -333,8 +336,6 @@ def auto_rotate_pil(orientation, im):
     7 = Mirror horizontal and rotate 90 CW
     8 = Rotate 270 CW
     """
-    from PIL import Image
-
     # We rotate regarding to the EXIF orientation information
     if orientation is None:
         result = im
@@ -405,8 +406,6 @@ def auto_rotate_pixbuf(orientation, im):
 
 
 def pil_to_pixbuf(pil_image):
-    import io
-
     if pil_image.mode != "RGB":  # Fix IOError: cannot write mode P as PPM
         pil_image = pil_image.convert("RGB")
     buff = io.StringIO()
@@ -421,8 +420,6 @@ def pil_to_pixbuf(pil_image):
 
 
 def pil_to_base64(pil_image):
-    import io
-
     output = io.StringIO()
     pil_image.save(output, "PNG")
     contents = output.getvalue().encode("base64")
@@ -461,8 +458,6 @@ def get_size_simple(image):
         return image_width, image_height
     else:
         try:
-            from PIL import Image
-
             im = Image.open(image)
             return im.size
         except:

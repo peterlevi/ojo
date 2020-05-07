@@ -15,32 +15,37 @@
 # with this program.  If not, see <http://www.gnu.org/licenses/>.
 ### END LICENSE
 
-
-import logging
-import optparse
-
-# We import here only the things necessary to start and show an image.
-# The rest are imported lazily so they do not slow startup
-import os
-import sys
-import time
-from collections import OrderedDict
-
-import gi
-from gi.repository import Gdk, GdkPixbuf, GObject, Gtk
-
-from . import config, imaging, ojoconfig, util
-from .config import options
-from .imaging import folder_thumb_height, is_image, list_images
-from .metadata import metadata
-from .thumbs import Thumbs
-from .util import _u
-
+# fmt: off
+import gi  # isort:skip
 gi.require_version("Gtk", "3.0")
+gi.require_version("Gdk", "3.0")
 gi.require_version("GdkPixbuf", "2.0")
 gi.require_version("WebKit", "3.0")
 gi.require_version("GExiv2", "0.10")
+from gi.repository import Gdk, GdkPixbuf, GObject, Gtk  # isort:skip
+# fmt: on
 
+
+import datetime
+import gc
+import json
+import logging
+import optparse
+import os
+import queue
+import signal
+import sys
+import threading
+import time
+from collections import OrderedDict
+
+from . import config, imaging, ojoconfig, thumbs, util, webview
+from .config import options
+from .imaging import folder_thumb_height, get_pixbuf, is_image, list_images
+from .metadata import metadata
+from .places import Places
+from .thumbs import Thumbs
+from .util import _u
 
 LEVELS = (logging.ERROR, logging.WARNING, logging.INFO, logging.DEBUG)
 
@@ -54,6 +59,41 @@ killed = False
 def kill(*args):
     global killed
     killed = True
+
+
+class OjoThread(threading.Thread):
+    def __init__(self, ojo, *args, **kwargs) -> None:
+        self.ojo = ojo
+        super().__init__(*args, **kwargs)
+        self.daemon = True
+
+    def start(self) -> None:
+        self.ojo.threads.append(self)
+        super().start()
+
+    def run(self) -> None:
+        try:
+            super().run()
+        finally:
+            self.ojo.threads.remove(self)
+            logging.debug("Threads: ", len(self.ojo.threads), self.ojo.threads)
+
+
+class OjoTimer(threading.Timer):
+    def __init__(self, ojo, interval, function) -> None:
+        self.ojo = ojo
+        super().__init__(interval, function)
+        self.daemon = True
+
+    def start(self) -> None:
+        self.ojo.threads.append(self)
+        super().start()
+
+    def run(self) -> None:
+        try:
+            super().run()
+        finally:
+            self.ojo.threads.remove(self)
 
 
 class Ojo:
@@ -89,10 +129,15 @@ class Ojo:
         )
 
     def __init__(self):
+        self.lock = threading.Lock()
+        self.killed = False
+        self.threads = []
+        self.thumbs = None
+        self.folder_thumbs = None
         self.parse_command_line()
         self.setup_logging()
         config.load_options()
-        imaging.init_exiftool()
+        imaging.start_exiftool_process(show_version=True)
 
         if len(self.command_args) >= 1 and os.path.exists(self.command_args[0]):
             path = os.path.realpath(self.command_args[0])
@@ -278,8 +323,6 @@ class Ojo:
         elif options["sort_by"] == "date":
             key = lambda f: os.stat(f).st_mtime
         elif options["sort_by"] == "exif_date":
-            import datetime
-
             default = datetime.datetime(1900, 1, 1)
 
             def _exif_date(f):
@@ -307,8 +350,6 @@ class Ojo:
             ext = os.path.splitext(image)[1][1:].upper()
             return ext if ext else "No extension"
         elif sort_by == "date":
-            import datetime
-
             ts = os.stat(image).st_mtime
             return self.format_date(ts)
         elif sort_by == "exif_date":
@@ -327,8 +368,6 @@ class Ojo:
             return None
 
     def format_date(self, ts):
-        import datetime
-
         return datetime.datetime.fromtimestamp(ts).strftime(options["date_format"])
 
     def toggle_hidden(self, key):
@@ -352,8 +391,6 @@ class Ojo:
         config.save_options()
         self.refresh_category(self.build_options_category())
         folder_info = self.build_folder_info()
-        import json
-
         self.js("render_folders(%s)" % json.dumps(folder_info))
 
     def sort(self, key):
@@ -432,8 +469,6 @@ class Ojo:
         except OSError:
             raise Exception("Cannot open " + path)
 
-        import threading
-
         def _go():
             self.thumbs.reset_queues()
             self.folder_thumbs.reset_queues()
@@ -441,8 +476,6 @@ class Ojo:
             self.pix_cache[True].clear()
 
             # TODO: we may want to call metadata.clear_cache() here, or use a LRU policy for it
-
-            import gc
 
             collected = gc.collect()
             logging.debug("GC collected: %d" % collected)
@@ -469,7 +502,7 @@ class Ojo:
                 on_ready()
 
         self.show_loading_folder_msg()
-        threading.Timer(0, _go_locked).start()
+        OjoTimer(ojo=self, interval=0, function=_go_locked).start()
 
     def check_kill(self):
         global killed
@@ -506,10 +539,6 @@ class Ojo:
         config.save_options()
 
     def after_quick_start(self):
-        import signal
-        import threading
-        from . import webview
-
         signal.signal(signal.SIGINT, kill)
         signal.signal(signal.SIGTERM, kill)
         signal.signal(signal.SIGQUIT, kill)
@@ -554,22 +583,23 @@ class Ojo:
 
         config.load_bookmarks()
 
-        from .places import Places
-
         self.places = Places(on_change=self.on_places_changed)
 
-        GObject.idle_add(self.render_browser)
+        self.render_browser()
+        self.start_background_processes()
 
-        self.start_cache_thread()
-        if self.mode == "image":
-            self.cache_around()
-
-        from . import thumbs
-
-        self.thumbs = thumbs.Thumbs(ojo=self)
-        self.thumbs.start()
-        self.folder_thumbs = thumbs.Thumbs(ojo=self)
-        self.folder_thumbs.start()
+    def start_background_processes(self):
+        with self.lock:
+            global killed
+            if killed:
+                return
+            self.thumbs = thumbs.Thumbs(ojo=self)
+            self.thumbs.start(self)
+            self.folder_thumbs = thumbs.Thumbs(ojo=self)
+            self.folder_thumbs.start(self)
+            self.start_cache_thread()
+            if self.mode == "image":
+                self.cache_around()
 
     def show_loading_folder_msg(self):
         if options["sort_by"] == "exif_date":
@@ -603,8 +633,6 @@ class Ojo:
         }
 
     def update_selected_info(self, filename):
-        import json
-
         if self.selected != filename or not os.path.isfile(filename):
             return
         meta = metadata.get(filename)
@@ -616,15 +644,11 @@ class Ojo:
 
     @util.debounce(0.05)
     def on_priority(self, argument):
-        import json
-
         files = json.loads(argument)
         self.thumbs.priority_thumbs([util.url2path(f) for f in files])
 
     @util.debounce(0.05)
     def on_priority_folders(self, argument):
-        import json
-
         files = json.loads(argument)
         self.folder_thumbs.priority_thumbs([util.url2path(f) for f in files])
 
@@ -984,8 +1008,6 @@ class Ojo:
                 self.change_to_folder(util.get_xdg_pictures_folder())
                 return
 
-            import json
-
             self.js(
                 commands=[
                     'ensure_category("Navigate")',
@@ -1143,8 +1165,6 @@ class Ojo:
         return {"label": "Options", "items": items}
 
     def refresh_category(self, category):
-        import json
-
         self.js("refresh_category(%s)" % json.dumps(category))
 
     def safe_basename(self, img):
@@ -1158,9 +1178,6 @@ class Ojo:
         thumbh = options["thumb_height"]
         self.js("set_thumb_height(%d)" % thumbh)
         self.js("change_folder('%s')" % util.path2url(self.folder))
-
-        import threading
-        import json
 
         def _prepare_thread():
             def _render_folders():
@@ -1202,6 +1219,9 @@ class Ojo:
 
             last_group = None
             for img in self.images:
+                if self.killed:
+                    return
+
                 group = None
                 groups_enabled = options.get("show_groups_for", {}).get(options["sort_by"], False)
                 if groups_enabled:
@@ -1265,9 +1285,7 @@ class Ojo:
 
             self.loading_folder = False
 
-        prepare_thread = threading.Thread(target=_prepare_thread)
-        prepare_thread.daemon = True
-        prepare_thread.start()
+        OjoThread(ojo=self, target=_prepare_thread).start()
 
     def build_folder_info(self):
         categories = []
@@ -1309,25 +1327,28 @@ class Ojo:
                 self.cache_queue.put((f, self.zoom))
 
     def start_cache_thread(self):
-        import threading
-        import queue
-
         self.cache_queue = queue.Queue()
         self.preparing_event = threading.Event()
 
         def _reduce_to_latest(cached, count):
             while len(cached) > count:
+                if self.killed:
+                    return
                 cached.popitem(last=False)
 
         def _queue_thread():
             logging.info("Starting cache thread")
-            while True:
+            while not self.killed:
                 if len(self.pix_cache[False]) > CACHE_SIZE:
                     _reduce_to_latest(self.pix_cache[False], CACHE_SIZE / 2)
                 if len(self.pix_cache[True]) > CACHE_SIZE:
                     _reduce_to_latest(self.pix_cache[True], CACHE_SIZE / 2)
 
                 path, zoom = self.cache_queue.get()
+                if self.killed:
+                    return
+                if path is None:
+                    continue
 
                 try:
                     if path not in self.pix_cache[zoom]:
@@ -1343,9 +1364,7 @@ class Ojo:
                 except Exception:
                     logging.exception("Exception in cache thread:")
 
-        cache_thread = threading.Thread(target=_queue_thread)
-        cache_thread.daemon = True
-        cache_thread.start()
+        OjoThread(ojo=self, target=_queue_thread).start()
 
     def thumb_ready(self, img, thumb_path):
         if os.path.isfile(img):
@@ -1557,16 +1576,32 @@ class Ojo:
         """
         Makes sure we'll exit regardless of GTK/multithreading/multiprocessing hiccups
         """
-        imaging.stop_exiftool()
-
-        import threading
+        logging.info("Exiting, closng window...")
+        self.window.hide()
+        logging.info("Window closed")
 
         def _exit(*args):
-            self.thumbs.stop()
-            self.folder_thumbs.stop()
-            self.thumbs.join()
-            self.folder_thumbs.join()
-            GObject.idle_add(Gtk.main_quit)
+            self.killed = True
+            with self.lock:
+                logging.info("Stopping thumb threads and processes...")
+                if self.thumbs:
+                    self.thumbs.stop()
+                if self.folder_thumbs:
+                    self.folder_thumbs.stop()
+                logging.info("Thumb threads and processes stopped")
+
+                logging.info("Waiting for threads to finish...")
+                self.cache_queue.put((None, None))
+                while self.threads:
+                    time.sleep(0.05)
+                logging.info("Threads finished")
+
+                logging.info("Stopping exiftool process...")
+                imaging.stop_exiftool_process()
+                logging.info("Exiftool process stopped")
+
+                logging.info("Calling Gtk.main_quit")
+                GObject.idle_add(Gtk.main_quit)
 
         threading.Timer(0, _exit).start()
 
@@ -1837,8 +1872,6 @@ class Ojo:
             target_height = height if enlarge_smaller else min(height, image_height)
         else:
             target_width = target_height = None
-
-        from .imaging import get_pixbuf
 
         pixbuf = get_pixbuf(filename, target_width, target_height)
 

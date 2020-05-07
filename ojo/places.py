@@ -1,5 +1,8 @@
-from gi.repository import Gio, GObject
 import os
+import time
+
+from gi.repository import Gio, GObject
+
 from . import util
 
 
@@ -80,9 +83,7 @@ class Places:
         mount = volume.get_mount()
         if not mount:  # TODO Nautilus here also uses "or mount.is_shadowed()"?
             if volume.can_mount():
-                volume_id = volume.get_identifier(
-                    Gio.VOLUME_IDENTIFIER_KIND_UNIX_DEVICE
-                )
+                volume_id = volume.get_identifier(Gio.VOLUME_IDENTIFIER_KIND_UNIX_DEVICE)
                 self.places.append(
                     {
                         "label": volume.get_name(),
@@ -113,8 +114,6 @@ class Places:
 
     def mount_volume(self, volume_id, on_mount, on_mount_argument=None):
         def _on_mounted(volume, *args):
-            import time
-            import os
 
             path = volume.get_mount().get_default_location().get_path()
 
@@ -131,13 +130,8 @@ class Places:
 
         def _go():
             for volume in self.vm.get_volumes():
-                if (
-                    volume.get_identifier(Gio.VOLUME_IDENTIFIER_KIND_UNIX_DEVICE)
-                    == volume_id
-                ):
-                    volume.mount(
-                        Gio.MountMountFlags.NONE, None, None, _on_mounted, None
-                    )
+                if volume.get_identifier(Gio.VOLUME_IDENTIFIER_KIND_UNIX_DEVICE) == volume_id:
+                    volume.mount(Gio.MountMountFlags.NONE, None, None, _on_mounted, None)
 
         GObject.idle_add(_go)
 
@@ -154,8 +148,7 @@ class Places:
                         for mount in self.vm.get_mounts():
                             if (
                                 not mount.is_shadowed()
-                                and mount.get_default_location().get_path()
-                                == mount_path
+                                and mount.get_default_location().get_path() == mount_path
                             ):
                                 success = False
                         if on_unmount:

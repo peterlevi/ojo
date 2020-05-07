@@ -1,4 +1,6 @@
+import logging
 import os
+from datetime import datetime
 
 from . import imaging
 
@@ -49,7 +51,8 @@ class Metadata:
 
     def read(self, filename):
         try:
-            from datetime import datetime
+            if imaging.exiftool is None or not imaging.exiftool.running:
+                return None
 
             meta = imaging.exiftool.get_metadata(filename)
 
@@ -71,8 +74,6 @@ class Metadata:
                 "exif": meta,
             }
         except Exception:
-            import logging
-
             logging.exception("Could not parse meta-info for %s" % filename)
             return None
 
