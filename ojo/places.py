@@ -3,7 +3,7 @@ import time
 
 from gi.repository import Gio, GObject
 
-from . import util
+from ojo import util
 
 
 class Places:

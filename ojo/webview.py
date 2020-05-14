@@ -1,8 +1,8 @@
 from gi.repository import WebKit, GObject
 
 import logging
-from . import util
-from . import ojoconfig
+from ojo import util
+from ojo import ojoconfig
 
 
 class WebView:

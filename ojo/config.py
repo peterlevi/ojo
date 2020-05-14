@@ -2,8 +2,8 @@ import json
 import logging
 import os
 
-from . import util
-from .ojoconfig import get_data_file
+from ojo import util
+from ojo.ojoconfig import get_data_file
 
 
 class dotdict(dict):

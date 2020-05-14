@@ -10,9 +10,9 @@ import gi
 from gi.repository import GdkPixbuf, Gio, GObject
 from PIL import Image
 
-from . import config
-from .exiftool import ExifTool
-from .metadata import metadata
+from ojo import config
+from ojo.exiftool import ExifTool
+from ojo.metadata import metadata
 
 gi.require_version("GdkPixbuf", "2.0")
 
@@ -291,7 +291,7 @@ def folder_thumbnail(folder, thumb_path, width, height, kill_event):
     if not images:
         return folder, None
 
-    from .thumbs import Thumbs
+    from ojo.thumbs import Thumbs
 
     random.seed(1234)
     random.shuffle(images)

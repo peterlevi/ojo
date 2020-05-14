@@ -6,9 +6,9 @@ import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 
-from . import imaging
-from .config import options
-from .util import _bytes
+from ojo import imaging
+from ojo.config import options
+from ojo.util import _bytes
 
 POOL_SIZE = max(1, multiprocessing.cpu_count() - 1)
 
@@ -128,7 +128,7 @@ class Thumbs:
                     except Exception:
                         logging.exception("Exception in thumbs thread:")
 
-        from .ojo import OjoThread
+        from ojo.ojo import OjoThread
 
         self.thread = OjoThread(ojo=ojo, target=_thumbs_thread)
         if not self.killed:

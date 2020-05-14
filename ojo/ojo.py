@@ -39,13 +39,13 @@ import threading
 import time
 from collections import OrderedDict
 
-from . import config, imaging, ojoconfig, thumbs, util, webview
-from .config import options
-from .imaging import folder_thumb_height, get_pixbuf, is_image, list_images
-from .metadata import metadata
-from .places import Places
-from .thumbs import Thumbs
-from .util import _u
+from ojo import config, imaging, ojoconfig, thumbs, util, webview
+from ojo.config import options
+from ojo.imaging import folder_thumb_height, get_pixbuf, is_image, list_images
+from ojo.metadata import metadata
+from ojo.places import Places
+from ojo.thumbs import Thumbs
+from ojo.util import _u
 
 LEVELS = (logging.ERROR, logging.WARNING, logging.INFO, logging.DEBUG)
 

@@ -2,7 +2,7 @@ import logging
 import os
 from datetime import datetime
 
-from . import imaging
+from ojo import imaging
 
 
 def needs_rotation(meta):
