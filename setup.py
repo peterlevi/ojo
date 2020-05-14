@@ -74,8 +74,9 @@ DistUtilsExtra.auto.setup(
     author='Peter Levi',
     author_email='peterlevi@peterlevi.com',
     description='Ojo Image Viewer',
-    long_description='A fast and good-looking image viewer, nice as a preliminary stage in a photography workflow',
-    url='https://launchpad.net/ojo',
+    long_description='A fast and good-looking image viewer with RAW support, '
+                     'nice as a preliminary stage in a photography workflow',
+    url='https://github.com/peterlevi/ojo',
     cmdclass={
         'install': InstallAndUpdateDataDirectory,
         "build_icons": build_icons

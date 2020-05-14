@@ -14,3 +14,6 @@ override_dh_auto_clean:
 	rm -f po/ojo.pot
 	dh_auto_clean
 
+override_dh_auto_test:
+	# Not used in Debian build since some imports fail in Launchpad's build system (e.g. gi, PIL)
+	true
