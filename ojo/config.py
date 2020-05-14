@@ -1,7 +1,9 @@
-import os
+import json
 import logging
+import os
 
 from . import util
+from .ojoconfig import get_data_file
 
 
 class dotdict(dict):
@@ -18,9 +20,9 @@ bookmarks = []
 
 def load_options():
     options.clear()
-    options.update(load_json("options.json", {}))
     defaults = {
         "folder": util.get_xdg_pictures_folder(),
+        "exiftool_path": "~bundled~",
         "decorated": True,
         "maximized": False,
         "fullscreen": False,
@@ -54,9 +56,8 @@ def load_options():
             [1e18, "More than 1 GB"],
         ],
     }
-    for k, v in defaults.items():
-        if not k in options:
-            options[k] = v
+    options.update(defaults)
+    options.update(load_json("options.json", {}))
 
 
 def get_config_dir():
@@ -81,8 +82,6 @@ def save_bookmarks():
 
 
 def load_json(filename, default_data):
-    import json
-
     try:
         with open(get_config_file(filename)) as f:
             return json.load(f)
@@ -93,7 +92,15 @@ def load_json(filename, default_data):
 
 
 def save_json(filename, data):
-    import json
-
     with open(get_config_file(filename), "w") as f:
         json.dump(data, f, ensure_ascii=True, indent=4, sort_keys=True)
+
+
+def get_exiftool_path():
+    path = options.get("exiftool_path")
+    if path is None or path == "~bundled~":
+        return get_data_file("ExifTool", "exiftool")
+    elif os.path.isfile(path):
+        return path
+    else:
+        return "exiftool"

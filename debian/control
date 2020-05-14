@@ -15,9 +15,9 @@ Depends: ${misc:Depends},
  ${python3:Depends},
  python3-gi,
  python3-pil,
+ perl,
  gir1.2-gtk-3.0,
  gir1.2-glib-2.0,
- gir1.2-gexiv2-0.10,
  gir1.2-gdkpixbuf-2.0,
  gir1.2-webkit-3.0
 Description: Ojo Image Viewer
