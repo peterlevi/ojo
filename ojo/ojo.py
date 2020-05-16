@@ -41,11 +41,11 @@ from collections import OrderedDict
 
 from ojo import config, imaging, ojoconfig, thumbs, util, webview
 from ojo.config import options
-from ojo.imaging import folder_thumb_height, get_pixbuf, is_image, list_images
+from ojo.imaging import folder_thumb_height, get_pixbuf, is_image, list_images, ext
 from ojo.metadata import metadata
 from ojo.places import Places
 from ojo.thumbs import Thumbs
-from ojo.util import _u
+from ojo.util import _u, get_failed_image
 
 LEVELS = (logging.ERROR, logging.WARNING, logging.INFO, logging.DEBUG)
 
@@ -125,7 +125,9 @@ class Ojo:
         if self.command_options.debug_mode:
             self.command_options.logging_level = 3
         logging.basicConfig(
-            level=LEVELS[max(0, min(self.command_options.logging_level, len(LEVELS) - 1))],
+            level=LEVELS[
+                max(0, min(self.command_options.logging_level, len(LEVELS) - 1))
+            ],
             format="%(asctime)s %(levelname)s %(message)s",
         )
 
@@ -147,7 +149,8 @@ class Ojo:
         logging.info("Started with: %s" % path)
         if not os.path.exists(path):
             logging.warning(
-                "%s does not exist, reverting to %s" % (path, util.get_xdg_pictures_folder())
+                "%s does not exist, reverting to %s"
+                % (path, util.get_xdg_pictures_folder())
             )
             path = util.get_xdg_pictures_folder()
 
@@ -186,7 +189,10 @@ class Ojo:
         if options["maximized"]:
             self.window.maximize()
 
-        self.pix_cache = {False: OrderedDict(), True: OrderedDict()}  # keyed by "zoomed" property
+        self.pix_cache = {
+            False: OrderedDict(),
+            True: OrderedDict(),
+        }  # keyed by "zoomed" property
         self.current_preparing = None
         self.manually_resized = False
 
@@ -255,7 +261,10 @@ class Ojo:
 
     def select_in_browser(self, path):
         if path:
-            self.js("select('%s')" % (path if self.is_command(path) else util.path2url(path)))
+            self.js(
+                "select('%s')"
+                % (path if self.is_command(path) else util.path2url(path))
+            )
         else:
             self.js("goto_visible(true)")
 
@@ -264,13 +273,15 @@ class Ojo:
             if not self.zoom_x_percent is None:
                 ha = self.scroll_window.get_hadjustment()
                 ha.set_value(
-                    self.zoom_x_percent * (ha.get_upper() - ha.get_page_size() - ha.get_lower())
+                    self.zoom_x_percent
+                    * (ha.get_upper() - ha.get_page_size() - ha.get_lower())
                 )
                 self.zoom_x_percent = None
             if not self.zoom_y_percent is None:
                 va = self.scroll_window.get_vadjustment()
                 va.set_value(
-                    self.zoom_y_percent * (va.get_upper() - va.get_page_size() - va.get_lower())
+                    self.zoom_y_percent
+                    * (va.get_upper() - va.get_page_size() - va.get_lower())
                 )
                 self.zoom_y_percent = None
             self.scroll_h = self.scroll_window.get_hadjustment().get_value()
@@ -298,12 +309,23 @@ class Ojo:
         else:
             raise Exception("Cannot open " + filename)
 
-    def refresh_image(self):
-        if self.shown:
-            self.pixbuf = self.get_pixbuf(self.shown)
+    def refresh_image(self, filename=None):
+        shown = filename or self.shown
+
+        if shown:
+            try:
+                self.pixbuf = self.get_pixbuf(shown)
+            except Exception:
+                logging.exception("Failed to render %s", shown)
+                fallback = get_failed_image()
+                if shown != fallback:
+                    self.pixbuf = self.get_pixbuf(fallback)
+                else:
+                    raise
+
             self.increase_size()
-            if os.path.splitext(self.shown)[1].lower() in (".gif", ".mng", ".png"):
-                anim = GdkPixbuf.PixbufAnimation.new_from_file(self.shown)
+            if ext(shown) in (".gif", ".mng", ".png"):
+                anim = GdkPixbuf.PixbufAnimation.new_from_file(shown)
                 if anim.is_static_image():
                     self.image.set_from_pixbuf(self.pixbuf)
                 else:
@@ -318,7 +340,7 @@ class Ojo:
             images = [f for f in images if not os.path.basename(f).startswith(".")]
 
         if options["sort_by"] == "extension":
-            key = lambda f: (os.path.splitext(f)[1] + "_" + os.path.basename(f)).lower()
+            key = lambda f: (ext(f) + "_" + os.path.basename(f)).lower()
         elif options["sort_by"] == "name":
             key = lambda f: os.path.basename(f).lower()
         elif options["sort_by"] == "date":
@@ -419,7 +441,9 @@ class Ojo:
         self.folder = path
         if modify_history_position is None:
             if not same:
-                self.folder_history = self.folder_history[self.folder_history_position :]
+                self.folder_history = self.folder_history[
+                    self.folder_history_position :
+                ]
                 self.folder_history.insert(0, self.folder)
                 self.folder_history_position = 0
         else:
@@ -440,7 +464,8 @@ class Ojo:
     def folder_history_back(self):
         if self.folder_history_position < len(self.folder_history) - 1:
             self.change_to_folder(
-                self.get_back_folder(), modify_history_position=self.folder_history_position + 1
+                self.get_back_folder(),
+                modify_history_position=self.folder_history_position + 1,
             )
 
     def get_forward_folder(self):
@@ -453,7 +478,8 @@ class Ojo:
     def folder_history_forward(self):
         if self.folder_history_position > 0:
             self.change_to_folder(
-                self.get_forward_folder(), modify_history_position=self.folder_history_position - 1
+                self.get_forward_folder(),
+                modify_history_position=self.folder_history_position - 1,
             )
 
     def get_parent_folder(self):
@@ -527,7 +553,7 @@ class Ojo:
         ):
             GObject.idle_add(self.refresh_image)
             if time.time() - self.last_automatic_resize > 0.5:
-                logging.info("Manually resized, stop automatic resizing")
+                logging.debug("Manually resized, stop automatic resizing")
                 self.manually_resized = True
 
         self.last_width = event.width
@@ -620,14 +646,16 @@ class Ojo:
 
         try:
             exif = meta["exif"]
-            exif_info = "{} s|F{}|ISO {}".format(exif["ExposureTime"], exif["FNumber"], exif["ISO"])
+            exif_info = "{} s|F{}|ISO {}".format(
+                exif["ExposureTime"], exif["FNumber"], exif["ISO"]
+            )
             if "FocalLength" in exif:
                 exif_info += "|Focal len " + exif["FocalLength"]
             window_width = self.window.get_window().get_width()
             if window_width >= 1400 and "Model" in exif:
-                    exif_info += "|" + exif["Model"]
+                exif_info += "|" + exif["Model"]
             if window_width >= 1400 and "LensType" in exif:
-                    exif_info += "|" + exif["LensType"]
+                exif_info += "|" + exif["LensType"]
         except:
             exif_info = "No EXIF info"
         return {
@@ -703,7 +731,9 @@ class Ojo:
             self.search_text = self.search_text.replace("//", "/")
 
             path = self.search_text[: self.search_text.rfind("/") + 1]
-            if os.path.isdir(path) and os.path.normpath(path) != os.path.normpath(self.folder):
+            if os.path.isdir(path) and os.path.normpath(path) != os.path.normpath(
+                self.folder
+            ):
                 path = os.path.normpath(path)
                 try:
                     os.listdir(path)
@@ -715,7 +745,10 @@ class Ojo:
                             os.path.isdir(search) and os.path.normpath(search) != path
                         ):
                             self.toggle_search(
-                                True, bypass_search=True, set_search_field_to=search, search_for=""
+                                True,
+                                bypass_search=True,
+                                set_search_field_to=search,
+                                search_for="",
                             )
                             self.selected = search
                             self.select_in_browser(search)
@@ -860,7 +893,11 @@ class Ojo:
         crumbs = []
         while folder:
             crumbs.insert(
-                0, {"path": util.path2url(folder), "name": os.path.basename(folder) or "/"}
+                0,
+                {
+                    "path": util.path2url(folder),
+                    "name": os.path.basename(folder) or "/",
+                },
             )
             folder = util.get_parent(folder)
         return crumbs
@@ -949,7 +986,11 @@ class Ojo:
         else:
             bookmark_items.append(
                 self.get_command_item(
-                    "command:add-bookmark", None, icon="add", group="Bookmarks", label="Add current"
+                    "command:add-bookmark",
+                    None,
+                    icon="add",
+                    group="Bookmarks",
+                    label="Add current",
                 )
             )
         bookmarks_category = {"label": "Bookmarks", "items": bookmark_items}
@@ -984,7 +1025,10 @@ class Ojo:
                 )
             else:
                 item = self.get_folder_item(
-                    path=place["path"], group="Places", label=place["label"], icon=place["icon"]
+                    path=place["path"],
+                    group="Places",
+                    label=place["label"],
+                    icon=place["icon"],
                 )
 
             if not_mounted:
@@ -1019,7 +1063,8 @@ class Ojo:
                     'ensure_category("Navigate")',
                     'ensure_category("Subfolders")',
                     "refresh_category(%s)" % json.dumps(self.build_places_category()),
-                    "refresh_category(%s)" % json.dumps(self.build_bookmarks_category()),
+                    "refresh_category(%s)"
+                    % json.dumps(self.build_bookmarks_category()),
                     "refresh_category(%s)" % json.dumps(self.build_recent_category()),
                     "on_contents_change()",
                 ]
@@ -1086,7 +1131,9 @@ class Ojo:
                 "size": "Big at top",
             }
             items.append(
-                self.get_command_item("command:sort:desc", None, None, group="Options", label=m[by])
+                self.get_command_item(
+                    "command:sort:desc", None, None, group="Options", label=m[by]
+                )
             )
         else:
             m = {
@@ -1097,7 +1144,9 @@ class Ojo:
                 "size": "Small at top",
             }
             items.append(
-                self.get_command_item("command:sort:asc", None, None, group="Options", label=m[by])
+                self.get_command_item(
+                    "command:sort:asc", None, None, group="Options", label=m[by]
+                )
             )
 
         if options["show_groups_for"].get(by, False):
@@ -1124,26 +1173,42 @@ class Ojo:
         if options["show_hidden"]:
             items.append(
                 self.get_command_item(
-                    "command:hidden:false", None, None, group="Options", label="Hide hidden files"
+                    "command:hidden:false",
+                    None,
+                    None,
+                    group="Options",
+                    label="Hide hidden files",
                 )
             )
         else:
             items.append(
                 self.get_command_item(
-                    "command:hidden:true", None, None, group="Options", label="Show hidden files"
+                    "command:hidden:true",
+                    None,
+                    None,
+                    group="Options",
+                    label="Show hidden files",
                 )
             )
 
         if options["show_captions"]:
             items.append(
                 self.get_command_item(
-                    "command:captions:false", None, None, group="Options", label="Hide captions"
+                    "command:captions:false",
+                    None,
+                    None,
+                    group="Options",
+                    label="Hide captions",
                 )
             )
         else:
             items.append(
                 self.get_command_item(
-                    "command:captions:true", None, None, group="Options", label="Show captions"
+                    "command:captions:true",
+                    None,
+                    None,
+                    group="Options",
+                    label="Show captions",
                 )
             )
 
@@ -1200,11 +1265,15 @@ class Ojo:
 
             GObject.idle_add(_render_folders)
 
-            pos = self.images.index(self.selected) if self.selected in self.images else 0
+            pos = (
+                self.images.index(self.selected) if self.selected in self.images else 0
+            )
             self.thumbs.priority_thumbs(
                 [
                     x[1]
-                    for x in sorted(enumerate(self.images), key=lambda i_f: abs(i_f[0] - pos))
+                    for x in sorted(
+                        enumerate(self.images), key=lambda i_f: abs(i_f[0] - pos)
+                    )
                     if not os.path.exists(self.thumbs.get_cached_thumbnail_path(x[1]))
                 ]
             )
@@ -1220,7 +1289,8 @@ class Ojo:
                 else ""
             )
             self.js(
-                "set_image_count(%d, '%s', '%s')" % (len(self.images), folder_size, latest_date)
+                "set_image_count(%d, '%s', '%s')"
+                % (len(self.images), folder_size, latest_date)
             )
 
             last_group = None
@@ -1228,63 +1298,75 @@ class Ojo:
                 if self.killed:
                     return
 
-                group = None
-                groups_enabled = options.get("show_groups_for", {}).get(options["sort_by"], False)
-                if groups_enabled:
-                    group = self.get_group_key(img, options["sort_by"])
-                    if group != last_group:
+                try:
+                    group = None
+                    groups_enabled = options.get("show_groups_for", {}).get(
+                        options["sort_by"], False
+                    )
+                    if groups_enabled:
+                        group = self.get_group_key(img, options["sort_by"])
+                        if group != last_group:
+                            self.js(
+                                "add_group('%s', %s)"
+                                % (group, "true" if last_group is None else "false")
+                            )
+                            last_group = group
+
+                    if (
+                        self.last_folder_change_time != thread_change_time
+                        or thread_folder != self.folder
+                    ):
+                        return
+
+                    time.sleep(0.001)
+
+                    cached = Thumbs.get_cached_thumbnail_path(img)
+                    if os.path.exists(cached):
                         self.js(
-                            "add_group('%s', %s)"
-                            % (group, "true" if last_group is None else "false")
+                            "add_image_div('%s', '%s', %s, %s, '%s', '%s')"
+                            % (
+                                util.path2url(img),
+                                self.safe_basename(img),
+                                "true" if img == self.selected else "false",
+                                "true" if options["show_captions"] else "false",
+                                group if group else "",
+                                util.path2url(cached),
+                            )
                         )
-                        last_group = group
 
-                if (
-                    self.last_folder_change_time != thread_change_time
-                    or thread_folder != self.folder
-                ):
-                    return
+                        if img == self.selected:
+                            self.update_selected_info(img)
+                    else:
+                        info = None
+                        try:
+                            meta = metadata.get(img)
+                            info = self.get_file_info(meta)
 
-                time.sleep(0.001)
+                            w, h = meta["width"], meta["height"]
+                            thumb_width = float(w) * min(h, thumbh) / h
+                        except:
+                            thumb_width = 180  # best to match the width of the failed image
 
-                cached = Thumbs.get_cached_thumbnail_path(img)
-                if os.path.exists(cached):
-                    self.js(
-                        "add_image_div('%s', '%s', %s, %s, '%s', '%s')"
-                        % (
-                            util.path2url(img),
-                            self.safe_basename(img),
-                            "true" if img == self.selected else "false",
-                            "true" if options["show_captions"] else "false",
-                            group if group else "",
-                            util.path2url(cached),
+                        self.js(
+                            "add_image_div('%s', '%s', %s, %s, '%s', undefined, %f)"
+                            % (
+                                util.path2url(img),
+                                self.safe_basename(img),
+                                "true" if img == self.selected else "false",
+                                "true" if options["show_captions"] else "false",
+                                group if group else "",
+                                thumb_width,
+                            )
                         )
-                    )
 
-                    if img == self.selected:
-                        self.update_selected_info(img)
-                else:
-                    meta = metadata.get(img)
-                    w, h = meta["width"], meta["height"]
-
-                    thumb_width = float(w) * min(h, thumbh) / h
-                    info = self.get_file_info(meta)
-
-                    self.js(
-                        "add_image_div('%s', '%s', %s, %s, '%s', undefined, %f)"
-                        % (
-                            util.path2url(img),
-                            self.safe_basename(img),
-                            "true" if img == self.selected else "false",
-                            "true" if options["show_captions"] else "false",
-                            group if group else "",
-                            thumb_width,
-                        )
-                    )
-
-                    self.js(
-                        "set_file_info('%s', %s, %d)"
-                        % (util.path2url(img), json.dumps(info), thumb_width)
+                        if info:
+                            self.js(
+                                "set_file_info('%s', %s, %d)"
+                                % (util.path2url(img), json.dumps(info), thumb_width)
+                            )
+                except Exception:
+                    logging.exception(
+                        "Error in render_folder_view._prepare_thread for %s", img
                     )
 
             self.select_in_browser(self.selected)
@@ -1358,7 +1440,9 @@ class Ojo:
 
                 try:
                     if path not in self.pix_cache[zoom]:
-                        logging.debug("Cache thread loads file %s, zoomed %s" % (path, zoom))
+                        logging.debug(
+                            "Cache thread loads file %s, zoomed %s" % (path, zoom)
+                        )
                         self.current_preparing = path, zoom
                         try:
                             self.get_pixbuf(path, force=True, zoom=zoom)
@@ -1374,13 +1458,17 @@ class Ojo:
 
     def thumb_ready(self, img, thumb_path):
         if os.path.isfile(img):
-            self.js("add_image('%s', '%s')" % (util.path2url(img), util.path2url(thumb_path)))
+            self.js(
+                "add_image('%s', '%s')"
+                % (util.path2url(img), util.path2url(thumb_path))
+            )
             if img == self.selected:
                 self.select_in_browser(img)
         else:
             if options.show_folder_thumbs:
                 self.js(
-                    "add_folderthumb('%s', '%s')" % (util.path2url(img), util.path2url(thumb_path))
+                    "add_folderthumb('%s', '%s')"
+                    % (util.path2url(img), util.path2url(thumb_path))
                 )
 
     def thumb_failed(self, img, error_msg):
@@ -1406,13 +1494,18 @@ class Ojo:
             width = int(1.5 * height)
         else:
             height = int(width / 1.5)
-        return (min(width, screen.get_width() - 150), min(height, screen.get_height() - 150))
+        return (
+            min(width, screen.get_width() - 150),
+            min(height, screen.get_height() - 150),
+        )
 
     def get_max_image_width(self):
         if options["fullscreen"]:
             return self.window.get_screen().get_width()
         elif self.manually_resized:
-            self.last_windowed_image_width = self.window.get_window().get_width() - 2 * self.margin
+            self.last_windowed_image_width = (
+                self.window.get_window().get_width() - 2 * self.margin
+            )
             return self.last_windowed_image_width
         elif options["maximized"]:
             if self.window.get_window():
@@ -1420,7 +1513,9 @@ class Ojo:
             else:
                 return self.window.get_screen().get_width() - 40 - 2 * self.margin
         else:
-            self.last_windowed_image_width = self.get_recommended_size()[0] - 2 * self.margin
+            self.last_windowed_image_width = (
+                self.get_recommended_size()[0] - 2 * self.margin
+            )
             return self.last_windowed_image_width
 
     def get_max_image_height(self):
@@ -1437,15 +1532,21 @@ class Ojo:
             else:
                 return self.window.get_screen().get_height() - 40 - 2 * self.margin
         else:
-            self.last_windowed_image_height = self.get_recommended_size()[1] - 2 * self.margin
+            self.last_windowed_image_height = (
+                self.get_recommended_size()[1] - 2 * self.margin
+            )
             return self.last_windowed_image_height
 
     def increase_size(self):
         if self.manually_resized or self.zoom or options["fullscreen"]:
             return
 
-        new_width = max(400, self.pixbuf.get_width() + 2 * self.margin, self.get_width())
-        new_height = max(300, self.pixbuf.get_height() + 2 * self.margin, self.get_height())
+        new_width = max(
+            400, self.pixbuf.get_width() + 2 * self.margin, self.get_width()
+        )
+        new_height = max(
+            300, self.pixbuf.get_height() + 2 * self.margin, self.get_height()
+        )
         if new_width > self.get_width() or new_height > self.get_height():
             self.last_automatic_resize = time.time()
             self.resize_and_center(new_width, new_height)
@@ -1523,7 +1624,9 @@ class Ojo:
         if options["fullscreen"]:
             util.make_transparent(
                 self.window,
-                color="rgba(77, 75, 69, 1)" if self.mode == "folder" else "rgba(0, 0, 0, 1)",
+                color="rgba(77, 75, 69, 1)"
+                if self.mode == "folder"
+                else "rgba(0, 0, 0, 1)",
             )
             self.set_margins(0)
         else:
@@ -1531,7 +1634,9 @@ class Ojo:
                 self.window,
                 # Note: for non-fullscreen browsing transparency:
                 # color='rgba(77, 75, 69, 0.9)' if self.mode == 'folder' else 'rgba(77, 75, 69, 0.9)')
-                color="rgba(77, 75, 69, 1)" if self.mode == "folder" else "rgba(77, 75, 69, 0.9)",
+                color="rgba(77, 75, 69, 1)"
+                if self.mode == "folder"
+                else "rgba(77, 75, 69, 0.9)",
             )
             self.set_margins(15)
 
@@ -1618,7 +1723,9 @@ class Ojo:
             and event.hardware_keycode in hw_keycodes
         )
 
-    def toggle_search(self, visible, bypass_search=False, set_search_field_to="", search_for=""):
+    def toggle_search(
+        self, visible, bypass_search=False, set_search_field_to="", search_for=""
+    ):
         self.is_in_search = visible
         self.js(
             "toggle_search(%s, %s, '%s', '%s')"
@@ -1655,7 +1762,9 @@ class Ojo:
         elif key == "F5":
             if self.ctrl_key(event) and self.mode == "folder":
                 self.thumbs.clear_thumbnails(self.folder)
-                folder_thumb_path = self.folder_thumbs.get_folder_thumbnail_path(self.folder)
+                folder_thumb_path = self.folder_thumbs.get_folder_thumbnail_path(
+                    self.folder
+                )
                 try:
                     os.unlink(folder_thumb_path)
                 except:
@@ -1666,7 +1775,9 @@ class Ojo:
             if self.mode == "image":
                 self.set_mode("folder")
             else:
-                prev = self.selected  # save selected from before the action, as it might change it
+                prev = (
+                    self.selected
+                )  # save selected from before the action, as it might change it
                 self.show()
                 if os.path.isfile(prev):
                     self.set_mode("image")
@@ -1839,7 +1950,9 @@ class Ojo:
             return
 
         direction = (
-            -1 if event.direction in (Gdk.ScrollDirection.UP, Gdk.ScrollDirection.LEFT) else 1
+            -1
+            if event.direction in (Gdk.ScrollDirection.UP, Gdk.ScrollDirection.LEFT)
+            else 1
         )
 
         wheel_timer = getattr(self, "wheel_timer", None)

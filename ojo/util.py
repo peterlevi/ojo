@@ -4,6 +4,7 @@ import urllib.request
 import threading
 
 from gi.repository import Gio, GLib, Gdk, Gtk
+from ojo.ojoconfig import get_data_file
 
 
 def _u(s):
@@ -62,13 +63,19 @@ def get_xdg_pictures_folder():
     try:
         pics_folder = GLib.get_user_special_dir(GLib.USER_DIRECTORY_PICTURES)
         if not pics_folder:
-            raise Exception("Could not get path to Pictures folder. Defaulting to ~/Pictures.")
+            raise Exception(
+                "Could not get path to Pictures folder. Defaulting to ~/Pictures."
+            )
         return pics_folder
     except:
         logging.exception(
             lambda: "Could not get path to Pictures folder. Defaulting to ~/Pictures."
         )
         return os.path.expanduser("~/Pictures")
+
+
+def get_failed_image():
+    return get_data_file("images", "failed.png")
 
 
 def makedirs(path):

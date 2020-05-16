@@ -18,75 +18,75 @@ gi.require_version("GdkPixbuf", "2.0")
 
 # supported by PIL, as per http://infohost.nmt.edu/tcc/help/pubs/pil/formats.html:
 NON_RAW_FORMATS = {
-    "bmp",
-    "dib",
-    "dcx",
-    "eps",
-    "ps",
-    "gif",
-    "im",
-    "jpg",
-    "jpe",
-    "jpeg",
-    "pcd",
-    "pcx",
-    "png",
-    "pbm",
-    "pgm",
-    "ppm",
-    "psd",
-    "tif",
-    "tiff",
-    "xbm",
-    "xpm",
+    ".bmp",
+    ".dib",
+    ".dcx",
+    ".eps",
+    ".ps",
+    ".gif",
+    ".im",
+    ".jpg",
+    ".jpe",
+    ".jpeg",
+    ".pcd",
+    ".pcx",
+    ".png",
+    ".pbm",
+    ".pgm",
+    ".ppm",
+    ".psd",
+    ".tif",
+    ".tiff",
+    ".xbm",
+    ".xpm",
 }
 
 # RAW formats, as per https://en.wikipedia.org/wiki/Raw_image_format#Annotated_list_of_file_extensions,
 # we rely on pyexiv2 previews for these:
 RAW_FORMATS = {
-    "3fr",
-    "ari",
-    "arw",
-    "bay",
-    "braw",
-    "crw",
-    "cr2",
-    "cr3",
-    "cap",
-    "data",
-    "dcs",
-    "dcr",
-    "dng",
-    "drf",
-    "eip",
-    "erf",
-    "fff",
-    "gpr",
-    "iiq",
-    "k25",
-    "kdc",
-    "mdc",
-    "mef",
-    "mos",
-    "mrw",
-    "nef",
-    "nrw",
-    "obm",
-    "orf",
-    "pef",
-    "ptx",
-    "pxn",
-    "r3d",
-    "raf",
-    "raw",
-    "rwl",
-    "rw2",
-    "rwz",
-    "sr2",
-    "srf",
-    "srw",
-    "tif",
-    "x3f",
+    ".3fr",
+    ".ari",
+    ".arw",
+    ".bay",
+    ".braw",
+    ".crw",
+    ".cr2",
+    ".cr3",
+    ".cap",
+    ".data",
+    ".dcs",
+    ".dcr",
+    ".dng",
+    ".drf",
+    ".eip",
+    ".erf",
+    ".fff",
+    ".gpr",
+    ".iiq",
+    ".k25",
+    ".kdc",
+    ".mdc",
+    ".mef",
+    ".mos",
+    ".mrw",
+    ".nef",
+    ".nrw",
+    ".obm",
+    ".orf",
+    ".pef",
+    ".ptx",
+    ".pxn",
+    ".r3d",
+    ".raf",
+    ".raw",
+    ".rwl",
+    ".rw2",
+    ".rwz",
+    ".sr2",
+    ".srf",
+    ".srw",
+    ".tif",
+    ".x3f",
 }
 
 
@@ -252,19 +252,20 @@ def thumbnail(filename, thumb_path, width, height):
     cache_dir = os.path.dirname(thumb_path)
     if not os.path.exists(cache_dir):
         os.makedirs(cache_dir)
-    ext = os.path.splitext(filename)[1].lower()
-    if ext not in (".gif", ".png", ".svg", ".xpm") and ext[1:] not in RAW_FORMATS:
+
+    if ext(filename) in {".gif", ".png", ".svg", ".xpm"}.union(RAW_FORMATS):
         try:
-            use_pil()
-        except Exception:
             use_pixbuf()
+        except Exception:
+            use_pil()
     else:
         try:
-            use_pixbuf()
-        except Exception:
             use_pil()
+        except Exception:
+            use_pixbuf()
 
     os.rename(tmp_thumb_path, thumb_path)
+
     return filename, thumb_path
 
 
@@ -319,13 +320,14 @@ def folder_thumbnail(folder, thumb_path, width, height, kill_event):
             image.paste(fthumb_image, (total_width, 0, total_width + w, h))
             total_width += MARGIN + w
         except Exception:
-            logging.exception("Failed thumbing %s" % f)
+            logging.exception("folder_thumbnail: Failed thumbing %s" % f)
 
-    image = image.crop((0, 0, min(MAX_WIDTH, total_width), THUMB_HEIGHT))
+    if total_width > 0:
+        image = image.crop((0, 0, min(MAX_WIDTH, total_width), THUMB_HEIGHT))
+        _, tmp_thumb_path = tempfile.mkstemp(prefix="ojo_folder_thumbnail_")
+        image.save(tmp_thumb_path, "PNG")
+        os.rename(tmp_thumb_path, thumb_path)
 
-    _, tmp_thumb_path = tempfile.mkstemp(prefix="ojo_folder_thumbnail_")
-    image.save(tmp_thumb_path, "PNG")
-    os.rename(tmp_thumb_path, thumb_path)
     return folder, thumb_path
 
 
@@ -453,7 +455,7 @@ def get_supported_image_extensions():
 
         # supported by GdkPixbuf:
         for l in [f.get_extensions() for f in GdkPixbuf.Pixbuf.get_formats()]:
-            fn.image_formats = fn.image_formats.union([e.lower() for e in l])
+            fn.image_formats = fn.image_formats.union(['.' + e.lower() for e in l])
 
     return fn.image_formats
 
@@ -471,7 +473,7 @@ def get_size_simple(image):
 
 
 def ext(filename):
-    return os.path.splitext(filename)[1].lower()[1:]
+    return os.path.splitext(filename)[1].lower()
 
 
 def is_image(filename):

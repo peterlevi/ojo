@@ -2,13 +2,15 @@ import hashlib
 import logging
 import multiprocessing
 import os
+import shutil
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 
 from ojo import imaging
 from ojo.config import options
-from ojo.util import _bytes
+from ojo.imaging import ext
+from ojo.util import _bytes, get_failed_image
 
 POOL_SIZE = max(1, multiprocessing.cpu_count() - 1)
 
@@ -29,9 +31,9 @@ def _safe_thumbnail(filename, cached, width, height, kill_event):
         else:
             return imaging.thumbnail(filename, cached, width, height)
     except:
-        logging.exception("Error creating thumb for %s", filename)
+        logging.exception("Error creating thumb for %s, using error image", filename)
         # caller will check whether the file was actually created
-        return filename, cached
+        return filename, get_failed_image()
 
 
 class Thumbs:
@@ -150,7 +152,7 @@ class Thumbs:
     @staticmethod
     def get_cached_thumbnail_path(filename, force_cache=False, thumb_height=None):
         # Use gifs directly - webkit will handle transparency, animation, etc.
-        if not force_cache and os.path.splitext(filename)[1].lower() == ".gif":
+        if not force_cache and ext(filename) == ".gif":
             return filename
 
         if thumb_height is None:
