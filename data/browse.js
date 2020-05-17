@@ -251,7 +251,7 @@ function add_image_div(
       (thumb ? 'with_thumb=true ' : '') +
       "   style='width: <%= thumb_width %>; height: <%= thumb_height %>px'>" +
       "   <div class='holder' style='height: <%= thumb_height %>px'>" +
-      (thumb ? "<img src='<%= thumb %>'/>" : '') +
+      (thumb ? "<img src='<%= thumb %>' style='max-height: <%= thumb_height %>px'/>" : '') +
       '   </div>' +
       "<div class='caption <%= caption_z %>'><%= name %></div>" +
       '</div>'

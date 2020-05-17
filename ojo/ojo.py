@@ -1345,7 +1345,7 @@ class Ojo:
                             w, h = meta["width"], meta["height"]
                             thumb_width = float(w) * min(h, thumbh) / h
                         except:
-                            thumb_width = 180  # best to match the width of the failed image
+                            thumb_width = 190  # best to match the width of the failed image
 
                         self.js(
                             "add_image_div('%s', '%s', %s, %s, '%s', undefined, %f)"
