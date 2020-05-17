@@ -2,14 +2,13 @@ import hashlib
 import logging
 import multiprocessing
 import os
-import shutil
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 
 from ojo import imaging
 from ojo.config import options
-from ojo.util import _bytes, get_failed_image, ext
+from ojo.util import _bytes, ext, get_failed_image
 
 POOL_SIZE = max(1, multiprocessing.cpu_count() - 1)
 

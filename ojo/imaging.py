@@ -245,6 +245,7 @@ def thumbnail(filename, thumb_path, width, height):
             pil.save(tmp_thumb_path, "JPEG")
         except Exception:
             logging.exception("Could not save thumbnail in format %s:" % format)
+            raise
 
     def use_pixbuf():
         pixbuf = get_pixbuf(filename, width, height)
