@@ -13,6 +13,7 @@ from PIL import Image
 from ojo import config
 from ojo.exiftool import ExifTool
 from ojo.metadata import metadata
+from ojo.util import ext
 
 gi.require_version("GdkPixbuf", "2.0")
 
@@ -124,7 +125,7 @@ def get_optimal_preview(filename, to_folder, width=None, height=None):
     ]
 
     for p in previews:
-        w, h = get_size_simple(p["path"])
+        w, h = get_size_via_pixbuf(p["path"])
         p["width"] = w
         p["height"] = h
 
@@ -460,7 +461,7 @@ def get_supported_image_extensions():
     return fn.image_formats
 
 
-def get_size_simple(image):
+def get_size_via_pixbuf(image):
     format, image_width, image_height = GdkPixbuf.Pixbuf.get_file_info(image)
     if format:
         return image_width, image_height
@@ -470,10 +471,6 @@ def get_size_simple(image):
             return im.size
         except:
             raise Exception("Not an image or unsupported image format")
-
-
-def ext(filename):
-    return os.path.splitext(filename)[1].lower()
 
 
 def is_image(filename):

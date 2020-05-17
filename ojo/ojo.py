@@ -41,11 +41,11 @@ from collections import OrderedDict
 
 from ojo import config, imaging, ojoconfig, thumbs, util, webview
 from ojo.config import options
-from ojo.imaging import folder_thumb_height, get_pixbuf, is_image, list_images, ext
+from ojo.imaging import folder_thumb_height, get_pixbuf, is_image, list_images
 from ojo.metadata import metadata
 from ojo.places import Places
 from ojo.thumbs import Thumbs
-from ojo.util import _u, get_failed_image
+from ojo.util import _u, get_failed_image, ext
 
 LEVELS = (logging.ERROR, logging.WARNING, logging.INFO, logging.DEBUG)
 

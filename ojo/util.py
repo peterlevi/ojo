@@ -59,6 +59,10 @@ def get_parent(file):
     return parent if parent != file else None
 
 
+def ext(filename):
+    return os.path.splitext(filename)[1].lower()
+
+
 def get_xdg_pictures_folder():
     try:
         pics_folder = GLib.get_user_special_dir(GLib.USER_DIRECTORY_PICTURES)

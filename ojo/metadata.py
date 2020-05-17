@@ -2,6 +2,8 @@ import logging
 import os
 from datetime import datetime
 
+from ojo.util import ext
+
 from ojo import imaging
 
 
@@ -29,10 +31,18 @@ class Metadata:
             self.cache[filename] = meta
             return meta
 
-        # no metadata, fallback to simplest default case
-        w, h = imaging.get_size_simple(filename)
+        # no metadata, fallback to pixbuf method
+        meta = self.read_via_pixbuf(filename)
+        self.cache[filename] = meta
+        return meta
+
+    def get_cached(self, filename):
+        return self.cache.get(filename, None)
+
+    def read_via_pixbuf(self, filename):
+        w, h = imaging.get_size_via_pixbuf(filename)
         stat = os.stat(filename)
-        meta = {
+        return {
             "filename": os.path.basename(filename),
             "needs_rotation": False,
             "width": w,
@@ -42,12 +52,6 @@ class Metadata:
             "file_size": stat.st_size,
             "exif": {},
         }
-
-        self.cache[filename] = meta
-        return meta
-
-    def get_cached(self, filename):
-        return self.cache.get(filename, None)
 
     def read(self, filename):
         try:
@@ -63,7 +67,8 @@ class Metadata:
             # also cache the most important part
             needs_rot = needs_rotation(meta)
             stat = os.stat(filename)
-            return {
+
+            result = {
                 "filename": os.path.basename(filename),
                 "needs_rotation": needs_rot,
                 "width": meta["ImageWidth" if not needs_rot else "ImageHeight"],
@@ -73,6 +78,17 @@ class Metadata:
                 "file_size": stat.st_size,
                 "exif": meta,
             }
+
+            if ext(filename) == '.svg':
+                # svg sizing is special, exiftool could return things like "270mm" which causes
+                # exceptions downstream, as width and height are expected to be numbers.
+                # So use size from pixbuf, it works OK for svgs.
+                meta_svg = self.read_via_pixbuf(filename)
+                result['width'] = meta_svg['width']
+                result['height'] = meta_svg['height']
+
+            return result
+
         except Exception:
             logging.exception("Could not parse meta-info for %s" % filename)
             return None

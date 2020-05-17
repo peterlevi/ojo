@@ -9,8 +9,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from ojo import imaging
 from ojo.config import options
-from ojo.imaging import ext
-from ojo.util import _bytes, get_failed_image
+from ojo.util import _bytes, get_failed_image, ext
 
 POOL_SIZE = max(1, multiprocessing.cpu_count() - 1)
 
