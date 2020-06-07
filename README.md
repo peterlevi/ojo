@@ -63,13 +63,19 @@ The filtered view over the images remains if you go into Image mode and start cy
 Press `Esc` to clear the filter and exit search mode (but keep in mind a second `Esc` will exit Ojo).
 
 ## Screenshots
-Single image view:
-![Ojo - Single image view](http://i.imgur.com/oa1Dr2I.png)
+Run Ojo with no parameters or by passing a path to a folder with images to start in Browse mode. Or press Enter while viewing a single image to enter Browse mode.
+![Ojo - Browse mode](https://user-images.githubusercontent.com/1457048/83980909-f81ebb80-a921-11ea-94a3-8ffeb567bb6f.png)
 
-Press Enter to enter Browse mode:
-![Ojo - Browse mode](http://i.imgur.com/fUcbhMY.png)
+Run Ojo with a path to an image to open it directly, or press Enter while in browse mode to open the selected image.
+![Ojo - Single image view](https://user-images.githubusercontent.com/1457048/83980913-fc4ad900-a921-11ea-96a1-15715572e5ef.png)
 
-Ojo in the Dash:
-![Ojo in the Dash](http://i.imgur.com/WJZpEkZ.png)
+The convenient search and filtering is always at your tips - directly start typing words while in Browse mode and Ojo will filter any files, folders, bookmarks, recent files or options that match all the typed words. Use this also to filter by extension, e.g. type ".cr3".
+![Search and filtering](https://user-images.githubusercontent.com/1457048/83981136-eccc8f80-a923-11ea-8175-c3a3c3eadd3c.png)
+
+Full EXIF viewing with searchng is available too, coming diretly from the bundled amazing ExifTool by Phil Harvey (https://exiftool.org/)
+![EXIF Info using ExifTool](https://user-images.githubusercontent.com/1457048/83981137-ee965300-a923-11ea-8e31-95d8b5d2715f.png)
+
+Ojo in the Launcher.
+![Ojo in the Launcher](https://user-images.githubusercontent.com/1457048/83980930-1e445b80-a922-11ea-98c3-92ce08c17a26.png)
 
 
