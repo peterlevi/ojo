@@ -1,6 +1,7 @@
 var folder = '';
 var image_count = 0;
 var mode = 'image';
+var submode = 'browse';
 var search = '';
 var current = '';
 var current_elem;
@@ -9,7 +10,6 @@ var folders_scroll_timeout;
 var goto_visible_timeout;
 var pending_add_timeouts = {};
 var thumb_height = 120;
-var exif_shown = false;
 
 var selection_class = '.item';
 var selected_file_per_class = {};
@@ -414,18 +414,24 @@ function set_exif_content(exif) {
   }
 }
 
+function refresh_submode() {
+  $('.submode-link').removeClass('submode-link-active');
+  $('.submode-link[data-submode=' + submode + ']').addClass('submode-link-active');
+}
+
 function toggle_exif(visible) {
   if (visible === undefined) {
-    visible = !exif_shown;
+    visible = submode !== 'exif';
   }
   if (visible) {
     if (selection_class !== '.item') {
       switch_pane('.item');
     }
   }
-  exif_shown = visible;
+  submode = visible ? 'exif' : 'browse';
   $('#exif').toggle(visible);
   $('#folders').toggle(!visible);
+  refresh_submode();
 }
 
 function show_error(error) {
@@ -448,7 +454,6 @@ function select(file, dontScrollTo, elem) {
   current = file;
 
   $('#filename').html(el.attr('filename') ? el.attr('filename') : '&nbsp;');
-  $('#file-info').hide();
 
   log('Selecting ' + file);
   python('ojo-select:' + file);
@@ -584,7 +589,7 @@ function on_key(key) {
       python('ojo-search:' + new_search);
     }
   } else if (key === 'Tab') {
-    if (exif_shown) {
+    if (submode === 'exif') {
       return;
     }
     var new_selection_class = selection_class === '.item' ? '.folder' : '.item';
@@ -633,7 +638,7 @@ function on_key(key) {
   } else if (key === 'BackSpace') {
     python('ojo-handle-key:' + key);
   } else if (key === 'Escape') {
-    if (exif_shown) {
+    if (submode === 'exif') {
       toggle_exif(false);
     } else {
       python('ojo-handle-key:' + key);
@@ -850,6 +855,7 @@ function toggle_search(
 
 $(function() {
   change_folder('');
+  refresh_submode();
 
   $(document).contextmenu(function(event) {
     event.preventDefault();
@@ -897,6 +903,10 @@ $(function() {
   $(document).on('click', '#file-info', function(e) {
     toggle_exif();
     e.stopPropagation();
+  });
+  $(document).on('click', '.submode-link', function(e) {
+    submode = $(this).attr('data-submode');
+    toggle_exif(submode === 'exif');
   });
 
   $('#search-field').on('input', function() {

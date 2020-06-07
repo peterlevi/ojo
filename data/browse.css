@@ -118,7 +118,7 @@ body {
 #exif {
   z-index: 2;
   position: absolute;
-  top: 40pt;
+  top: 80pt;
   bottom: 40pt;
   left: 0;
   width: 330pt;
@@ -131,6 +131,35 @@ body {
   text-overflow: ellipsis;
   border-top: 10pt solid transparent;
   border-bottom: 10pt solid transparent;
+}
+
+#submode {
+  position: absolute;
+  top: 40pt;
+  left: 0;
+  height: 40pt;
+  line-height: 40pt;
+  width: 330pt;
+  background: rgba(119, 114, 106, 0.8);
+  box-shadow: 3pt 3pt 5pt 0 #333;
+  max-width: 500pt;
+  white-space: nowrap;
+  overflow-x: hidden;
+  overflow-y: hidden;
+}
+
+.submode-link {
+  display: inline-block;
+  vertical-align: middle;
+  font-size: 1rem;
+  padding: 0 10pt;
+  color: #b6b6b6;
+  cursor: pointer;
+}
+
+.submode-link-active {
+  color: white;
+  background-color: #8b867e;
 }
 
 #images {
@@ -391,12 +420,12 @@ div.holder img {
 }
 
 #exif {
-  color: #d3d0c5;
-  font-size: 0.9rem;
+  font-size: 1rem;
 }
 
 #exif-content {
-  padding: 15px;
+  padding: 0 15px;
+  font-family: 'Ubuntu Mono', 'DejaVu Sans Mono', monospace;
 }
 
 .exif-item {
@@ -410,4 +439,8 @@ div.holder img {
   color: white;
   font-weight: bold;
   margin-right: 15px;
+}
+
+.exif-value {
+  color: #d3d0c5;
 }
