@@ -72,7 +72,7 @@ Run Ojo with a path to an image to open it directly, or press Enter while in bro
 The convenient search and filtering is always at your tips - directly start typing words while in Browse mode and Ojo will filter any files, folders, bookmarks, recent files or options that match all the typed words. Use this also to filter by extension, e.g. type ".cr3".
 ![Search and filtering](https://user-images.githubusercontent.com/1457048/83981136-eccc8f80-a923-11ea-8175-c3a3c3eadd3c.png)
 
-Full EXIF viewing with searchng is available too, coming diretly from the bundled amazing ExifTool by Phil Harvey (https://exiftool.org/)
+Full EXIF viewing with search is available too, coming directly from the bundled amazing ExifTool by Phil Harvey (https://exiftool.org/).
 ![EXIF Info using ExifTool](https://user-images.githubusercontent.com/1457048/83981137-ee965300-a923-11ea-8e31-95d8b5d2715f.png)
 
 Ojo in the Launcher.
