@@ -60,10 +60,6 @@ class Metadata:
 
             meta = imaging.exiftool.get_metadata(filename)
 
-            date_key = "DateTimeOriginal"
-            if date_key in meta:
-                meta[date_key] = datetime.strptime(meta[date_key], "%Y:%m:%d %H:%M:%S")
-
             # also cache the most important part
             needs_rot = needs_rotation(meta)
             stat = os.stat(filename)

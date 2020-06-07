@@ -19,6 +19,9 @@ body {
   overflow-x: hidden;
   overflow-y: hidden;
   padding-bottom: 20pt;
+
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 #content {
@@ -108,9 +111,11 @@ body {
   float: right;
   padding-right: 20pt;
   font-size: 0.9rem;
+  cursor: pointer;
 }
 
-#folders {
+#folders,
+#exif {
   z-index: 2;
   position: absolute;
   top: 40pt;
@@ -383,4 +388,14 @@ div.holder img {
   width: 0;
   height: 3pt;
   background-color: #f07746;
+}
+
+#exif {
+  color: white;
+  font-size: 0.9rem;
+}
+
+#exif-content {
+  width: 400px;
+  max-width: 400px;
 }

@@ -41,6 +41,10 @@
     </div>
 
     <div id="content">
+        <div id="exif" class="scroll-container pane" style="display: none">
+            <span class="close-button"/>
+            <pre id="exif-content"/>
+        </div>
         <div id="folders" class="scroll-container pane"></div>
         <div id="images" class="scroll-container pane"></div>
     </div>
@@ -50,7 +54,7 @@
     <div id="label">
         <span id="filename" class="info-part"></span>
 
-        <span id="file-info">
+        <span id="file-info" title="Click for full info">
             <span id="dimensions" class="info-part"></span>
             <span class="separator"></span>
             <span id="file-size" class="info-part"></span>

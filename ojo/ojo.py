@@ -119,6 +119,7 @@ class Ojo:
         )
         parser.set_defaults(logging_level=0)
         (self.command_options, self.command_args) = parser.parse_args()
+        self.command_args = [os.path.expanduser(p) for p in self.command_args]
 
     def setup_logging(self):
         # set the verbosity
@@ -664,6 +665,7 @@ class Ojo:
             "file_date": file_date,
             "file_size": util.human_size(meta["file_size"]),
             "exif_info": exif_info,
+            "exif": meta["exif"],
         }
 
     def update_selected_info(self, filename):
@@ -1345,7 +1347,9 @@ class Ojo:
                             w, h = meta["width"], meta["height"]
                             thumb_width = float(w) * min(h, thumbh) / h
                         except:
-                            thumb_width = 190  # best to match the width of the failed image
+                            thumb_width = (
+                                190
+                            )  # best to match the width of the failed image
 
                         self.js(
                             "add_image_div('%s', '%s', %s, %s, '%s', undefined, %f)"
@@ -1781,6 +1785,14 @@ class Ojo:
                 self.show()
                 if os.path.isfile(prev):
                     self.set_mode("image")
+        elif self.check_letter_shortcut(
+            event, [31], mask=Gdk.ModifierType.CONTROL_MASK
+        ):  # Ctrl-I
+            if self.mode == "image":
+                self.js("toggle_exif(true)")
+                self.set_mode("folder")
+            else:
+                self.js("toggle_exif()")
         elif self.mode == "folder":
             if hasattr(self, "browser"):
                 self.browser.grab_focus()
