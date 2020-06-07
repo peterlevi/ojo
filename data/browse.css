@@ -118,7 +118,7 @@ body {
 #exif {
   z-index: 2;
   position: absolute;
-  top: 80pt;
+  top: 60pt;
   bottom: 40pt;
   left: 0;
   width: 330pt;
@@ -129,19 +129,19 @@ body {
   overflow-x: hidden;
   overflow-y: auto;
   text-overflow: ellipsis;
-  border-top: 10pt solid transparent;
-  border-bottom: 10pt solid transparent;
+  padding-top: 10pt;
+  border-bottom: 5pt solid transparent;
 }
 
 #submode {
   position: absolute;
   top: 40pt;
   left: 0;
-  height: 40pt;
-  line-height: 40pt;
+  height: 20pt;
+  line-height: 20pt;
   width: 330pt;
-  background: rgba(119, 114, 106, 0.8);
   box-shadow: 3pt 3pt 5pt 0 #333;
+  background: #3d3c38;
   max-width: 500pt;
   white-space: nowrap;
   overflow-x: hidden;
@@ -151,7 +151,7 @@ body {
 .submode-link {
   display: inline-block;
   vertical-align: middle;
-  font-size: 1rem;
+  font-size: 0.9rem;
   padding: 0 10pt;
   color: #b6b6b6;
   cursor: pointer;
@@ -197,13 +197,13 @@ div:hover::-webkit-scrollbar-thumb {
 }
 
 .folder-category {
-  padding-bottom: 10pt;
+  padding: 10pt 0;
+  border-bottom: 1px solid #575450;
 }
 
 .folder-category-label {
   color: #a19c90;
-  padding-left: 10pt;
-  padding-bottom: 10pt;
+  padding: 5pt 0 5pt 10pt;
   font-size: 1rem;
 }
 
@@ -213,6 +213,10 @@ div:hover::-webkit-scrollbar-thumb {
   /*max-width: 285pt;*/
   overflow: hidden;
   font-size: 1rem;
+}
+
+.folder:hover {
+  background-color: #8b867e;
 }
 
 .folder.selected {
@@ -420,17 +424,18 @@ div.holder img {
 }
 
 #exif {
-  font-size: 1rem;
 }
 
 #exif-content {
-  padding: 0 15px;
   font-family: 'Ubuntu Mono', 'DejaVu Sans Mono', monospace;
+  font-size: 1rem;
+  -webkit-user-select: auto;
+  user-select: auto;
 }
 
 .exif-item {
-  padding: 10px 0;
-  border-bottom: solid 1px #4b4845;
+  padding: 10px 15px;
+  border-bottom: solid 1px #575450;
   word-wrap: break-word;
   max-width: 350pt;
 }
@@ -443,4 +448,43 @@ div.holder img {
 
 .exif-value {
   color: #d3d0c5;
+}
+
+#exif-search-box {
+  color: black;
+  height: 30pt;
+  width: 305pt;
+  margin-left: 10pt;
+  margin-bottom: 10pt;
+  border-radius: 20pt;
+  background-color: #a7a197;
+}
+
+#exif-search-container {
+  vertical-align: middle;
+  white-space: nowrap;
+  position: relative;
+}
+
+#exif-search-icon {
+  position: absolute;
+  left: 10pt;
+  top: 8pt;
+  width: 15pt;
+  height: 15pt;
+  z-index: 10;
+}
+
+#exif-search-field {
+  position: absolute;
+  left: 30pt;
+  z-index: 100;
+  top: 0;
+  width: 265pt;
+  height: 30pt;
+  border: none;
+  outline: none;
+  background-color: transparent;
+  color: black;
+  font-size: 1rem;
 }

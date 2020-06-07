@@ -200,6 +200,7 @@ class Ojo:
         self.set_zoom(False, 0.5, 0.5)
         self.mode = "image" if os.path.isfile(path) else "folder"
         self.is_in_search = False
+        self.is_in_exif = False
         self.last_action_time = 0
         self.last_folder_change_time = time.time()
         self.shown = None
@@ -713,6 +714,8 @@ class Ojo:
             self.folder_parent()
         elif action == "ojo-search":
             self.on_search(argument)
+        elif action == "ojo-exif":
+            self.on_toggle_exif(argument)
         elif action == "ojo-show-search":
             self.toggle_search(True)
         elif action == "ojo-mount":
@@ -836,6 +839,9 @@ class Ojo:
             "up": self.get_parent_folder,
         }
         return m[key]()
+
+    def on_toggle_exif(self, arg):
+        self.is_in_exif = arg == "true"
 
     def on_command(self, command):
         parts = command.split(":")
@@ -1821,7 +1827,7 @@ class Ojo:
                 with self.action_lock:
                     self.js("on_key('%s')" % key)
             elif key == "BackSpace":
-                if not self.is_in_search:
+                if not self.is_in_search and not self.is_in_exif:
                     self.folder_parent()
 
         elif key in ("Right", "Down", "Page_Down"):

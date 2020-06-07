@@ -14,6 +14,9 @@ var thumb_height = 120;
 var selection_class = '.item';
 var selected_file_per_class = {};
 
+var exif_content = {};
+var exif_filter = '';
+
 String.prototype.replaceAll = function(search, replacement) {
   var target = this;
   return target.replace(new RegExp(search, 'g'), replacement);
@@ -297,7 +300,9 @@ function set_image_count(count, folder_size, latest_date) {
     (count > 0 ? count : 'No') +
       ' images in folder' +
       (folder_size ? '<span class="separator"/>' + folder_size : '') +
-      (latest_date ? '<span class="separator"/>' + 'Last modified ' + latest_date : '')
+      (latest_date
+        ? '<span class="separator"/>' + 'Last modified ' + latest_date
+        : '')
   );
 }
 
@@ -393,11 +398,14 @@ function set_file_info(file, info, thumb_width) {
     $('#label').show();
     $('#file-info').show();
 
-    set_exif_content(info['exif']);
+    update_exif_content(info['exif']);
   }
 }
 
-function set_exif_content(exif) {
+function update_exif_content(exif) {
+  if (exif !== undefined) {
+    exif_content = exif;
+  }
   var content = $('#exif-content');
   content.empty();
   var item_template = _.template(
@@ -406,31 +414,58 @@ function set_exif_content(exif) {
       '<div class="exif-value"><%= value %></div>' +
       '</div>'
   );
-  for (var key in exif) {
-    if (exif.hasOwnProperty(key)) {
-      var obj = exif[key];
-      content.append(item_template({ key: obj['desc'], value: obj['val'] }));
+  for (var key in exif_content) {
+    if (exif_content.hasOwnProperty(key)) {
+      var obj = exif_content[key];
+      var searchIn = (obj['desc'] + ' ' + obj['val']).toLowerCase();
+      if (
+        exif_filter === '' ||
+        _.every(
+          exif_filter
+            .trim()
+            .toLowerCase()
+            .split(' '),
+          function(word) {
+            return searchIn.indexOf(word) >= 0;
+          }
+        )
+      ) {
+        content.append(item_template({ key: obj['desc'], value: obj['val'] }));
+      }
     }
   }
 }
 
 function refresh_submode() {
   $('.submode-link').removeClass('submode-link-active');
-  $('.submode-link[data-submode=' + submode + ']').addClass('submode-link-active');
+  $('.submode-link[data-submode=' + submode + ']').addClass(
+    'submode-link-active'
+  );
 }
 
 function toggle_exif(visible) {
   if (visible === undefined) {
     visible = submode !== 'exif';
   }
+  submode = visible ? 'exif' : 'browse';
+  exif_filter = '';
+  $('#exif-search-field').val('');
+  update_exif_content();
+
   if (visible) {
     if (selection_class !== '.item') {
       switch_pane('.item');
     }
+    $('#exif').show();
+    $('#folders').hide();
+    $('#exif-search-field').focus();
+    python('ojo-exif:true');
+  } else {
+    $('#exif').hide();
+    $('#folders').show();
+    python('ojo-exif:false');
   }
-  submode = visible ? 'exif' : 'browse';
-  $('#exif').toggle(visible);
-  $('#folders').toggle(!visible);
+
   refresh_submode();
 }
 
@@ -862,6 +897,12 @@ $(function() {
   });
 
   $(document).keydown(function(e) {
+    if (e.target === $('#exif-search-field')[0]) {
+      exif_filter = e.target.value.trim();
+      update_exif_content();
+      return;
+    }
+
     $('#search-field').focus();
     if (mode !== 'folder') {
       e.preventDefault();
@@ -874,7 +915,6 @@ $(function() {
     ) {
       // suppress esc, arrows, home, end (we handle those in Python)
       e.preventDefault();
-      return;
     }
   });
 

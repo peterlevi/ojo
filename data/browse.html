@@ -46,8 +46,13 @@
             <span id="submode-link-exif" class="submode-link" data-submode="exif">File Info</span>
         </div>
         <div id="exif" class="scroll-container pane" style="display: none">
-            <span class="close-button"/>
-            <pre id="exif-content"/>
+            <div id="exif-search-box">
+                <div id="exif-search-container">
+                    <img id="exif-search-icon" src="images/search.svg"/>
+                    <input type="search" id="exif-search-field"/>
+                </div>
+            </div>
+            <pre id="exif-content"></pre>
         </div>
         <div id="folders" class="scroll-container pane"></div>
         <div id="images" class="scroll-container pane"></div>
