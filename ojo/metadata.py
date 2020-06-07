@@ -8,7 +8,7 @@ from ojo import imaging
 
 
 def needs_rotation(meta):
-    orientation = meta.get("Orientation", "")
+    orientation = meta.get("Orientation", {"val": ""})["val"]
     return "otate 90" in orientation or "otate 270" in orientation
 
 
@@ -60,9 +60,7 @@ class Metadata:
 
             meta = imaging.exiftool.get_metadata(filename)
 
-            date_key = "DateTimeOriginal"
-            if date_key in meta:
-                meta[date_key] = datetime.strptime(meta[date_key], "%Y:%m:%d %H:%M:%S")
+            meta["SourceFile"] = {"desc": "Source File", "val": meta["SourceFile"]}
 
             # also cache the most important part
             needs_rot = needs_rotation(meta)
@@ -71,21 +69,21 @@ class Metadata:
             result = {
                 "filename": os.path.basename(filename),
                 "needs_rotation": needs_rot,
-                "width": meta["ImageWidth" if not needs_rot else "ImageHeight"],
-                "height": meta["ImageHeight" if not needs_rot else "ImageWidth"],
-                "orientation": meta.get("Orientation", None),
+                "width": meta["ImageWidth" if not needs_rot else "ImageHeight"]["val"],
+                "height": meta["ImageHeight" if not needs_rot else "ImageWidth"]["val"],
+                "orientation": meta.get("Orientation", {"val": None})["val"],
                 "file_date": stat.st_mtime,
                 "file_size": stat.st_size,
                 "exif": meta,
             }
 
-            if ext(filename) == '.svg':
+            if ext(filename) == ".svg":
                 # svg sizing is special, exiftool could return things like "270mm" which causes
                 # exceptions downstream, as width and height are expected to be numbers.
                 # So use size from pixbuf, it works OK for svgs.
                 meta_svg = self.read_via_pixbuf(filename)
-                result['width'] = meta_svg['width']
-                result['height'] = meta_svg['height']
+                result["width"] = meta_svg["width"]
+                result["height"] = meta_svg["height"]
 
             return result
 

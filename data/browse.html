@@ -41,6 +41,19 @@
     </div>
 
     <div id="content">
+        <div id="submode">
+            <span id="submode-link-browse" class="submode-link submode-link-active" data-submode="browse">Browse</span>
+            <span id="submode-link-exif" class="submode-link" data-submode="exif">File Info</span>
+        </div>
+        <div id="exif" class="scroll-container pane" style="display: none">
+            <div id="exif-search-box">
+                <div id="exif-search-container">
+                    <img id="exif-search-icon" src="images/search.svg"/>
+                    <input type="search" id="exif-search-field"/>
+                </div>
+            </div>
+            <pre id="exif-content"></pre>
+        </div>
         <div id="folders" class="scroll-container pane"></div>
         <div id="images" class="scroll-container pane"></div>
     </div>
@@ -50,7 +63,7 @@
     <div id="label">
         <span id="filename" class="info-part"></span>
 
-        <span id="file-info">
+        <span id="file-info" title="Click for full info">
             <span id="dimensions" class="info-part"></span>
             <span class="separator"></span>
             <span id="file-size" class="info-part"></span>

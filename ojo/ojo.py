@@ -119,6 +119,7 @@ class Ojo:
         )
         parser.set_defaults(logging_level=0)
         (self.command_options, self.command_args) = parser.parse_args()
+        self.command_args = [os.path.expanduser(p) for p in self.command_args]
 
     def setup_logging(self):
         # set the verbosity
@@ -199,6 +200,7 @@ class Ojo:
         self.set_zoom(False, 0.5, 0.5)
         self.mode = "image" if os.path.isfile(path) else "folder"
         self.is_in_search = False
+        self.is_in_exif = False
         self.last_action_time = 0
         self.last_folder_change_time = time.time()
         self.shown = None
@@ -346,11 +348,12 @@ class Ojo:
         elif options["sort_by"] == "date":
             key = lambda f: os.stat(f).st_mtime
         elif options["sort_by"] == "exif_date":
-            default = datetime.datetime(1900, 1, 1)
 
             def _exif_date(f):
                 m = metadata.get(f)
-                return m["exif"].get("DateTimeOriginal", default)
+                return m["exif"].get(
+                    "DateTimeOriginal", {"val": "1900:01:01 12:00:00"}
+                )["val"]
 
             dates = {image: _exif_date(image) for image in images}
             key = lambda f: dates[f]
@@ -377,7 +380,7 @@ class Ojo:
             return self.format_date(ts)
         elif sort_by == "exif_date":
             m = metadata.get(image)
-            d = m["exif"].get("DateTimeOriginal", None)
+            d = m["exif"].get("DateTimeOriginal", {"val": None})["val"]
             if not d:
                 return "No EXIF date"
             return d.strftime(options["date_format"])
@@ -647,15 +650,15 @@ class Ojo:
         try:
             exif = meta["exif"]
             exif_info = "{} s|F{}|ISO {}".format(
-                exif["ExposureTime"], exif["FNumber"], exif["ISO"]
+                exif["ExposureTime"]["val"], exif["FNumber"]["val"], exif["ISO"]["val"]
             )
             if "FocalLength" in exif:
-                exif_info += "|Focal len " + exif["FocalLength"]
+                exif_info += "|Focal len " + exif["FocalLength"]["val"]
             window_width = self.window.get_window().get_width()
             if window_width >= 1400 and "Model" in exif:
-                exif_info += "|" + exif["Model"]
+                exif_info += "|" + exif["Model"]["val"]
             if window_width >= 1400 and "LensType" in exif:
-                exif_info += "|" + exif["LensType"]
+                exif_info += "|" + exif["LensType"]["val"]
         except:
             exif_info = "No EXIF info"
         return {
@@ -664,6 +667,7 @@ class Ojo:
             "file_date": file_date,
             "file_size": util.human_size(meta["file_size"]),
             "exif_info": exif_info,
+            "exif": meta["exif"],
         }
 
     def update_selected_info(self, filename):
@@ -710,6 +714,8 @@ class Ojo:
             self.folder_parent()
         elif action == "ojo-search":
             self.on_search(argument)
+        elif action == "ojo-exif":
+            self.on_toggle_exif(argument)
         elif action == "ojo-show-search":
             self.toggle_search(True)
         elif action == "ojo-mount":
@@ -833,6 +839,9 @@ class Ojo:
             "up": self.get_parent_folder,
         }
         return m[key]()
+
+    def on_toggle_exif(self, arg):
+        self.is_in_exif = arg == "true"
 
     def on_command(self, command):
         parts = command.split(":")
@@ -1345,7 +1354,9 @@ class Ojo:
                             w, h = meta["width"], meta["height"]
                             thumb_width = float(w) * min(h, thumbh) / h
                         except:
-                            thumb_width = 190  # best to match the width of the failed image
+                            thumb_width = (
+                                190
+                            )  # best to match the width of the failed image
 
                         self.js(
                             "add_image_div('%s', '%s', %s, %s, '%s', undefined, %f)"
@@ -1781,6 +1792,14 @@ class Ojo:
                 self.show()
                 if os.path.isfile(prev):
                     self.set_mode("image")
+        elif self.check_letter_shortcut(
+            event, [31], mask=Gdk.ModifierType.CONTROL_MASK
+        ):  # Ctrl-I
+            if self.mode == "image":
+                self.js("toggle_exif(true)")
+                self.set_mode("folder")
+            else:
+                self.js("toggle_exif()")
         elif self.mode == "folder":
             if hasattr(self, "browser"):
                 self.browser.grab_focus()
@@ -1808,7 +1827,7 @@ class Ojo:
                 with self.action_lock:
                     self.js("on_key('%s')" % key)
             elif key == "BackSpace":
-                if not self.is_in_search:
+                if not self.is_in_search and not self.is_in_exif:
                     self.folder_parent()
 
         elif key in ("Right", "Down", "Page_Down"):

@@ -1,6 +1,7 @@
 var folder = '';
 var image_count = 0;
 var mode = 'image';
+var submode = 'browse';
 var search = '';
 var current = '';
 var current_elem;
@@ -12,6 +13,9 @@ var thumb_height = 120;
 
 var selection_class = '.item';
 var selected_file_per_class = {};
+
+var exif_content = {};
+var exif_filter = '';
 
 String.prototype.replaceAll = function(search, replacement) {
   var target = this;
@@ -251,7 +255,9 @@ function add_image_div(
       (thumb ? 'with_thumb=true ' : '') +
       "   style='width: <%= thumb_width %>; height: <%= thumb_height %>px'>" +
       "   <div class='holder' style='height: <%= thumb_height %>px'>" +
-      (thumb ? "<img src='<%= thumb %>' style='max-height: <%= thumb_height %>px'/>" : '') +
+      (thumb
+        ? "<img src='<%= thumb %>' style='max-height: <%= thumb_height %>px'/>"
+        : '') +
       '   </div>' +
       "<div class='caption <%= caption_z %>'><%= name %></div>" +
       '</div>'
@@ -292,9 +298,11 @@ function set_image_count(count, folder_size, latest_date) {
   image_count = count;
   $('#title-info').html(
     (count > 0 ? count : 'No') +
-      ' images' +
+      ' images in folder' +
       (folder_size ? '<span class="separator"/>' + folder_size : '') +
-      (latest_date ? '<span class="separator"/>' + latest_date : '')
+      (latest_date
+        ? '<span class="separator"/>' + 'Last modified ' + latest_date
+        : '')
   );
 }
 
@@ -365,6 +373,8 @@ function change_folder(new_folder) {
   $('#title').html('');
   $('#folders').html('');
   $('#images').html('');
+
+  toggle_exif(false);
 }
 
 function set_file_info(file, info, thumb_width) {
@@ -387,7 +397,76 @@ function set_file_info(file, info, thumb_width) {
     );
     $('#label').show();
     $('#file-info').show();
+
+    update_exif_content(info['exif']);
   }
+}
+
+function update_exif_content(exif) {
+  if (exif !== undefined) {
+    exif_content = exif;
+  }
+  var content = $('#exif-content');
+  content.empty();
+  var item_template = _.template(
+    '<div class="exif-item">' +
+      '<div class="exif-key"><%= key %>:</div>' +
+      '<div class="exif-value"><%= value %></div>' +
+      '</div>'
+  );
+  for (var key in exif_content) {
+    if (exif_content.hasOwnProperty(key)) {
+      var obj = exif_content[key];
+      var searchIn = (obj['desc'] + ' ' + obj['val']).toLowerCase();
+      if (
+        exif_filter === '' ||
+        _.every(
+          exif_filter
+            .trim()
+            .toLowerCase()
+            .split(' '),
+          function(word) {
+            return searchIn.indexOf(word) >= 0;
+          }
+        )
+      ) {
+        content.append(item_template({ key: obj['desc'], value: obj['val'] }));
+      }
+    }
+  }
+}
+
+function refresh_submode() {
+  $('.submode-link').removeClass('submode-link-active');
+  $('.submode-link[data-submode=' + submode + ']').addClass(
+    'submode-link-active'
+  );
+}
+
+function toggle_exif(visible) {
+  if (visible === undefined) {
+    visible = submode !== 'exif';
+  }
+  submode = visible ? 'exif' : 'browse';
+  exif_filter = '';
+  $('#exif-search-field').val('');
+  update_exif_content();
+
+  if (visible) {
+    if (selection_class !== '.item') {
+      switch_pane('.item');
+    }
+    $('#exif').show();
+    $('#folders').hide();
+    $('#exif-search-field').focus();
+    python('ojo-exif:true');
+  } else {
+    $('#exif').hide();
+    $('#folders').show();
+    python('ojo-exif:false');
+  }
+
+  refresh_submode();
 }
 
 function show_error(error) {
@@ -410,7 +489,6 @@ function select(file, dontScrollTo, elem) {
   current = file;
 
   $('#filename').html(el.attr('filename') ? el.attr('filename') : '&nbsp;');
-  $('#file-info').hide();
 
   log('Selecting ' + file);
   python('ojo-select:' + file);
@@ -522,6 +600,22 @@ function goto_visible(first_or_last, onlyClass, immediate) {
   goto_visible_timeout = setTimeout(_go, immediate ? 10 : 100);
 }
 
+function switch_pane(new_selection_class) {
+  var new_file = selected_file_per_class[new_selection_class];
+  if (
+    new_file &&
+    $(".match.selectable[file='" + encode_path(new_file) + "']").length > 0
+  ) {
+    select(new_file);
+  } else {
+    var elem = $('.selectable.match' + new_selection_class);
+    if (elem.length) {
+      goto($(elem[0]));
+      selection_class = new_selection_class;
+    }
+  }
+}
+
 function on_key(key) {
   var sel = $('.selected');
   if (key === 'slash') {
@@ -530,20 +624,11 @@ function on_key(key) {
       python('ojo-search:' + new_search);
     }
   } else if (key === 'Tab') {
-    var new_selection_class = selection_class === '.item' ? '.folder' : '.item';
-    var new_file = selected_file_per_class[new_selection_class];
-    if (
-      new_file &&
-      $(".match.selectable[file='" + encode_path(new_file) + "']").length > 0
-    ) {
-      select(new_file);
-    } else {
-      var elem = $('.selectable.match' + new_selection_class);
-      if (elem.length) {
-        goto($(elem[0]));
-        selection_class = new_selection_class;
-      }
+    if (submode === 'exif') {
+      return;
     }
+    var new_selection_class = selection_class === '.item' ? '.folder' : '.item';
+    switch_pane(new_selection_class);
   } else if (key === 'Up' || key === 'Down') {
     goto(get_next_in_direction(sel, key === 'Up' ? -1 : 1), false);
   } else if (key === 'Right') {
@@ -588,7 +673,11 @@ function on_key(key) {
   } else if (key === 'BackSpace') {
     python('ojo-handle-key:' + key);
   } else if (key === 'Escape') {
-    python('ojo-handle-key:' + key);
+    if (submode === 'exif') {
+      toggle_exif(false);
+    } else {
+      python('ojo-handle-key:' + key);
+    }
   }
 }
 
@@ -625,6 +714,8 @@ function on_search(bypass_python) {
   if (!bypass_python) {
     python('ojo-search:' + search);
   }
+
+  toggle_exif(false);
 
   $('.selectable')
     .filter(function() {
@@ -799,12 +890,19 @@ function toggle_search(
 
 $(function() {
   change_folder('');
+  refresh_submode();
 
   $(document).contextmenu(function(event) {
     event.preventDefault();
   });
 
   $(document).keydown(function(e) {
+    if (e.target === $('#exif-search-field')[0]) {
+      exif_filter = e.target.value.trim();
+      update_exif_content();
+      return;
+    }
+
     $('#search-field').focus();
     if (mode !== 'folder') {
       e.preventDefault();
@@ -817,7 +915,6 @@ $(function() {
     ) {
       // suppress esc, arrows, home, end (we handle those in Python)
       e.preventDefault();
-      return;
     }
   });
 
@@ -842,6 +939,14 @@ $(function() {
     var cmd = $(this).attr('data-command');
     python(cmd);
     e.stopPropagation();
+  });
+  $(document).on('click', '#file-info', function(e) {
+    toggle_exif();
+    e.stopPropagation();
+  });
+  $(document).on('click', '.submode-link', function(e) {
+    submode = $(this).attr('data-submode');
+    toggle_exif(submode === 'exif');
   });
 
   $('#search-field').on('input', function() {

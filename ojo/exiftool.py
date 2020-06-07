@@ -247,7 +247,7 @@ class ExifTool(object):
         as Unicode strings in Python 3.x.
         """
         params = map(fsencode, params)
-        return json.loads(self.execute(b"-j", *params))
+        return json.loads(self.execute(b"-j", b"-l", *params))
 
     def get_metadata_batch(self, filenames):
         """Return all meta-data for the given files.

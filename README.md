@@ -12,7 +12,8 @@
 6. It should provide some simple but convenient Trash, Copy and Move functionality. [nothing of these yet]
 
 ## Tech stack
-Ojo is based on these technologies: Python, GTK and HTML/JS/CSS with jQuery in an embedded WebKit
+Ojo is based on these technologies: Python, GTK and HTML/JS/CSS with jQuery in an embedded WebKit.
+The amazing ExifTool by Phil Harvey (https://exiftool.org/) is used for reading metadata from images.
 
 ## Installation
 To install on Ubuntu, Mint or other Ubuntu derivatives:
@@ -33,7 +34,9 @@ sudo apt-get install ojo
 #### Browse and image modes
 `Enter` - toggles between single image / browse mode  
 `F11` - toggles fullscreen  
+`Esc` - clear Search, close EXIF info display, or exit Ojo entirely  
 `Esc` / `Alt-F4` - exit  
+`Ctrl-I` - show or hide EXIF info for the curent image 
 
 #### Image mode:
 
@@ -55,7 +58,6 @@ Press and hold mouse to zoom to specific point at 100%, then hold and move to "l
 `Ctrl +/=` / `Ctrl -` - increase / decrease size of the thumbnails  
 `F5` - reload current folder (file changes are not reflected automatically)  
 `Ctrl-F5` - refresh/recreate all thumbnails in the current folder  
-  
 `Ctrl-F` or `type text directly` - enter search/filter mode.  
 Use this to filter images, folders and commands.  
 E.g. type `.jpg` to see just JPEG files. Or type `date` to focus the `Sort by date` command.
