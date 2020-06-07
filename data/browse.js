@@ -295,9 +295,9 @@ function set_image_count(count, folder_size, latest_date) {
   image_count = count;
   $('#title-info').html(
     (count > 0 ? count : 'No') +
-      ' images' +
+      ' images in folder' +
       (folder_size ? '<span class="separator"/>' + folder_size : '') +
-      (latest_date ? '<span class="separator"/>' + latest_date : '')
+      (latest_date ? '<span class="separator"/>' + 'Last modified ' + latest_date : '')
   );
 }
 
@@ -398,7 +398,20 @@ function set_file_info(file, info, thumb_width) {
 }
 
 function set_exif_content(exif) {
-  $('#exif-content').html(JSON.stringify(exif, null, 2));
+  var content = $('#exif-content');
+  content.empty();
+  var item_template = _.template(
+    '<div class="exif-item">' +
+      '<div class="exif-key"><%= key %>:</div>' +
+      '<div class="exif-value"><%= value %></div>' +
+      '</div>'
+  );
+  for (var key in exif) {
+    if (exif.hasOwnProperty(key)) {
+      var obj = exif[key];
+      content.append(item_template({ key: obj['desc'], value: obj['val'] }));
+    }
+  }
 }
 
 function toggle_exif(visible) {

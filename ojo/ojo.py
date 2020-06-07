@@ -347,11 +347,12 @@ class Ojo:
         elif options["sort_by"] == "date":
             key = lambda f: os.stat(f).st_mtime
         elif options["sort_by"] == "exif_date":
-            default = datetime.datetime(1900, 1, 1)
 
             def _exif_date(f):
                 m = metadata.get(f)
-                return m["exif"].get("DateTimeOriginal", default)
+                return m["exif"].get(
+                    "DateTimeOriginal", {"val": "1900:01:01 12:00:00"}
+                )["val"]
 
             dates = {image: _exif_date(image) for image in images}
             key = lambda f: dates[f]
@@ -378,7 +379,7 @@ class Ojo:
             return self.format_date(ts)
         elif sort_by == "exif_date":
             m = metadata.get(image)
-            d = m["exif"].get("DateTimeOriginal", None)
+            d = m["exif"].get("DateTimeOriginal", {"val": None})["val"]
             if not d:
                 return "No EXIF date"
             return d.strftime(options["date_format"])
@@ -648,15 +649,15 @@ class Ojo:
         try:
             exif = meta["exif"]
             exif_info = "{} s|F{}|ISO {}".format(
-                exif["ExposureTime"], exif["FNumber"], exif["ISO"]
+                exif["ExposureTime"]["val"], exif["FNumber"]["val"], exif["ISO"]["val"]
             )
             if "FocalLength" in exif:
-                exif_info += "|Focal len " + exif["FocalLength"]
+                exif_info += "|Focal len " + exif["FocalLength"]["val"]
             window_width = self.window.get_window().get_width()
             if window_width >= 1400 and "Model" in exif:
-                exif_info += "|" + exif["Model"]
+                exif_info += "|" + exif["Model"]["val"]
             if window_width >= 1400 and "LensType" in exif:
-                exif_info += "|" + exif["LensType"]
+                exif_info += "|" + exif["LensType"]["val"]
         except:
             exif_info = "No EXIF info"
         return {

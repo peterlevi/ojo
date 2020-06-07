@@ -391,11 +391,23 @@ div.holder img {
 }
 
 #exif {
-  color: white;
+  color: #d3d0c5;
   font-size: 0.9rem;
 }
 
 #exif-content {
-  width: 400px;
-  max-width: 400px;
+  padding: 15px;
+}
+
+.exif-item {
+  padding: 10px 0;
+  border-bottom: solid 1px #4b4845;
+  word-wrap: break-word;
+  max-width: 350pt;
+}
+
+.exif-key {
+  color: white;
+  font-weight: bold;
+  margin-right: 15px;
 }
