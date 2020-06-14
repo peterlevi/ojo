@@ -380,10 +380,12 @@ class Ojo:
             return self.format_date(ts)
         elif sort_by == "exif_date":
             m = metadata.get(image)
-            d = m["exif"].get("DateTimeOriginal", {"val": None})["val"]
-            if not d:
+            exif_date = m["exif"].get("DateTimeOriginal", {"val": None})["val"]
+            if not exif_date:
                 return "No EXIF date"
-            return d.strftime(options["date_format"])
+            exif_date_format = "%Y:%m:%d %H:%M:%S"
+            dt = datetime.datetime.strptime(exif_date, exif_date_format)
+            return dt.strftime(options["date_format"])
         elif sort_by == "name":
             return os.path.basename(image)[0].upper()
         elif sort_by == "size":
