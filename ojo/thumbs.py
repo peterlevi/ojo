@@ -31,7 +31,7 @@ def _safe_thumbnail(filename, cached, width, height, kill_event):
     except:
         logging.exception("Error creating thumb for %s, using error image", filename)
         # caller will check whether the file was actually created
-        return filename, get_failed_image()
+        return filename, get_failed_image() if os.path.isfile(filename) else None
 
 
 class Thumbs:

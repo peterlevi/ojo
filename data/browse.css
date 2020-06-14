@@ -215,10 +215,6 @@ div:hover::-webkit-scrollbar-thumb {
   font-size: 1rem;
 }
 
-.folder:hover {
-  background-color: #8b867e;
-}
-
 .folder.selected {
   background-color: #f07746;
   color: white;
