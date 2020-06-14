@@ -26,7 +26,7 @@ from gi.repository import Gdk, GdkPixbuf, GObject, Gtk  # isort:skip
 # fmt: on
 
 
-import datetime
+from datetime import datetime
 import gc
 import json
 import logging
@@ -48,10 +48,9 @@ from ojo.thumbs import Thumbs
 from ojo.util import _u, get_failed_image, ext
 
 LEVELS = (logging.ERROR, logging.WARNING, logging.INFO, logging.DEBUG)
-
 THUMBHEIGHTS = [80, 120, 180, 240, 320, 480]
-
 CACHE_SIZE = 50
+EXIF_DATE_FORMAT = "%Y:%m:%d %H:%M:%S"
 
 killed = False
 
@@ -338,6 +337,7 @@ class Ojo:
 
     def get_image_list(self):
         images = list_images(self.folder)
+        dates = {}
         if not options["show_hidden"]:
             images = [f for f in images if not os.path.basename(f).startswith(".")]
 
@@ -348,14 +348,9 @@ class Ojo:
         elif options["sort_by"] == "date":
             key = lambda f: os.stat(f).st_mtime
         elif options["sort_by"] == "exif_date":
-
-            def _exif_date(f):
-                m = metadata.get(f)
-                return m["exif"].get(
-                    "DateTimeOriginal", {"val": "1900:01:01 12:00:00"}
-                )["val"]
-
-            dates = {image: _exif_date(image) for image in images}
+            dates = {
+                image: self._exif_timestamp_fallback_mtime(image) for image in images
+            }
             key = lambda f: dates[f]
         elif options["sort_by"] == "size":
             key = lambda f: os.stat(f).st_size
@@ -377,15 +372,10 @@ class Ojo:
             return ext if ext else "No extension"
         elif sort_by == "date":
             ts = os.stat(image).st_mtime
-            return self.format_date(ts)
+            return self._format_date(ts)
         elif sort_by == "exif_date":
-            m = metadata.get(image)
-            exif_date = m["exif"].get("DateTimeOriginal", {"val": None})["val"]
-            if not exif_date:
-                return "No EXIF date"
-            exif_date_format = "%Y:%m:%d %H:%M:%S"
-            dt = datetime.datetime.strptime(exif_date, exif_date_format)
-            return dt.strftime(options["date_format"])
+            exif_timestamp = self._exif_timestamp_fallback_mtime(image)
+            return self._format_date(exif_timestamp)
         elif sort_by == "name":
             return os.path.basename(image)[0].upper()
         elif sort_by == "size":
@@ -395,8 +385,22 @@ class Ojo:
         else:
             return None
 
-    def format_date(self, ts):
-        return datetime.datetime.fromtimestamp(ts).strftime(options["date_format"])
+    def _exif_timestamp_fallback_mtime(self, filename):
+        exif_date = None
+        try:
+            m = metadata.get(filename)
+            exif_date = m["exif"].get("DateTimeOriginal", {"val": None})["val"]
+        except:
+            pass
+        if exif_date:
+            try:
+                return datetime.strptime(exif_date, EXIF_DATE_FORMAT).timestamp()
+            except:
+                logging.exception("Could not parse EXIF date")
+        return os.stat(filename).st_mtime
+
+    def _format_date(self, ts):
+        return datetime.fromtimestamp(ts).strftime(options["date_format"])
 
     def toggle_hidden(self, key):
         options["show_hidden"] = key == "true"
@@ -647,7 +651,7 @@ class Ojo:
         )
 
     def get_file_info(self, meta):
-        file_date = self.format_date(meta["file_date"])
+        file_date = self._format_date(meta["file_date"])
 
         try:
             exif = meta["exif"]
@@ -1295,7 +1299,7 @@ class Ojo:
                 else ""
             )
             latest_date = (
-                self.format_date(max(os.stat(img).st_mtime for img in self.images))
+                self._format_date(max(os.stat(img).st_mtime for img in self.images))
                 if self.images
                 else ""
             )
