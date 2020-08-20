@@ -182,7 +182,10 @@ class ExifTool(object):
             if not self.running:
                 return
             self._process.stdin.write(b"-stay_open\nFalse\n")
-            self._process.stdin.flush()
+            try:
+                self._process.stdin.flush()
+            except BrokenPipeError:
+                pass
             self._process.communicate()
             del self._process
             self.running = False
