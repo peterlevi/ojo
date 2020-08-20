@@ -527,7 +527,16 @@ function set_current_elem(new_current_elem) {
       : '.item';
     selected_file_per_class[current_sel_class] = current;
   }
+
+  if (
+    !new_current_elem ||
+    ($(new_current_elem).hasClass('folder') && $(current_elem).hasClass('item'))
+  ) {
+    // switching to a folder current element, hide EXIF stuff
+    hide_exif_info();
+  }
   current_elem = new_current_elem;
+
   $('.selectable').removeClass('selected');
   if (new_current_elem) {
     selection_class = $(new_current_elem).hasClass('folder')
@@ -614,6 +623,17 @@ function switch_pane(new_selection_class) {
       selection_class = new_selection_class;
     }
   }
+
+  if (new_selection_class === '.folder') {
+    $('#exif-info').html('');
+    $('#file-info').hide();
+  }
+}
+
+function hide_exif_info() {
+  $('#exif-info').html('');
+  $('#file-info').hide();
+  update_exif_content({});
 }
 
 function on_key(key) {
