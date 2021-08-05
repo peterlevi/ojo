@@ -20,7 +20,7 @@ import gi  # isort:skip
 gi.require_version("Gtk", "3.0")
 gi.require_version("Gdk", "3.0")
 gi.require_version("GdkPixbuf", "2.0")
-gi.require_version("WebKit", "3.0")
+gi.require_version("WebKit2", "4.0")
 gi.require_version("GExiv2", "0.10")
 from gi.repository import Gdk, GdkPixbuf, GObject, Gtk  # isort:skip
 # fmt: on

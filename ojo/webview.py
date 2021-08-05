@@ -1,4 +1,4 @@
-from gi.repository import WebKit, GObject
+from gi.repository import WebKit2, GObject
 
 import logging
 from ojo import util
@@ -47,9 +47,9 @@ class WebView:
         with open(ojoconfig.get_data_file(html_filename)) as f:
             html = f.read()
 
-        self.web_view = WebKit.WebView()
-        self.web_view.set_transparent(True)
-        self.web_view.set_can_focus(True)
+        self.web_view = WebKit2.WebView()
+        self.web_view.set_transparent(True) # broken
+        self.web_view.set_can_focus(True) # broken
 
         def nav(wv, command):
             logging.debug("Received command: " + command)
@@ -61,14 +61,14 @@ class WebView:
                     argument = command[index + 1 :]
                     on_action_fn(action, argument)
 
-        self.web_view.connect("status-bar-text-changed", nav)
+        self.web_view.connect("status-bar-text-changed", nav) # broken
 
         def _on_load(*args):
             self.is_loaded = True
             if on_load_fn:
                 on_load_fn()
 
-        self.web_view.connect("document-load-finished", _on_load)
+        self.web_view.connect("document-load-finished", _on_load) # broken
         self.web_view.load_string(
             html, "text/html", "UTF-8", util.path2url(ojoconfig.get_data_path()) + "/"
         )
