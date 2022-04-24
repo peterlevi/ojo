@@ -20,7 +20,7 @@ import gi  # isort:skip
 gi.require_version("Gtk", "3.0")
 gi.require_version("Gdk", "3.0")
 gi.require_version("GdkPixbuf", "2.0")
-gi.require_version("WebKit", "3.0")
+gi.require_version("WebKit2", "4.0")
 gi.require_version("GExiv2", "0.10")
 from gi.repository import Gdk, GdkPixbuf, GObject, Gtk  # isort:skip
 # fmt: on
@@ -528,6 +528,7 @@ class Ojo:
             self.set_mode("folder")
             self.last_folder_change_time = time.time()
             self.render_folder_view()
+            self.select_in_browser(self.selected)
 
         def _go_locked():
             # use a lock so we only have one change_folder operation running at a time

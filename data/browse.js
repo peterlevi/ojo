@@ -28,7 +28,7 @@ function log(msg) {
 
 function python(command) {
   log('Python command: ' + command);
-  window.status = new Date().getTime() + '|' + command;
+  window.alert(new Date().getTime() + '|' + command);
 }
 
 function set_mode(new_mode) {

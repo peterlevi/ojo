@@ -15,7 +15,7 @@ body {
   font-family: Ubuntu, 'Ubuntu Condensed', sans-serif;
   /* Note: browsing transparency 14.04 vs 16.04 */
   /* background: rgba(77, 75, 69, 0.9); */
-  background: rgba(0, 0, 0, 0);
+  background: rgba(77, 75, 69, 1);
   overflow-x: hidden;
   overflow-y: hidden;
   padding-bottom: 20pt;
