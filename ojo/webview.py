@@ -17,9 +17,8 @@ class WebView:
         widget.add(self.web_view)
 
     def grab_focus(self):
-        return
-        # if self.web_view:
-        #     self.web_view.grab_focus()
+        if self.web_view:
+            self.web_view.grab_focus()
 
     def js(self, command=None, commands=None):
         all_commands = []
@@ -46,6 +45,8 @@ class WebView:
 
     def load(self, html_filename, on_load_fn=None, on_action_fn=None):
         self.web_view = WebKit2.WebView()
+        # self.web_view.set_transparent(True)
+        self.web_view.set_can_focus(True)
 
         def nav(wv, dialog):
             try:
