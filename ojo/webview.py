@@ -45,20 +45,18 @@ class WebView:
 
     def load(self, html_filename, on_load_fn=None, on_action_fn=None):
         self.web_view = WebKit2.WebView()
-        # self.web_view.set_transparent(True)
         self.web_view.set_can_focus(True)
 
         def nav(wv, dialog):
             try:
                 command = dialog.get_message()
                 logging.debug("Received command: " + command)
-                if on_action_fn:
-                    if command:
-                        command = command[command.index("|") + 1 :]
-                        index = command.index(":")
-                        action = command[:index]
-                        argument = command[index + 1 :]
-                        on_action_fn(action, argument)
+                if on_action_fn and command:
+                    command = command[command.index("|") + 1 :]
+                    index = command.index(":")
+                    action = command[:index]
+                    argument = command[index + 1 :]
+                    on_action_fn(action, argument)
             finally:
                 return True
 
