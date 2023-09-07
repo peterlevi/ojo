@@ -202,6 +202,7 @@ class Ojo:
         self.is_in_exif = False
         self.last_action_time = 0
         self.last_folder_change_time = time.time()
+        self.last_key_event_time = None
         self.shown = None
         self.toggle_fullscreen(options["fullscreen"], first_run=True)
         if options["fullscreen"]:
@@ -1362,8 +1363,8 @@ class Ojo:
                             thumb_width = float(w) * min(h, thumbh) / h
                         except:
                             thumb_width = (
-                                190
-                            )  # best to match the width of the failed image
+                                190  # best to match the width of the failed image
+                            )
 
                         self.js(
                             "add_image_div('%s', '%s', %s, %s, '%s', undefined, %f)"
@@ -1763,9 +1764,13 @@ class Ojo:
     def process_key(self, widget=None, event=None, key=None, skip_browser=False):
         if event:
             # prevent processing duplicate events that happen sometimes when focusing web_view
-            if event.time == getattr(self, "last_key_event_time", None):
+            if event.time == self.last_key_event_time:
+                # keypress events seem to come two at a time, at least in Ubuntu 22.04
+                # this logic would ignore every second event, and reset state afterwards
+                self.last_key_event_time = None
                 return
-            setattr(self, "last_key_event_time", event.time)
+
+            self.last_key_event_time = event.time
 
         key = key or Gdk.keyval_name(event.keyval)
         if key == "Escape" and (self.mode == "image" or skip_browser):
