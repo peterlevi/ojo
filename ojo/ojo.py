@@ -132,6 +132,9 @@ class Ojo:
         )
 
     def __init__(self):
+        # Fix a problem with WebView on Wayland (https://bugs.webkit.org/show_bug.cgi?id=238513#c0)
+        os.environ["WEBKIT_DISABLE_COMPOSITING_MODE"] = "1"
+
         self.lock = threading.Lock()
         self.killed = False
         self.threads = []
@@ -164,15 +167,17 @@ class Ojo:
 
         self.scroll_window = Gtk.ScrolledWindow()
         self.image = Gtk.Image()
-        self.image.set_visible(True)
         self.scroll_window.add_with_viewport(self.image)
         util.make_transparent(self.scroll_window)
         util.make_transparent(self.scroll_window.get_child())
-        self.scroll_window.set_visible(True)
 
         self.box = Gtk.VBox()
-        self.box.set_visible(True)
         self.box.add(self.scroll_window)
+
+        self.browser_wrapper = Gtk.ScrolledWindow()
+        util.make_transparent(self.browser_wrapper)
+        self.box.add(self.browser_wrapper)
+
         self.window.add(self.box)
 
         self.window.set_events(
@@ -212,6 +217,7 @@ class Ojo:
             self.last_automatic_resize = time.time()
             self.show(path, quick=True)
             GObject.idle_add(self.after_quick_start)
+            self.update_components_visibility()
         else:
             if not path.endswith("/"):
                 path += "/"
@@ -222,13 +228,15 @@ class Ojo:
             self.last_automatic_resize = time.time()
             self.window.resize(*self.get_recommended_size())
 
-        self.window.set_visible(True)
-
-        GObject.threads_init()
-        Gdk.threads_init()
-        Gdk.threads_enter()
         Gtk.main()
-        Gdk.threads_leave()
+
+    def update_components_visibility(self):
+        self.box.set_visible(True)
+        self.image.set_visible(True)
+        self.scroll_window.set_visible(self.mode == "image")
+        self.image.set_visible(self.mode == "image")
+        self.browser_wrapper.set_visible(self.mode == "folder")
+        self.window.set_visible(True)
 
     def show_error(self, error_msg):
         if self.mode == "image":
@@ -334,7 +342,6 @@ class Ojo:
                     self.image.set_from_animation(anim)
             else:
                 self.image.set_from_pixbuf(self.pixbuf)
-            self.box.set_visible(True)
 
     def get_image_list(self):
         images = list_images(self.folder)
@@ -600,11 +607,6 @@ class Ojo:
 
         self.update_cursor()
         self.from_browser_time = 0
-
-        self.browser_wrapper = Gtk.ScrolledWindow()
-        self.browser_wrapper.set_visible(False)
-        util.make_transparent(self.browser_wrapper)
-        self.box.add(self.browser_wrapper)
 
         self.window.connect("delete-event", self.exit)
         self.window.connect("key-press-event", self.safe(self.process_key))
@@ -1625,7 +1627,6 @@ class Ojo:
                 height = getattr(self, "last_windowed_image_height", None)
             # caches the new image before we start changing sizes
             self.get_pixbuf(self.shown, force=True, width=width, height=height)
-            self.box.set_visible(False)
 
         self.update_margins()
         if options["fullscreen"]:
@@ -1651,11 +1652,9 @@ class Ojo:
         else:
             util.make_transparent(
                 self.window,
-                # Note: for non-fullscreen browsing transparency:
-                # color='rgba(77, 75, 69, 0.9)' if self.mode == 'folder' else 'rgba(77, 75, 69, 0.9)')
                 color="rgba(77, 75, 69, 1)"
                 if self.mode == "folder"
-                else "rgba(77, 75, 69, 0.9)",
+                else "rgba(77, 75, 69, 0.8)",
             )
             self.set_margins(15)
 
@@ -1690,10 +1689,8 @@ class Ojo:
                 if hasattr(self, "browser"):
                     self.browser.grab_focus()
 
+            self.update_components_visibility()
             self.update_cursor()
-            self.scroll_window.set_visible(self.mode == "image")
-            self.image.set_visible(self.mode == "image")
-            self.browser_wrapper.set_visible(self.mode == "folder")
             self.update_margins()
             self.js("set_mode('%s')" % self.mode)
 
@@ -1780,7 +1777,9 @@ class Ojo:
                 self.set_mode("folder")
             else:
                 self.exit()
-        elif key == "F11":
+        if key == "q" and (self.mode == "image"):
+            self.exit()
+        elif key == "F11" or (key == "f" and self.mode == "image"):
             self.toggle_fullscreen()
         elif key == "F5":
             if self.ctrl_key(event) and self.mode == "folder":
