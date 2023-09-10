@@ -984,13 +984,26 @@ class Ojo:
             return None
 
     def list_subfolders(self):
-        return self.filter_hidden(
+        folders = self.filter_hidden(
             [
                 os.path.join(self.folder, f)
-                for f in sorted(os.listdir(self.folder))
+                for f in os.listdir(self.folder)
                 if os.path.isdir(os.path.join(self.folder, f))
             ]
         )
+
+        if options["sort_by"] in ("extension", "name", "size"):
+            key = lambda f: os.path.basename(f).lower()
+        elif options["sort_by"] in ("date", "exif_date"):
+            key = lambda f: os.stat(f).st_mtime
+        else:
+            key = lambda f: f
+
+        folders = sorted(folders, key=key)
+        if options["sort_order"] == "desc" and options["sort_by"] != "size":
+            folders = list(reversed(folders))
+
+        return folders
 
     def build_bookmarks_category(self):
         bookmark_items = [
@@ -1149,11 +1162,11 @@ class Ojo:
 
         if order == "asc":
             m = {
-                "extension": "Z to A",
-                "name": "Z to A",
+                "extension": "Order: Z to A",
+                "name": "Order: Z to A",
                 "date": "Order: Newest at top",
                 "exif_date": "Order: Newest at top",
-                "size": "Big at top",
+                "size": "Order: Big at top",
             }
             items.append(
                 self.get_command_item(
@@ -1162,11 +1175,11 @@ class Ojo:
             )
         else:
             m = {
-                "extension": "A to Z",
-                "name": "A to Z",
+                "extension": "Order: A to Z",
+                "name": "Order: A to Z",
                 "date": "Order: Oldest at top",
                 "exif_date": "Order: Oldest at top",
-                "size": "Small at top",
+                "size": "Order: Small at top",
             }
             items.append(
                 self.get_command_item(
