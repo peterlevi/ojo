@@ -793,8 +793,9 @@ class Ojo:
         if self.folder == "/":
             return None
         else:
+            folder = self.get_parent_folder()
             return dict(
-                self.get_folder_item(self.get_parent_folder(), group="Subfolders"),
+                self.get_folder_item(folder, group="Parent Folder"),
                 label="..",
                 filename="..",
             )
@@ -965,11 +966,16 @@ class Ojo:
         nav_category = {"label": "Navigate", "no_labels": True, "items": nav_items}
         return nav_category
 
+    def build_parent_category(self):
+        parent_item = self.get_parent_folder_item()
+        if parent_item:
+            return {"label": "Parent Folder", "items": [parent_item]}
+        else:
+            return None
+
     def build_subfolders_category(self):
         subfolders = self.list_subfolders()
-        parent_item = self.get_parent_folder_item()
-        special_items = [parent_item] if parent_item else []
-        subfolder_items = special_items + [
+        subfolder_items = [
             self.get_folder_item(sub, group="Subfolders") for sub in subfolders
         ]
         if subfolder_items:
@@ -1401,6 +1407,11 @@ class Ojo:
 
         # Navigation
         categories.append(self.build_navigation_category())
+
+        # Parent folder
+        parent_category = self.build_parent_category()
+        if parent_category:
+            categories.append(parent_category)
 
         # Subfolders
         subfolders_category = self.build_subfolders_category()
