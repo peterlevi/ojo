@@ -843,14 +843,6 @@ class Ojo:
             "nofocus": nofocus,
         }
 
-    def get_navigation_folder(self, key):
-        m = {
-            "back": self.get_back_folder,
-            "forward": self.get_forward_folder,
-            "up": self.get_parent_folder,
-        }
-        return m[key]()
-
     def on_toggle_exif(self, arg):
         self.is_in_exif = arg == "true"
 
@@ -944,21 +936,21 @@ class Ojo:
             self.get_command_item(
                 "command:back" if self.get_back_folder() else None,
                 self.get_back_folder(),
-                "back",
+                icon="back",
                 group="Navigate",
                 nofocus=True,
             ),
             self.get_command_item(
                 "command:forward" if self.get_forward_folder() else None,
                 self.get_forward_folder(),
-                "forward",
+                icon="forward",
                 group="Navigate",
                 nofocus=True,
             ),
             self.get_command_item(
                 "command:up" if parent_folder else None,
                 parent_folder,
-                "up",
+                icon="up",
                 group="Navigate",
                 nofocus=True,
             ),

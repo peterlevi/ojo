@@ -115,7 +115,7 @@ function set_title(crumbs) {
         '</span>'
     ).appendTo($('#title'));
     if (i > 0 && i < crumbs.length - 1) {
-      $('<span>/</span>').appendTo($('#title'));
+      $('<span> / </span>').appendTo($('#title'));
     }
   }
 }
