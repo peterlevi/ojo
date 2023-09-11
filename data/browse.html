@@ -24,25 +24,27 @@
 
 <body>
 <div id="main">
-    <div id="search-button">
-        <img src="images/search.svg" title="Tip: Typing directly starts searching"/>
-    </div>
-
-    <div id="search-box">
-        <div id="search-container">
+    <div id="header">
+        <div id="title"></div>
+        <div id="title-path"></div>
+        <div id="gutter"></div>
+        <div id="title-info"></div>
+        <div id="search-button" class="clickable">
+            <img src="images/search.svg" title="Tip: Typing directly starts searching"/>
+        </div>
+        <div id="search-box">
             <img id="search-icon" src="images/search.svg"/>
             <input type="search" id="search-field"/>
         </div>
-    </div>
-
-    <div id="header">
-        <div id="title"></div>
-        <div id="title-info"></div>
+        <div id="close-button" class="clickable">
+            <img src="images/close.svg" title="Exit Ojo"/>
+        </div>
     </div>
 
     <div id="content">
         <div id="submode">
-            <span id="submode-link-browse" class="submode-link submode-link-active" data-submode="browse">Browse</span>
+            <span id="submode-link-browse" class="submode-link submode-link-active"
+                  data-submode="browse">Browse</span>
             <span id="submode-link-exif" class="submode-link" data-submode="exif">File Info</span>
         </div>
         <div id="exif" class="scroll-container pane" style="display: none">

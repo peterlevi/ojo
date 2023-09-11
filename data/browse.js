@@ -89,20 +89,13 @@ function refresh_category(category) {
   var first = true;
   _.map(category.items, function(item) {
     var style = '';
-    if (category.no_labels) {
-      style =
-        'display: inline; ' + (first ? 'padding-right: 0' : 'padding: 0;'); //TODO we don't want inlined CSS
-    }
     add_folder(category.label, item, style);
     first = false;
   });
-  if (category.no_labels) {
-    $(id).append('<div></div>');
-  }
 }
 
 function set_title(crumbs) {
-  $('#title').html('');
+  $('#title-path').html('');
   for (var i = 0; i < crumbs.length; i++) {
     var part = crumbs[i];
     $(
@@ -113,10 +106,7 @@ function set_title(crumbs) {
         '">' +
         esc(part.name) +
         '</span>'
-    ).appendTo($('#title'));
-    if (i > 0 && i < crumbs.length - 1) {
-      $('<span> / </span>').appendTo($('#title'));
-    }
+    ).appendTo($('#title-path'));
   }
 }
 
@@ -865,7 +855,9 @@ function on_clickable(event) {
     event.preventDefault();
     return;
   }
-  python('ojo:' + decode_path($(this).attr('file')));
+  if ($(this).attr('file')) {
+    python('ojo:' + decode_path($(this).attr('file')));
+  }
 }
 
 function toggle_captions(visible) {
@@ -882,7 +874,7 @@ function toggle_search(
   $('#search-box')
     .css('opacity', visible ? 1 : 0)
     .css('z-index', visible ? 500 : -1);
-  $('#search-button').css('display', visible ? 'none' : 'initial');
+  $('#search-button, #title-info').css('display', visible ? 'none' : 'initial');
   if (visible) {
     if (set_search_field_to) {
       search = search_for;
@@ -985,5 +977,8 @@ $(function() {
 
   $('#search-button').click(function(e) {
     python('ojo-show-search:');
+  });
+  $('#close-button').click(function(e) {
+    python('ojo-exit:');
   });
 });

@@ -309,7 +309,7 @@ class Ojo:
             self.register_action()
             self.shown = filename
             self.selected = self.shown
-            self.window.set_title(self.shown)
+            self.window.set_title(f"ojo - {self.shown}")
             self.refresh_image()
 
             if not quick:
@@ -414,6 +414,11 @@ class Ojo:
         options["show_hidden"] = key == "true"
         config.save_options()
         self.change_to_folder(self.folder, self.folder_history_position)
+
+    def toggle_window_decorated(self):
+        options["decorated"] = not options["decorated"]
+        config.save_options()
+        self.window.set_decorated(options["decorated"])
 
     def toggle_groups(self, key):
         options["show_groups_for"][options["sort_by"]] = key == "true"
@@ -732,6 +737,8 @@ class Ojo:
             self.mount_only(argument)
         elif action == "ojo-unmount":
             self.unmount(argument)
+        elif action == "ojo-exit":
+            self.exit()
 
     def on_search(self, text):
         self.search_text = text
@@ -904,14 +911,17 @@ class Ojo:
         folder = self.folder
         crumbs = []
         while folder:
+            name = os.path.basename(folder)
             crumbs.insert(
                 0,
                 {
                     "path": util.path2url(folder),
-                    "name": os.path.basename(folder) or "/",
+                    "name": f" / {name} " if name else " / ",
                 },
             )
             folder = util.get_parent(folder)
+        if len(crumbs) > 1:
+            crumbs[1]["name"] = crumbs[1]["name"][2:]
         return crumbs
 
     def add_bookmark(self):
@@ -955,7 +965,7 @@ class Ojo:
                 nofocus=True,
             ),
         ]
-        nav_category = {"label": "Navigate", "no_labels": True, "items": nav_items}
+        nav_category = {"label": "Navigate", "items": nav_items}
         return nav_category
 
     def build_parent_category(self):
@@ -1701,7 +1711,7 @@ class Ojo:
             elif self.mode == "folder":
                 self.been_in_folder_mode = True
                 self.shown = None
-                self.window.set_title(self.folder)
+                self.window.set_title(f"ojo - {self.folder}")
                 if hasattr(self, "browser"):
                     self.browser.grab_focus()
 
@@ -1793,9 +1803,11 @@ class Ojo:
                 self.set_mode("folder")
             else:
                 self.exit()
-        if key == "q" and (self.mode == "image"):
+        if self.mode == "image" and self.check_letter_shortcut(event, [24]):  # Q
             self.exit()
-        elif key == "F11" or (key == "f" and self.mode == "image"):
+        elif key == "F11" or (
+            self.mode == "image" and self.check_letter_shortcut(event, [41])  # F
+        ):
             self.toggle_fullscreen()
         elif key == "F5":
             if self.ctrl_key(event) and self.mode == "folder":
@@ -1827,6 +1839,10 @@ class Ojo:
                 self.set_mode("folder")
             else:
                 self.js("toggle_exif()")
+        elif self.check_letter_shortcut(
+            event, [40], mask=Gdk.ModifierType.CONTROL_MASK
+        ):  # Ctrl-D
+            self.toggle_window_decorated()
         elif self.mode == "folder":
             if hasattr(self, "browser"):
                 self.browser.grab_focus()

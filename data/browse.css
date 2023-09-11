@@ -27,44 +27,100 @@ body {
   margin: 4pt;
 }
 
-#title span {
-  font-size: 1.25rem;
+#title-path span {
+  font-size: 1.2rem;
 }
 
 #header {
   position: absolute;
   color: #a19c90;
-  padding: 10pt 10pt 10pt;
   top: 0;
   left: 0;
   right: 0;
-  height: 20pt;
+  height: 40pt;
   z-index: 100;
   background: #3d3c38;
   box-shadow: 0 2pt 5pt #222;
+  display: flex;
+  justify-content: space-between;
+  align-items: stretch;
 }
 
-.navigation {
-  display: inline-block;
-  padding: 0 30pt 0 0;
+#header div {
+  align-self: center;
+  height: 100%;
+  line-height: 40pt;
+}
+
+#title {
+  width: 180pt;
+}
+
+#title, #title-path {
+  display: flex;
+  align-items: center;
+  align-self: center;
+}
+
+#gutter {
+  flex: 1
+}
+
+.navigation, #search-button, #close-button {
+  display: flex;
+  justify-content: flex-start;
+  align-self: center;
 }
 
 .navigation .folder {
   display: inline-block;
-  padding: 4pt 0;
-  margin: 4pt 5pt 0 0;
+  padding: 0;
+  margin: 0;
+  width: 40pt;
+  text-align: center;
 }
 
-#title {
+#search-button img, #close-button img {
   display: inline-block;
+  padding: 10pt;
+  margin: 0;
+  text-align: center;
+}
+
+.crumb {
+  display: inline-block;
+  padding: 0;
+  cursor: pointer;
+}
+
+.crumb:first-child {
+  padding-right: 0;
+}
+
+.crumb:last-child {
+  font-weight: bold;
+}
+
+#header .clickable:hover {
+  background-color: #302e2c;
+}
+
+#close-button img:hover {
+  background-color: #f04422;
+}
+
+.crumb.nonmatch {
+  display: inline;
+}
+
+.crumb.selected {
+  border-bottom: solid 3pt #f07746;
 }
 
 #title-info {
   display: inline-block;
-  float: right;
   font-size: 1rem;
-  line-height: 21pt;
-  margin-right: 40pt;
+  margin-right: 70pt;
 }
 
 #folder-size {
@@ -116,7 +172,7 @@ body {
 #exif {
   z-index: 2;
   position: absolute;
-  top: 60pt;
+  top: 70pt;
   bottom: 40pt;
   left: 0;
   width: 330pt;
@@ -135,8 +191,8 @@ body {
   position: absolute;
   top: 40pt;
   left: 0;
-  height: 20pt;
-  line-height: 20pt;
+  height: 30pt;
+  line-height: 30pt;
   width: 330pt;
   box-shadow: 3pt 3pt 5pt 0 #333;
   background: #3d3c38;
@@ -282,28 +338,6 @@ div:hover::-webkit-scrollbar-thumb {
   display: none;
 }
 
-.crumb {
-  border-radius: 3pt;
-  padding: 5pt 2pt;
-  cursor: pointer;
-}
-
-.crumb:last-child {
-    font-weight: bold;
-}
-
-.crumb:hover {
-  background-color: #302e2c;
-}
-
-.crumb.nonmatch {
-  display: inline;
-}
-
-.crumb.selected {
-  border-bottom: solid 3pt #f07746;
-}
-
 .disabled {
   color: #a19c90;
 }
@@ -353,72 +387,38 @@ div.holder img {
   left: 50%;
 }
 
-#search-button {
-  opacity: 1;
-  position: fixed;
-  z-index: 501;
-  top: 5pt;
-  right: 10pt;
-  width: 30pt;
-  height: 30pt;
-  border-radius: 30pt;
-  background-color: transparent;
-  cursor: pointer;
-}
-
-#search-button:hover {
-  background-color: #302e2c;
-}
-
-#search-button img {
-  position: absolute;
-  left: 8pt;
-  top: 8pt;
-  width: 15pt;
-  height: 15pt;
-  z-index: 10;
-}
-
 #search-box {
   opacity: 0;
-  position: fixed;
+  display: block;
+  position: absolute;
   z-index: -1;
-  top: 5pt;
-  right: 10pt;
-  height: 30pt;
+  top: 0pt;
+  right: 40pt;
+  height: 40pt;
+  max-height: 40pt;
+  line-height: 40pt;
   width: 450pt;
-  border-radius: 20pt;
   background-color: #302e2c;
   box-shadow: inset 2pt 2pt 3pt #222;
-  /*border-bottom: 3pt solid #F07746;*/
-}
-
-#search-container {
-  vertical-align: middle;
-  white-space: nowrap;
-  position: relative;
 }
 
 #search-icon {
-  position: absolute;
-  left: 10pt;
-  top: 8pt;
-  width: 15pt;
-  height: 15pt;
-  z-index: 10;
+  padding: 10pt;
+  margin-right: 5pt;
 }
 
 #search-field {
   position: absolute;
   right: 15pt;
   top: 0;
-  width: 400pt;
-  height: 30pt;
+  width: 395pt;
+  height: 40pt;
+  line-height: 40pt;
   border: none;
   outline: none;
   background-color: transparent;
   color: white;
-  font-size: 1.25rem;
+  font-size: 1.2rem;
 }
 
 #progress {
