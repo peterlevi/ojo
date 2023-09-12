@@ -1363,8 +1363,9 @@ class Ojo:
                     cached = Thumbs.get_cached_thumbnail_path(img)
                     if os.path.exists(cached):
                         self.js(
-                            "add_image_div('%s', '%s', %s, %s, '%s', '%s')"
+                            "add_image_div('%s', '%s', '%s', %s, %s, '%s', '%s')"
                             % (
+                                util.path2url(thread_folder),
                                 util.path2url(img),
                                 self.safe_basename(img),
                                 "true" if img == self.selected else "false",
@@ -1390,8 +1391,9 @@ class Ojo:
                             )
 
                         self.js(
-                            "add_image_div('%s', '%s', %s, %s, '%s', undefined, %f)"
+                            "add_image_div('%s', '%s', '%s', %s, %s, '%s', undefined, %f)"
                             % (
+                                util.path2url(thread_folder),
                                 util.path2url(img),
                                 self.safe_basename(img),
                                 "true" if img == self.selected else "false",
@@ -1503,8 +1505,13 @@ class Ojo:
 
         OjoThread(ojo=self, target=_queue_thread).start()
 
-    def thumb_ready(self, img, thumb_path):
+    def on_thumb_ready(self, img, thumb_path):
         if os.path.isfile(img):
+            if not self.folder or os.path.normpath(
+                os.path.dirname(img)
+            ) != os.path.normpath(self.folder):
+                # ignore thumbs that were returned after the folder was changed
+                return
             self.js(
                 "add_image('%s', '%s')"
                 % (util.path2url(img), util.path2url(thumb_path))
@@ -1518,7 +1525,7 @@ class Ojo:
                     % (util.path2url(img), util.path2url(thumb_path))
                 )
 
-    def thumb_failed(self, img, error_msg):
+    def on_thumb_failed(self, img, error_msg):
         self.js("remove_image_div('%s')" % util.path2url(img))
         logging.warning("Could not add thumb for " + img)
 

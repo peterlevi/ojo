@@ -191,15 +191,18 @@ class Thumbs:
         )  # filename + hash of the name
 
     def on_thumb_ready(self, img, thumb_path):
-        self.processing.remove(img)
+        try:
+            self.processing.remove(img)
+        except:
+            logging.warning(f"on_thumb_ready: {img} was not present in the 'processing' set")
         self.thumbs_event.set()
         if thumb_path:
-            self.ojo.thumb_ready(img, thumb_path)
+            self.ojo.on_thumb_ready(img, thumb_path)
 
     def on_thumb_failed(self, img, thumb_path):
         self.processing.remove(img)
         self.thumbs_event.set()
-        self.ojo.thumb_failed(img, thumb_path)
+        self.ojo.on_thumb_failed(img, thumb_path)
 
     def add_thumbnail(self, img):
         th = options["thumb_height"]

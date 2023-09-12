@@ -224,6 +224,7 @@ function add_group(label, is_first) {
 }
 
 function add_image_div(
+  intended_folder,
   file,
   name,
   selected,
@@ -232,7 +233,7 @@ function add_image_div(
   thumb,
   thumb_width
 ) {
-  if (file.indexOf(folder) !== 0) {
+  if (intended_folder != folder || file.indexOf(folder) !== 0) {
     return;
   }
 
