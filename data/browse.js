@@ -107,6 +107,9 @@ function set_title(crumbs) {
         esc(part.name) +
         '</span>'
     ).appendTo($('#title-path'));
+    if (i > 0 && i < crumbs.length - 1) {
+      $('<span>/</span>').appendTo($('#title-path'));
+    }
   }
 }
 

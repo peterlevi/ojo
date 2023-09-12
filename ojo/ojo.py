@@ -916,12 +916,10 @@ class Ojo:
                 0,
                 {
                     "path": util.path2url(folder),
-                    "name": f" / {name} " if name else " / ",
+                    "name": f" {name or '/'} ",
                 },
             )
             folder = util.get_parent(folder)
-        if len(crumbs) > 1:
-            crumbs[1]["name"] = crumbs[1]["name"][2:]
         return crumbs
 
     def add_bookmark(self):
