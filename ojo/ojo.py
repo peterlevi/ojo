@@ -228,7 +228,11 @@ class Ojo:
             self.last_automatic_resize = time.time()
             self.window.resize(*self.get_recommended_size())
 
+        GObject.threads_init()
+        Gdk.threads_init()
+        Gdk.threads_enter()
         Gtk.main()
+        Gdk.threads_leave()
 
     def update_components_visibility(self):
         self.box.set_visible(True)

@@ -48,8 +48,6 @@ function set_thumb_height(new_thumb_height) {
 }
 
 function toggle_fullscreen(fullscreen) {
-  // Note: browsing transparency 14.04 vs 16.04
-  //$('body').css('background', fullscreen ? 'rgba(77, 75, 69, 1)' : 'rgba(77, 75, 69, 0.9)')
 }
 
 function render_folders(data) {
@@ -982,6 +980,7 @@ $(function() {
   $('#search-button').click(function(e) {
     python('ojo-show-search:');
   });
+
   $('#close-button').click(function(e) {
     python('ojo-exit:');
   });

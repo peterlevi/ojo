@@ -53,7 +53,7 @@ body {
 }
 
 #title {
-  width: 180pt;
+  width: 150pt;
 }
 
 #title, #title-path {
@@ -120,7 +120,7 @@ body {
 #title-info {
   display: inline-block;
   font-size: 1rem;
-  margin-right: 70pt;
+  margin-right: 40pt;
 }
 
 #folder-size {
