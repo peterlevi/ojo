@@ -23,7 +23,7 @@ use vars qw($VERSION);
 use Image::ExifTool qw(:DataAccess :Utils);
 use Image::ExifTool::Canon;
 
-$VERSION = '1.33';
+$VERSION = '1.38';
 
 sub ProcessCanonVRD($$;$);
 sub WriteCanonVRD($$;$);
@@ -51,6 +51,7 @@ my %vrdFormat = (
     8 => 'int32u',
     9 => 'int32s',
     13 => 'double',
+    24 => 'int32s', # (rectangle coordinates)
     33 => 'int32u', # (array)
     38 => 'double', # (array)
     # 254 => 'undef', ?
@@ -187,6 +188,7 @@ my $blankFooter = "CANON OPTIONAL DATA\0" . ("\0" x 42) . "\xff\xd9";
     WRITE_PROC => \&Image::ExifTool::WriteBinaryData,
     CHECK_PROC => \&Image::ExifTool::CheckBinaryData,
     WRITABLE => 1,
+    PERMANENT => 1, # (can't add/delete these individually)
     FIRST_ENTRY => 0,
     GROUPS => { 2 => 'Image' },
     DATAMEMBER => [ 0x002 ],   # necessary for writing
@@ -485,6 +487,7 @@ my $blankFooter = "CANON OPTIONAL DATA\0" . ("\0" x 42) . "\xff\xd9";
     WRITE_PROC => \&Image::ExifTool::WriteBinaryData,
     CHECK_PROC => \&Image::ExifTool::CheckBinaryData,
     WRITABLE => 1,
+    PERMANENT => 1, # (can't add/delete these individually)
     FIRST_ENTRY => 0,
     FORMAT => 'int16s',
     DATAMEMBER => [ 0x58, 0xdc, 0xdf, 0xe0 ], # (required for DataMember and var-format tags)
@@ -999,7 +1002,8 @@ my $blankFooter = "CANON OPTIONAL DATA\0" . ("\0" x 42) . "\xff\xd9";
     PROCESS_PROC => \&ProcessDR4,
     WRITE_PROC => \&ProcessDR4,
     WRITABLE => 1,
-    GROUPS => { 2 => 'Image' },
+    PERMANENT => 1, # (can't add/delete these individually)
+    GROUPS => { 1 => 'CanonDR4', 2 => 'Image' },
     VARS => { HEX_ID => 1, SORT_PROC => \&SortDR4 },
     NOTES => q{
         Tags written by Canon DPP version 4 in CanonVRD trailers and DR4 files. Each
@@ -1223,6 +1227,11 @@ my $blankFooter = "CANON OPTIONAL DATA\0" . ("\0" x 42) . "\xff\xd9";
     # 0x20a08 - (unknown picture style settings)
     # 0x20a09 - Custom picture style settings
     # 0x20a20 - Fine Detail picture style settings
+    0x20b10 => 'DPRAWMicroadjustBackFront', #forum15660
+    0x20b12 => 'DPRAWMicroadjustStrength', #forum15660
+    0x20b20 => 'DPRAWBokehShift', #forum15660
+    0x20b21 => 'DPRAWBokehShiftArea', #PH
+    0x20b30 => 'DPRAWGhostingReductionArea', #forum15660
     0x30101 => {
         Name => 'CropAspectRatio',
         PrintConv => {
@@ -1276,7 +1285,7 @@ my $blankFooter = "CANON OPTIONAL DATA\0" . ("\0" x 42) . "\xff\xd9";
     WRITABLE => 1,
     FIRST_ENTRY => 0,
     FORMAT => 'int32u',
-    GROUPS => { 2 => 'Image' },
+    GROUPS => { 1 => 'CanonDR4', 2 => 'Image' },
     # 0 - value: 'IIII' (presumably byte order)
     # 1 - value: 0x00040004 (currently use this for magic number)
     # 2 - value: 6
@@ -1301,7 +1310,7 @@ my $blankFooter = "CANON OPTIONAL DATA\0" . ("\0" x 42) . "\xff\xd9";
     WRITABLE => 1,
     FIRST_ENTRY => 0,
     FORMAT => 'int32u',
-    GROUPS => { 2 => 'Image' },
+    GROUPS => { 1 => 'CanonDR4', 2 => 'Image' },
     0x00 => {
         Name => 'ToneCurveColorSpace',
         PrintConv => {
@@ -1354,7 +1363,7 @@ my $blankFooter = "CANON OPTIONAL DATA\0" . ("\0" x 42) . "\xff\xd9";
     WRITABLE => 1,
     FIRST_ENTRY => 0,
     FORMAT => 'double',
-    GROUPS => { 2 => 'Image' },
+    GROUPS => { 1 => 'CanonDR4', 2 => 'Image' },
     0x02 => 'GammaContrast',
     0x03 => 'GammaColorTone',
     0x04 => 'GammaSaturation',
@@ -1410,7 +1419,7 @@ my $blankFooter = "CANON OPTIONAL DATA\0" . ("\0" x 42) . "\xff\xd9";
     WRITABLE => 1,
     FIRST_ENTRY => 0,
     FORMAT => 'int32s',
-    GROUPS => { 2 => 'Image' },
+    GROUPS => { 1 => 'CanonDR4', 2 => 'Image' },
     0 => { Name => 'CropActive', %noYes },
     1 => 'CropRotatedOriginalWidth',
     2 => 'CropRotatedOriginalHeight',
@@ -1432,7 +1441,7 @@ my $blankFooter = "CANON OPTIONAL DATA\0" . ("\0" x 42) . "\xff\xd9";
 # DR4 Stamp Tool tags (ref PH)
 %Image::ExifTool::CanonVRD::StampInfo = (
     PROCESS_PROC => \&Image::ExifTool::ProcessBinaryData,
-    GROUPS => { 2 => 'Image' },
+    GROUPS => { 1 => 'CanonDR4', 2 => 'Image' },
     FORMAT => 'int32u',
     FIRST_ENTRY => 0,
     0x02 => 'StampToolCount',
@@ -1441,7 +1450,7 @@ my $blankFooter = "CANON OPTIONAL DATA\0" . ("\0" x 42) . "\xff\xd9";
 # DR4 dust delete information (ref PH)
 %Image::ExifTool::CanonVRD::DustInfo = (
     PROCESS_PROC => \&Image::ExifTool::ProcessBinaryData,
-    GROUPS => { 2 => 'Image' },
+    GROUPS => { 1 => 'CanonDR4', 2 => 'Image' },
     FORMAT => 'int32u',
     FIRST_ENTRY => 0,
     0x02 => { Name => 'DustDeleteApplied', %noYes },
@@ -2008,7 +2017,7 @@ sub ProcessCanonVRD($$;$)
             $verbose and print $out "  Creating CanonVRD trailer\n";
             $created = 1;
         }
-        $raf = new File::RandomAccess($dataPt);
+        $raf = File::RandomAccess->new($dataPt);
     }
     # read and validate the footer
     $raf->Seek(-0x40-$offset, 2)    or return 0;
@@ -2046,17 +2055,16 @@ sub ProcessCanonVRD($$;$)
             return 0;
         }
     }
-    # exit quickly if writing and no CanonVRD tags are being edited
-    if ($outfile and not exists $$et{EDIT_DIRS}{CanonVRD}) {
-        print $out "$$et{INDENT}  [nothing changed]\n" if $verbose;
-        return 1 if $outfile eq $dataPt;
-        return Write($outfile, $$dataPt) ? 1 : -1;
-    }
-
     my $vrdType = 'VRD';
 
     if ($outfile) {
         $verbose and not $created and print $out "  Rewriting CanonVRD trailer\n";
+        # exit quickly if writing and no CanonVRD tags are being edited
+        unless (exists $$et{EDIT_DIRS}{CanonVRD}) {
+            print $out "$$et{INDENT}  [nothing changed in CanonVRD]\n" if $verbose;
+            return 1 if $outfile eq $dataPt;
+            return Write($outfile, $$dataPt) ? 1 : -1;
+        }
         # delete CanonVRD information if specified
         my $doDel = $$et{DEL_GROUP}{CanonVRD};
         unless ($doDel) {
@@ -2264,7 +2272,7 @@ files, and as a trailer in JPEG, CRW, CR2 and TIFF images.
 
 =head1 AUTHOR
 
-Copyright 2003-2020, Phil Harvey (philharvey66 at gmail.com)
+Copyright 2003-2024, Phil Harvey (philharvey66 at gmail.com)
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.

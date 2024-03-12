@@ -21,7 +21,7 @@ use strict;
 use vars qw($VERSION);
 use Image::ExifTool qw(:DataAccess :Utils);
 
-$VERSION = '1.16';
+$VERSION = '1.19';
 
 sub ProcessPEResources($$);
 sub ProcessPEVersion($$);
@@ -726,6 +726,7 @@ my %languageCode = (
         Name => 'CPUType',
         Format => 'int16u',
         # ref /usr/include/linux/elf-em.h
+        # ref https://en.wikipedia.org/wiki/Executable_and_Linkable_Format
         PrintConv => {
             0 => 'None',
             1 => 'AT&T WE 32100',
@@ -736,21 +737,68 @@ my %languageCode = (
             6 => 'i486',
             7 => 'i860',
             8 => 'MIPS R3000',
+            9 => 'IBM System/370',
             10 => 'MIPS R4000',
-            15 => 'HPPA',
+            15 => 'HP PA-RISC',
             18 => 'Sun v8plus',
+            19 => 'Intel 80960',
             20 => 'PowerPC',
             21 => 'PowerPC 64-bit',
             22 => 'IBM S/390',
             23 => 'Cell BE SPU',
+            36 => 'NEC V800',
+            37=> 'Fujitsu FR20',
+            38 => 'TRW RH-32',
+            39 => 'Motorola RCE',
+            40 => 'Arm (up to Armv7/AArch32)',
+            41 => 'Digital Alpha',
             42 => 'SuperH',
             43 => 'SPARC v9 64-bit',
+            44 => 'Siemens TriCore',
+            45 => 'Argonaut RISC Core',
             46 => 'Renesas H8/300,300H,H8S',
+            47 => 'Hitachi H8/300H',
+            48 => 'Hitachi H8S',
+            49 => 'Hitachi H8/500',
             50 => 'HP/Intel IA-64',
-            62 => 'AMD x86-64',
-            76 => 'Axis Communications 32-bit embedded processor',
-            87 => 'NEC v850',
-            88 => 'Renesas M32R',
+            0x33 => 'Stanford MIPS-X',
+            0x34 => 'Motorola ColdFire',
+            0x35 => 'Motorola M68HC12',
+            0x36 => 'Fujitsu MMA Multimedia Accelerator',
+            0x37 => 'Siemens PCP',
+            0x38 => 'Sony nCPU embedded RISC processor',
+            0x39 => 'Denso NDR1 microprocessor',
+            0x3a => 'Motorola Star*Core processor',
+            0x3b => 'Toyota ME16 processor',
+            0x3c => 'STMicroelectronics ST100 processor',
+            0x3d => 'Advanced Logic Corp. TinyJ embedded processor family',
+            0x3e => 'AMD x86-64',
+            0x3f => 'Sony DSP Processor',
+            0x40 => 'Digital Equipment Corp. PDP-10',
+            0x41 => 'Digital Equipment Corp. PDP-11',
+            0x42 => 'Siemens FX66 microcontroller',
+            0x43 => 'STMicroelectronics ST9+ 8/16 bit microcontroller',
+            0x44 => 'STMicroelectronics ST7 8-bit microcontroller',
+            0x45 => 'Motorola MC68HC16 Microcontroller',
+            0x46 => 'Motorola MC68HC11 Microcontroller',
+            0x47 => 'Motorola MC68HC08 Microcontroller',
+            0x48 => 'Motorola MC68HC05 Microcontroller',
+            0x49 => 'Silicon Graphics SVx',
+            0x4a => 'STMicroelectronics ST19 8-bit microcontroller',
+            0x4b => 'Digital VAX',
+            0x4c => 'Axis Communications 32-bit embedded processor',
+            0x4d => 'Infineon Technologies 32-bit embedded processor',
+            0x4e => 'Element 14 64-bit DSP Processor',
+            0x4f => 'LSI Logic 16-bit DSP Processor',
+            0x57 => 'NEC v850',
+            0x58 => 'Renesas M32R',
+            0x8c => 'TMS320C6000 Family',
+            0xaf => 'MCST Elbrus e2k',
+            0xb7 => 'Arm 64-bits (Armv8/AArch64)',
+            0xdc => 'Zilog Z80',
+            0xf3 => 'RISC-V',
+            0xf7 => 'Berkeley Packet Filter',
+            0x101 => 'WDC 65C816',
             0x5441 => 'Fujitsu FR-V',
             0x9026 => 'Alpha', # (interim value)
             0x9041 => 'm32r (old)',
@@ -1009,7 +1057,7 @@ sub ProcessPEDict($$)
     my $raf = $$dirInfo{RAF};
     my $dataPt = $$dirInfo{DataPt};
     my $dirLen = length($$dataPt);
-    my ($pos, @sections, %dirInfo);
+    my ($pos, @sections, %dirInfo, $rsrcFound);
 
     # loop through all sections
     for ($pos=0; $pos+40<=$dirLen; $pos+=40) {
@@ -1019,14 +1067,16 @@ sub ProcessPEDict($$)
         my $offset = Get32u($dataPt, $pos + 20);
         # remember the section offsets for the VirtualAddress lookup later
         push @sections, { Base => $offset, Size => $size, VirtualAddress => $va };
-        # save details of the first resource section
+        # save details of the first resource section (or .text if .rsrc not found, ref forum11465)
+        next unless ($name eq ".rsrc\0\0\0" and not $rsrcFound and defined($rsrcFound = 1)) or
+                    ($name eq ".text\0\0\0" and not %dirInfo);
         %dirInfo = (
             RAF      => $raf,
             Base     => $offset,
             DirStart => 0,   # (relative to Base)
             DirLen   => $size,
             Sections => \@sections,
-        ) if $name eq ".rsrc\0\0\0" and not %dirInfo;
+        );
     }
     # process the first resource section
     ProcessPEResources($et, \%dirInfo) or return 0 if %dirInfo;
@@ -1144,7 +1194,8 @@ sub ProcessEXE($$)
         my $fileSize = ($cp - ($cblp ? 1 : 0)) * 512 + $cblp;
         #(patch to accommodate observed 64-bit files)
         #return 0 if $fileSize < 0x40 or $fileSize < $lfarlc;
-        return 0 if $fileSize < 0x40;
+        #return 0 if $fileSize < 0x40; (changed to warning in ExifTool 12.08)
+        $et->Warn('Invalid file size in DOS header') if $fileSize < 0x40;
         # read the Windows NE, PE or LE (virtual device driver) header
         #if ($lfarlc == 0x40 and $fileSize > $lfanew + 2 and ...
         if ($raf->Seek($lfanew, 0) and $raf->Read($buff, 0x40) and $buff =~ /^(NE|PE|LE)/) {
@@ -1230,6 +1281,14 @@ sub ProcessEXE($$)
         $tagTablePtr = GetTagTable('Image::ExifTool::EXE::MachO');
         if ($1 eq "\xca\xfe\xba\xbe") {
             SetByteOrder('MM');
+            my $ver = Get32u(\$buff, 4);
+            # Java bytecode .class files have the same magic number, so we need to look deeper
+            # (ref https://github.com/file/file/blob/master/magic/Magdir/cafebabe#L6-L15)
+            if ($ver > 30) {
+                # this is Java bytecode
+                $et->SetFileType('Java bytecode', 'application/java-byte-code', 'class');
+                return 1;
+            }
             $et->SetFileType('Mach-O fat binary executable', undef, '');
             return 1 if $fast3;
             my $count = Get32u(\$buff, 4);  # get architecture count
@@ -1395,7 +1454,7 @@ library files.
 
 =head1 AUTHOR
 
-Copyright 2003-2020, Phil Harvey (philharvey66 at gmail.com)
+Copyright 2003-2024, Phil Harvey (philharvey66 at gmail.com)
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.
