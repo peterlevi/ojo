@@ -15,7 +15,7 @@
 #               2020/01/11 - F. Kotov Limited image preview size to 500px
 #
 # Notes:     1) Input files must contain GPSLatitude and GPSLongitude.
-#            2) Add the -ee option to extract the full track from video files.
+#            2) Add the -ee3 option to extract the full track from video files.
 #            3) For Google Earth to be able to find the images, the input
 #               images must be specified using relative paths, and "out.kml"
 #               must stay in the same directory as where the command was run.
@@ -24,6 +24,9 @@
 #               extension is used.
 #            5) The -fileOrder option may be used to control the order of the
 #               generated placemarks when processing multiple files.
+#            6) The "0" in the coordinates line may be changed to "$gpsaltitude#"
+#               and the altitudeMode may be changed to "absolute" to store
+#               altitude information if it exists in the track log.
 #------------------------------------------------------------------------------
 #[HEAD]<?xml version="1.0" encoding="UTF-8"?>
 #[HEAD]<kml xmlns="http://earth.google.com/kml/2.0">

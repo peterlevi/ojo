@@ -495,15 +495,17 @@ array of X coordinates then an array of Y coordinates)</span></span></td></tr>
 <h2><a name='Trailer'>Samsung Trailer Tags</a></h2>
 <p>Tags extracted from the trailer of JPEG images written when using certain
 features (such as &quot;Sound &amp; Shot&quot; or &quot;Shot &amp; More&quot;) from Samsung models such
-as the Galaxy S4 and Tab S.</p>
+as the Galaxy S4 and Tab S, and from the &#39;sefd&#39; atom in HEIC images from the
+Samsung S10+.</p>
 <blockquote>
 <table class=frame><tr><td>
 <table class=inner cellspacing=1>
 <tr class=h><th>Tag Name</th>
 <th>Writable</th><th>Values / <span class=n>Notes</span></th></tr>
 <tr>
-<td>DepthMapData</td>
-<td class=c>no</td>
+<td>DepthMapData
+  <br>DepthMapData2</td>
+<td class=c>no<br>no</td>
 <td>&nbsp;</td></tr>
 <tr class=b>
 <td>DepthMapName</td>
@@ -530,8 +532,9 @@ as the Galaxy S4 and Tab S.</p>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
 <tr class=b>
-<td>EmbeddedImage</td>
-<td class=c>no</td>
+<td>EmbeddedImage
+  <br>EmbeddedImage2</td>
+<td class=c>no<br>no</td>
 <td>&nbsp;</td></tr>
 <tr>
 <td>EmbeddedImageName</td>
@@ -546,22 +549,251 @@ as the Galaxy S4 and Tab S.</p>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
 <tr class=b>
+<td>MCCData</td>
+<td class=c>no</td>
+<td><span class=s>202 = Greece (202)
+  <br>204 = Netherlands (204)
+  <br>206 = Belgium (206)
+  <br>208 = France (208)
+  <br>212 = Monaco (212)
+  <br>213 = Andorra (213)
+  <br>214 = Spain (214)
+  <br>216 = Hungary (216)
+  <br>218 = Bosnia &amp; Herzegov. (218)
+  <br>219 = Croatia (219)
+  <br>220 = Serbia (220)
+  <br>221 = Kosovo (221)
+  <br>222 = Italy (222)
+  <br>226 = Romania (226)
+  <br>228 = Switzerland (228)
+  <br>230 = Czech Rep. (230)
+  <br>231 = Slovakia (231)
+  <br>232 = Austria (232)
+  <br>234 = United Kingdom (234)
+  <br>235 = United Kingdom (235)
+  <br>238 = Denmark (238)
+  <br>240 = Sweden (240)
+  <br>242 = Norway (242)
+  <br>244 = Finland (244)
+  <br>246 = Lithuania (246)
+  <br>247 = Latvia (247)
+  <br>248 = Estonia (248)
+  <br>250 = Russian Federation (250)
+  <br>255 = Ukraine (255)
+  <br>257 = Belarus (257)
+  <br>259 = Moldova (259)
+  <br>260 = Poland (260)
+  <br>262 = Germany (262)
+  <br>266 = Gibraltar (266)
+  <br>268 = Portugal (268)
+  <br>270 = Luxembourg (270)
+  <br>272 = Ireland (272)
+  <br>274 = Iceland (274)
+  <br>276 = Albania (276)
+  <br>278 = Malta (278)
+  <br>280 = Cyprus (280)
+  <br>282 = Georgia (282)
+  <br>283 = Armenia (283)
+  <br>284 = Bulgaria (284)
+  <br>286 = Turkey (286)
+  <br>288 = Faroe Islands (288)
+  <br>289 = Abkhazia (289)
+  <br>290 = Greenland (290)
+  <br>292 = San Marino (292)
+  <br>293 = Slovenia (293)
+  <br>294 = Macedonia (294)
+  <br>295 = Liechtenstein (295)
+  <br>297 = Montenegro (297)
+  <br>302 = Canada (302)
+  <br>308 = St. Pierre &amp; Miquelon (308)
+  <br>310 = United States / Guam (310)
+  <br>311 = United States / Guam (311)
+  <br>312 = United States (312)
+  <br>316 = United States (316)
+  <br>330 = Puerto Rico (330)
+  <br>334 = Mexico (334)
+  <br>338 = Jamaica (338)
+  <br>340 = French Guiana / Guadeloupe / Martinique (340)
+  <br>342 = Barbados (342)
+  <br>344 = Antigua and Barbuda (344)
+  <br>346 = Cayman Islands (346)
+  <br>348 = British Virgin Islands (348)
+  <br>350 = Bermuda (350)
+  <br>352 = Grenada (352)
+  <br>354 = Montserrat (354)
+  <br>356 = Saint Kitts and Nevis (356)
+  <br>358 = Saint Lucia (358)
+  <br>360 = St. Vincent &amp; Gren. (360)
+  <br>362 = Bonaire, Sint Eustatius and Saba / Curacao / Netherlands Antilles (362)
+  <br>363 = Aruba (363)
+  <br>364 = Bahamas (364)
+  <br>365 = Anguilla (365)
+  <br>366 = Dominica (366)
+  <br>368 = Cuba (368)
+  <br>370 = Dominican Republic (370)
+  <br>372 = Haiti (372)
+  <br>374 = Trinidad and Tobago (374)
+  <br>376 = Turks and Caicos Islands / US Virgin Islands (376)
+  <br>400 = Azerbaijan (400)
+  <br>401 = Kazakhstan (401)
+  <br>402 = Bhutan (402)
+  <br>404 = India (404)
+  <br>405 = India (405)
+  <br>410 = Pakistan (410)
+  <br>412 = Afghanistan (412)
+  <br>413 = Sri Lanka (413)
+  <br>414 = Myanmar (Burma) (414)
+  <br>415 = Lebanon (415)
+  <br>416 = Jordan (416)
+  <br>417 = Syrian Arab Republic (417)
+  <br>418 = Iraq (418)
+  <br>419 = Kuwait (419)
+  <br>420 = Saudi Arabia (420)
+  <br>421 = Yemen (421)
+  <br>422 = Oman (422)
+  <br>424 = United Arab Emirates (424)
+  <br>425 = Israel / Palestinian Territory (425)
+  <br>426 = Bahrain (426)
+  <br>427 = Qatar (427)
+  <br>428 = Mongolia (428)
+  <br>429 = Nepal (429)
+  <br>430 = United Arab Emirates (430)
+  <br>431 = United Arab Emirates (431)
+  <br>432 = Iran (432)
+  <br>434 = Uzbekistan (434)
+  <br>436 = Tajikistan (436)
+  <br>437 = Kyrgyzstan (437)
+  <br>438 = Turkmenistan (438)
+  <br>440 = Japan (440)
+  <br>441 = Japan (441)
+  <br>450 = South Korea (450)
+  <br>452 = Viet Nam (452)
+  <br>454 = Hongkong, China (454)
+  <br>455 = Macao, China (455)
+  <br>456 = Cambodia (456)
+  <br>457 = Laos P.D.R. (457)
+  <br>460 = China (460)
+  <br>466 = Taiwan (466)
+  <br>467 = North Korea (467)
+  <br>470 = Bangladesh (470)
+  <br>472 = Maldives (472)
+  <br>502 = Malaysia (502)
+  <br>505 = Australia (505)
+  <br>510 = Indonesia (510)
+  <br>514 = Timor-Leste (514)
+  <br>515 = Philippines (515)
+  <br>520 = Thailand (520)
+  <br>525 = Singapore (525)
+  <br>528 = Brunei Darussalam (528)
+  <br>530 = New Zealand (530)
+  <br>537 = Papua New Guinea (537)
+  <br>539 = Tonga (539)
+  <br>540 = Solomon Islands (540)
+  <br>541 = Vanuatu (541)
+  <br>542 = Fiji (542)
+  <br>544 = American Samoa (544)
+  <br>545 = Kiribati (545)
+  <br>546 = New Caledonia (546)
+  <br>547 = French Polynesia (547)
+  <br>548 = Cook Islands (548)
+  <br>549 = Samoa (549)
+  <br>550 = Micronesia (550)
+  <br>552 = Palau (552)
+  <br>553 = Tuvalu (553)
+  <br>555 = Niue (555)
+  <br>602 = Egypt (602)
+  <br>603 = Algeria (603)
+  <br>604 = Morocco (604)
+  <br>605 = Tunisia (605)
+  <br>606 = Libya (606)
+  <br>607 = Gambia (607)
+  <br>608 = Senegal (608)
+  <br>609 = Mauritania (609)
+  <br>610 = Mali (610)
+  <br>611 = Guinea (611)
+  <br>612 = Ivory Coast (612)
+  <br>613 = Burkina Faso (613)
+  <br>614 = Niger (614)
+  <br>615 = Togo (615)
+  <br>616 = Benin (616)
+  <br>617 = Mauritius (617)
+  <br>618 = Liberia (618)
+  <br>619 = Sierra Leone (619)
+  <br>620 = Ghana (620)
+  <br>621 = Nigeria (621)
+  <br>622 = Chad (622)
+  <br>623 = Central African Rep. (623)
+  <br>624 = Cameroon (624)
+  <br>625 = Cape Verde (625)
+  <br>626 = Sao Tome &amp; Principe (626)
+  <br>627 = Equatorial Guinea (627)
+  <br>628 = Gabon (628)
+  <br>629 = Congo, Republic (629)
+  <br>630 = Congo, Dem. Rep. (630)
+  <br>631 = Angola (631)
+  <br>632 = Guinea-Bissau (632)
+  <br>633 = Seychelles (633)
+  <br>634 = Sudan (634)
+  <br>635 = Rwanda (635)
+  <br>636 = Ethiopia (636)
+  <br>637 = Somalia (637)
+  <br>638 = Djibouti (638)
+  <br>639 = Kenya (639)
+  <br>640 = Tanzania (640)
+  <br>641 = Uganda (641)
+  <br>642 = Burundi (642)
+  <br>643 = Mozambique (643)
+  <br>645 = Zambia (645)
+  <br>646 = Madagascar (646)
+  <br>647 = Reunion (647)
+  <br>648 = Zimbabwe (648)
+  <br>649 = Namibia (649)
+  <br>650 = Malawi (650)
+  <br>651 = Lesotho (651)
+  <br>652 = Botswana (652)
+  <br>653 = Swaziland (653)
+  <br>654 = Comoros (654)
+  <br>655 = South Africa (655)
+  <br>657 = Eritrea (657)
+  <br>659 = South Sudan (659)
+  <br>702 = Belize (702)
+  <br>704 = Guatemala (704)
+  <br>706 = El Salvador (706)
+  <br>708 = Honduras (708)
+  <br>710 = Nicaragua (710)
+  <br>712 = Costa Rica (712)
+  <br>714 = Panama (714)
+  <br>716 = Peru (716)
+  <br>722 = Argentina Republic (722)
+  <br>724 = Brazil (724)
+  <br>730 = Chile (730)
+  <br>732 = Colombia (732)
+  <br>734 = Venezuela (734)
+  <br>736 = Bolivia (736)
+  <br>738 = Guyana (738)
+  <br>740 = Ecuador (740)
+  <br>744 = Paraguay (744)
+  <br>746 = Suriname (746)
+  <br>748 = Uruguay (748)
+  <br>750 = Falkland Islands (Malvinas) (750)
+  <br>901 = International Networks / Satellite Networks (901)</span></td></tr>
+<tr>
 <td>SingleShotDepthMap</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr>
+<tr class=b>
 <td>SingleShotMeta</td>
 <td class=c>-</td>
 <td>--&gt; <a href='Samsung.html#SingleShotMeta'>Samsung SingleShotMeta Tags</a></td></tr>
-<tr class=b>
+<tr>
 <td>SurroundShotVideo</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr>
+<tr class=b>
 <td>SurroundShotVideoName</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr class=b>
+<tr>
 <td>TimeStamp</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
@@ -880,6 +1112,11 @@ such as the Galaxy S4.</p>
 <tr class=h><th>Tag&nbsp;ID</th><th>Tag Name</th>
 <th>Writable</th><th>Values / <span class=n>Notes</span></th></tr>
 <tr>
+<td>'mdln'</td>
+<td>SamsungModel</td>
+<td class=c>no</td>
+<td>&nbsp;</td></tr>
+<tr class=b>
 <td>'svss'</td>
 <td>SamsungSvss</td>
 <td class=c>-</td>
@@ -899,7 +1136,7 @@ such as the Galaxy S4.</p>
 
 <hr>
 (This document generated automatically by Image::ExifTool::BuildTagLookup)
-<br><i>Last revised Dec 16, 2019</i>
+<br><i>Last revised Dec 29, 2023</i>
 <p class=lf><a href='index.html'>&lt;-- ExifTool Tag Names</a></p>
 </body>
 </html>

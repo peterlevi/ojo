@@ -1,11 +1,11 @@
-[ExifTool, ExifTool, ExifTool] ExifToolVersion - ExifTool Version Number: 11.88
+[ExifTool, ExifTool, ExifTool] ExifToolVersion - ExifTool Version Number: 12.73
 [File, System, Other] FileName - File Name: Writer_46_failed.jpg
 [File, System, Other] Directory - Directory: t
-[File, System, Other] FileSize - File Size: 10 kB
-[File, System, Time] FileModifyDate - File Modification Date/Time: 2020:02:20 09:18:40-05:00
-[File, System, Time] FileAccessDate - File Access Date/Time: 2020:02:20 09:18:40-05:00
-[File, System, Time] FileInodeChangeDate - File Inode Change Date/Time: 2020:02:20 09:18:40-05:00
-[File, System, Other] FilePermissions - File Permissions: rw-r--r--
+[File, System, Other] FileSize - File Size: 11 kB
+[File, System, Time] FileModifyDate - File Modification Date/Time: 2024:01:07 09:28:58-05:00
+[File, System, Time] FileAccessDate - File Access Date/Time: 2024:01:07 09:28:57-05:00
+[File, System, Time] FileInodeChangeDate - File Inode Change Date/Time: 2024:01:07 09:28:58-05:00
+[File, System, Other] FilePermissions - File Permissions: -rw-r--r--
 [File, File, Other] FileType - File Type: JPEG
 [File, File, Other] FileTypeExtension - File Type Extension: jpg
 [File, File, Other] MIMEType - MIME Type: image/jpeg
@@ -37,13 +37,14 @@
 [IPTC, IPTC, Other] 152 - Audio Sampling Resolution: 07
 [IPTC, IPTC, Other] 153 - Audio Duration: 000007
 [IPTC, IPTC, Other] 154 - Audio Outcue: 7
-[XMP, XMP-x, Document] xmptk - XMP Toolkit: Image::ExifTool 11.88
+[XMP, XMP-x, Document] xmptk - XMP Toolkit: Image::ExifTool 12.73
 [XMP, XMP-Device, Camera] AppInfoApplication - App Info Application: 7
 [XMP, XMP-Device, Camera] AppInfoItemURI - App Info Item URI: 7
 [XMP, XMP-Device, Camera] AppInfoVersion - App Info Version: 7
 [XMP, XMP-GAudio, Audio] Data - Audio Data: (Binary data 1 bytes)
 [XMP, XMP-GAudio, Audio] Mime - Audio Mime Type: 7
 [XMP, XMP-getty, Image] AssetID - Asset ID: 7
+[XMP, XMP-iptcCore, Other] AltTextAccessibility - Alt Text Accessibility: 7
 [XMP, XMP-iptcExt, Author] AboutCvTermCvId - About Cv Term Cv Id: 7
 [XMP, XMP-iptcExt, Author] AboutCvTermCvTermId - About Cv Term Id: 7
 [XMP, XMP-iptcExt, Author] AboutCvTermCvTermName - About Cv Term Name: 7
@@ -105,6 +106,7 @@
 [XMP, XMP-xmpDM, Image] audioChannelType - Audio Channel Type: 7.1
 [XMP, XMP-xmpDM, Image] audioCompressor - Audio Compressor: 7
 [XMP, XMP-xmpDM, Image] audioSampleRate - Audio Sample Rate: 7
+[XMP, XMP-xmpDSA, Image] ApplyAutomatically - Apply Automatically: True
 [XMP, XMP-crs, Image] AlreadyApplied - Already Applied: True
 [XMP, XMP-crs, Image] AutoBrightness - Auto Brightness: True
 [XMP, XMP-crs, Image] AutoContrast - Auto Contrast: True
@@ -112,7 +114,9 @@
 [XMP, XMP-crs, Image] AutoLateralCA - Auto Lateral CA: 7
 [XMP, XMP-crs, Image] AutoShadows - Auto Shadows: True
 [XMP, XMP-crs, Image] AutoTone - Auto Tone: True
+[XMP, XMP-crs, Image] AutoToneDigest - Auto Tone Digest: 7
+[XMP, XMP-crs, Image] AutoToneDigestNoSat - Auto Tone Digest No Sat: 7
 [XMP, XMP-crs, Image] AutoWhiteVersion - Auto White Version: 7
-[Composite, Composite, Image] Exif::Aperture - Aperture: 7.0
-[Composite, Composite, Image] Exif::ImageSize - Image Size: 8x8
-[Composite, Composite, Image] Exif::Megapixels - Megapixels: 0.000064
+[Composite, Composite, Image] Exif-Aperture - Aperture: 7.0
+[Composite, Composite, Image] Exif-ImageSize - Image Size: 8x8
+[Composite, Composite, Image] Exif-Megapixels - Megapixels: 0.000064

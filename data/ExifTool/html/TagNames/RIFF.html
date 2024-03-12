@@ -18,6 +18,9 @@ manufacturer-specific information is also extracted.</p>
 <p>Large AVI videos may be a concatenation of two or more RIFF chunks.  For
 these files, information is extracted from subsequent RIFF chunks as
 sub-documents, but the Duration is calculated for the full video.</p>
+
+<p>ExifTool currently has the ability to write EXIF, XMP and ICC_Profile
+metadata to WEBP images, but can&#39;t yet write to other RIFF-based formats.</p>
 <blockquote>
 <table class=frame><tr><td>
 <table class=inner cellspacing=1>
@@ -39,11 +42,16 @@ sub-documents, but the Duration is calculated for the full video.</p>
 <td class=c>-</td>
 <td>--&gt; <a href='RIFF.html#ANMF'>RIFF ANMF Tags</a></td></tr>
 <tr class=b>
+<td>'C2PA'</td>
+<td>JUMBF</td>
+<td class=c>-</td>
+<td>--&gt; <a href='Jpeg2000.html'>Jpeg2000 Tags</a></td></tr>
+<tr>
 <td>'CSET'</td>
 <td>CharacterSet</td>
 <td class=c>-</td>
 <td>--&gt; <a href='RIFF.html#CSET'>RIFF CSET Tags</a></td></tr>
-<tr>
+<tr class=b>
 <td>'EXIF'</td>
 <td>EXIF
   <br>UnknownEXIF</td>
@@ -51,18 +59,18 @@ sub-documents, but the Duration is calculated for the full video.</p>
 <td><span class=n>(WebP files)</span>
   <br>--&gt; <a href='EXIF.html'>EXIF Tags</a>
   <br>--&gt; <a href='EXIF.html'>EXIF Tags</a></td></tr>
-<tr class=b>
+<tr>
 <td>'ICCP'</td>
 <td>ICC_Profile</td>
 <td class=c>-</td>
 <td>--&gt; <a href='ICC_Profile.html'>ICC_Profile Tags</a>
   <br><span class='n s'>(WebP files)</span></td></tr>
-<tr>
+<tr class=b>
 <td>'IDIT'</td>
 <td>DateTimeOriginal</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr class=b>
+<tr>
 <td>'JUNK'</td>
 <td>OlympusJunk
   <br>CasioJunk
@@ -78,26 +86,31 @@ sub-documents, but the Duration is calculated for the full video.</p>
   <br>--&gt; <a href='Pentax.html#Junk'>Pentax Junk Tags</a>
   <br>--&gt; <a href='Pentax.html#Junk2'>Pentax Junk2 Tags</a>
   <br>--&gt; <a href='QuickTime.html#Stream'>QuickTime Stream Tags</a></td></tr>
-<tr>
+<tr class=b>
 <td>'JUNQ'</td>
 <td>OldXMP</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr class=b>
+<tr>
 <td>'LIST_INF0'</td>
 <td>Info</td>
 <td class=c>-</td>
 <td>--&gt; <a href='RIFF.html#Info'>RIFF Info Tags</a></td></tr>
-<tr>
+<tr class=b>
 <td>'LIST_INFO'</td>
 <td>Info</td>
 <td class=c>-</td>
 <td>--&gt; <a href='RIFF.html#Info'>RIFF Info Tags</a></td></tr>
-<tr class=b>
+<tr>
 <td>'LIST_Tdat'</td>
 <td>Tdat</td>
 <td class=c>-</td>
 <td>--&gt; <a href='RIFF.html#Tdat'>RIFF Tdat Tags</a></td></tr>
+<tr class=b>
+<td>'LIST_adtl'</td>
+<td>AssociatedDataList</td>
+<td class=c>-</td>
+<td>--&gt; <a href='RIFF.html'>RIFF Tags</a></td></tr>
 <tr>
 <td>'LIST_exif'</td>
 <td>Exif</td>
@@ -149,22 +162,33 @@ sub-documents, but the Duration is calculated for the full video.</p>
 <td class=c>-</td>
 <td>--&gt; <a href='RIFF.html#VP8X'>RIFF VP8X Tags</a></td></tr>
 <tr>
+<td>"XMP\0"</td>
+<td>XMP</td>
+<td class=c>-</td>
+<td>--&gt; <a href='XMP.html'>XMP Tags</a>
+  <br><span class='n s'>(incorrectly written WebP files)</span></td></tr>
+<tr class=b>
 <td>'XMP '</td>
 <td>XMP</td>
 <td class=c>-</td>
 <td>--&gt; <a href='XMP.html'>XMP Tags</a>
   <br><span class='n s'>(WebP files)</span></td></tr>
-<tr class=b>
+<tr>
 <td>'_PMX'</td>
 <td>XMP</td>
 <td class=c>-</td>
 <td>--&gt; <a href='XMP.html'>XMP Tags</a>
   <br><span class='n s'>(AVI and WAV files)</span></td></tr>
-<tr>
+<tr class=b>
 <td>'aXML'</td>
 <td>AXML</td>
 <td class=c>-</td>
 <td>--&gt; <a href='XMP.html#XML'>XMP XML Tags</a></td></tr>
+<tr>
+<td>'acid'</td>
+<td>Acidizer</td>
+<td class=c>-</td>
+<td>--&gt; <a href='RIFF.html#Acidizer'>RIFF Acidizer Tags</a></td></tr>
 <tr class=b>
 <td>'afsp'</td>
 <td>Afsp</td>
@@ -179,7 +203,8 @@ sub-documents, but the Duration is calculated for the full video.</p>
 <td>'cue '</td>
 <td>CuePoints</td>
 <td class=c>no</td>
-<td>&nbsp;</td></tr>
+<td><span class=s><span class=n>(config_files/cutepointlist.config from full distribution will decode this
+and generate a list of cue points with labels)</span></span></td></tr>
 <tr>
 <td>'ds64'</td>
 <td>DataSize64</td>
@@ -206,25 +231,70 @@ sub-documents, but the Duration is calculated for the full video.</p>
 <td class=c>-</td>
 <td>--&gt; <a href='QuickTime.html#Stream'>QuickTime Stream Tags</a></td></tr>
 <tr class=b>
+<td>'guan'</td>
+<td>Guano</td>
+<td class=c>no</td>
+<td>&nbsp;</td></tr>
+<tr>
 <td>'iXML'</td>
 <td>IXML</td>
 <td class=c>-</td>
 <td>--&gt; <a href='XMP.html#XML'>XMP XML Tags</a></td></tr>
-<tr>
-<td>'labl'</td>
-<td>Label</td>
-<td class=c>-</td>
-<td>--&gt; <a href='RIFF.html#Label'>RIFF Label Tags</a></td></tr>
 <tr class=b>
+<td>'id3 '</td>
+<td>ID3</td>
+<td class=c>-</td>
+<td>--&gt; <a href='ID3.html'>ID3 Tags</a></td></tr>
+<tr>
+<td>'inst'</td>
+<td>Instrument</td>
+<td class=c>-</td>
+<td>--&gt; <a href='RIFF.html#Instrument'>RIFF Instrument Tags</a></td></tr>
+<tr class=b>
+<td>'labl'</td>
+<td>CuePointLabel</td>
+<td class=c>no</td>
+<td>&nbsp;</td></tr>
+<tr>
 <td>'list'</td>
 <td>ListType</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
+<tr class=b>
+<td>'ltxt'</td>
+<td>LabeledText</td>
+<td class=c>no</td>
+<td><span class=s><span class=n>(CuePointID Length Purpose Country Language Dialect Codepage Text)</span></span></td></tr>
 <tr>
+<td>'note'</td>
+<td>CuePointNote</td>
+<td class=c>no</td>
+<td>&nbsp;</td></tr>
+<tr class=b>
 <td>'olym'</td>
 <td>Olym</td>
 <td class=c>-</td>
 <td>--&gt; <a href='Olympus.html#WAV'>Olympus WAV Tags</a></td></tr>
+<tr>
+<td>'plst'</td>
+<td>Playlist</td>
+<td class=c>no</td>
+<td>&nbsp;</td></tr>
+<tr class=b>
+<td>'smpl'</td>
+<td>Sampler</td>
+<td class=c>-</td>
+<td>--&gt; <a href='RIFF.html#Sampler'>RIFF Sampler Tags</a></td></tr>
+<tr>
+<td>'tx_USER'</td>
+<td>UserText</td>
+<td class=c>-</td>
+<td>--&gt; <a href='RIFF.html#UserText'>RIFF UserText Tags</a></td></tr>
+<tr class=b>
+<td>'tx_Unknown'</td>
+<td>Text</td>
+<td class=c>no</td>
+<td><span class=s><span class=n>(streamed text, extracted when the ExtractEmbedded option is used)</span></span></td></tr>
 </table></td></tr></table></blockquote>
 
 <h2><a name='ALPH'>RIFF ALPH Tags</a></h2>
@@ -656,108 +726,113 @@ by some software.</p>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
 <tr class=b>
+<td>'ITRK'</td>
+<td>TrackNumber</td>
+<td class=c>no</td>
+<td>&nbsp;</td></tr>
+<tr>
 <td>'IWMU'</td>
 <td>WatermarkURL</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr>
+<tr class=b>
 <td>'IWRI'</td>
 <td>WrittenBy</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr class=b>
+<tr>
 <td>'LANG'</td>
 <td>Language</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr>
+<tr class=b>
 <td>'LOCA'</td>
 <td>Location</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr class=b>
+<tr>
 <td>'PRT1'</td>
 <td>Part</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr>
+<tr class=b>
 <td>'PRT2'</td>
 <td>NumberOfParts</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr class=b>
+<tr>
 <td>'RATE'</td>
 <td>Rate</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr>
+<tr class=b>
 <td>'STAR'</td>
 <td>Starring</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr class=b>
+<tr>
 <td>'STAT'</td>
 <td>Statistics</td>
 <td class=c>no</td>
 <td><span class=s>[Value 3]
   <br>0 = Bad
   <br>1 = OK</span></td></tr>
-<tr>
+<tr class=b>
 <td>'TAPE'</td>
 <td>TapeName</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr class=b>
+<tr>
 <td>'TCDO'</td>
 <td>EndTimecode</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr>
+<tr class=b>
 <td>'TCOD'</td>
 <td>StartTimecode</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr class=b>
+<tr>
 <td>'TITL'</td>
 <td>Title</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr>
+<tr class=b>
 <td>'TLEN'</td>
 <td>Length</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr class=b>
+<tr>
 <td>'TORG'</td>
 <td>Organization</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr>
+<tr class=b>
 <td>'TRCK'</td>
 <td>TrackNumber</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr class=b>
+<tr>
 <td>'TURL'</td>
 <td>URL</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr>
+<tr class=b>
 <td>'TVER'</td>
 <td>Version</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr class=b>
+<tr>
 <td>'VMAJ'</td>
 <td>VegasVersionMajor</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr>
+<tr class=b>
 <td>'VMIN'</td>
 <td>VegasVersionMinor</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr class=b>
+<tr>
 <td>'YEAR'</td>
 <td>Year</td>
 <td class=c>no</td>
@@ -1283,7 +1358,8 @@ cameras.  The first 4 characters of the data are used as the Tag ID below.</p>
 <td class=r title='1 = 0x1'>1</td>
 <td>MaxDataRate</td>
 <td class=c>no</td>
-<td>&nbsp;</td></tr>
+<td><span class=s><span class=n>(converted using SI byte prefixes unles the API ByteUnit option is set to
+&quot;Binary&quot;)</span></span></td></tr>
 <tr>
 <td class=r title='4 = 0x4'>4</td>
 <td>FrameCount</td>
@@ -1373,13 +1449,85 @@ container specification.</p>
 <tr class=h><th>Index1</th><th>Tag Name</th>
 <th>Writable</th><th>Values / <span class=n>Notes</span></th></tr>
 <tr>
+<td class=r title='0 = 0x0'>0</td>
+<td>WebP_Flags</td>
+<td class=c>no</td>
+<td><span class=s><span class=n>(flags used in Extended WebP images)</span>
+  <br>Bit 1 = Animation
+  <br>Bit 2 = XMP
+  <br>Bit 3 = EXIF
+  <br>Bit 4 = Alpha
+  <br>Bit 5 = ICC Profile</span></td></tr>
+<tr class=b>
 <td class=r title='4 = 0x4'>4</td>
 <td>ImageWidth</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr class=b>
+<tr>
 <td class=r title='6 = 0x6'>6</td>
 <td>ImageHeight</td>
+<td class=c>no</td>
+<td>&nbsp;</td></tr>
+</table></td></tr></table></blockquote>
+
+<h2><a name='Acidizer'>RIFF Acidizer Tags</a></h2>
+<blockquote>
+<table class=frame><tr><td>
+<table class=inner cellspacing=1>
+<tr class=h><th>Index1</th><th>Tag Name</th>
+<th>Writable</th><th>Values / <span class=n>Notes</span></th></tr>
+<tr>
+<td class=r title='0 = 0x0'>0</td>
+<td>AcidizerFlags</td>
+<td class=c>no</td>
+<td><span class=s>Bit 0 = One shot
+  <br>Bit 1 = Root note set
+  <br>Bit 2 = Stretch
+  <br>Bit 3 = Disk-based
+  <br>Bit 4 = High octave</span></td></tr>
+<tr class=b>
+<td class=r title='4 = 0x4'>4</td>
+<td>RootNote</td>
+<td class=c>no</td>
+<td><table class=cols><tr>
+  <td>48 = C
+  <br>49 = C#
+  <br>50 = D
+  <br>51 = D#
+  <br>52 = E
+  <br>53 = F
+  <br>54 = F#
+  <br>55 = G</td><td>&nbsp;&nbsp;</td>
+  <td>56 = G#
+  <br>57 = A
+  <br>58 = A#
+  <br>59 = B
+  <br>60 = High C
+  <br>61 = High C#
+  <br>62 = High D
+  <br>63 = High D#</td><td>&nbsp;&nbsp;</td>
+  <td>64 = High E
+  <br>65 = High F
+  <br>66 = High F#
+  <br>67 = High G
+  <br>68 = High G#
+  <br>69 = High A
+  <br>70 = High A#
+  <br>71 = High B</td></tr></table>
+</td></tr>
+<tr>
+<td class=r title='12 = 0xc'>12</td>
+<td>Beats</td>
+<td class=c>no</td>
+<td>&nbsp;</td></tr>
+<tr class=b>
+<td class=r title='16 = 0x10'>16</td>
+<td>Meter</td>
+<td class=c>no</td>
+<td>&nbsp;</td></tr>
+<tr>
+<td class=r title='20 = 0x14'>20</td>
+<td>Tempo</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
 </table></td></tr></table></blockquote>
@@ -1459,7 +1607,50 @@ container specification.</p>
 <td>&nbsp;</td></tr>
 </table></td></tr></table></blockquote>
 
-<h2><a name='Label'>RIFF Label Tags</a></h2>
+<h2><a name='Instrument'>RIFF Instrument Tags</a></h2>
+<blockquote>
+<table class=frame><tr><td>
+<table class=inner cellspacing=1>
+<tr class=h><th>Index1</th><th>Tag Name</th>
+<th>Writable</th><th>Values / <span class=n>Notes</span></th></tr>
+<tr>
+<td class=r title='0 = 0x0'>0</td>
+<td>UnshiftedNote</td>
+<td class=c>no</td>
+<td>&nbsp;</td></tr>
+<tr class=b>
+<td class=r title='1 = 0x1'>1</td>
+<td>FineTune</td>
+<td class=c>no</td>
+<td>&nbsp;</td></tr>
+<tr>
+<td class=r title='2 = 0x2'>2</td>
+<td>Gain</td>
+<td class=c>no</td>
+<td>&nbsp;</td></tr>
+<tr class=b>
+<td class=r title='3 = 0x3'>3</td>
+<td>LowNote</td>
+<td class=c>no</td>
+<td>&nbsp;</td></tr>
+<tr>
+<td class=r title='4 = 0x4'>4</td>
+<td>HighNote</td>
+<td class=c>no</td>
+<td>&nbsp;</td></tr>
+<tr class=b>
+<td class=r title='5 = 0x5'>5</td>
+<td>LowVelocity</td>
+<td class=c>no</td>
+<td>&nbsp;</td></tr>
+<tr>
+<td class=r title='6 = 0x6'>6</td>
+<td>HighVelocity</td>
+<td class=c>no</td>
+<td>&nbsp;</td></tr>
+</table></td></tr></table></blockquote>
+
+<h2><a name='Sampler'>RIFF Sampler Tags</a></h2>
 <blockquote>
 <table class=frame><tr><td>
 <table class=inner cellspacing=1>
@@ -1467,19 +1658,103 @@ container specification.</p>
 <th>Writable</th><th>Values / <span class=n>Notes</span></th></tr>
 <tr>
 <td class=r title='0 = 0x0'>0</td>
-<td>LabelID</td>
+<td>Manufacturer</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
 <tr class=b>
 <td class=r title='1 = 0x1'>1</td>
-<td>LabelText</td>
+<td>Product</td>
+<td class=c>no</td>
+<td>&nbsp;</td></tr>
+<tr>
+<td class=r title='2 = 0x2'>2</td>
+<td>SamplePeriod</td>
+<td class=c>no</td>
+<td>&nbsp;</td></tr>
+<tr class=b>
+<td class=r title='3 = 0x3'>3</td>
+<td>MIDIUnityNote</td>
+<td class=c>no</td>
+<td>&nbsp;</td></tr>
+<tr>
+<td class=r title='4 = 0x4'>4</td>
+<td>MIDIPitchFraction</td>
+<td class=c>no</td>
+<td>&nbsp;</td></tr>
+<tr class=b>
+<td class=r title='5 = 0x5'>5</td>
+<td>SMPTEFormat</td>
+<td class=c>no</td>
+<td><span class=s>0 = none
+  <br>24 = 24 fps
+  <br>25 = 25 fps
+  <br>29 = 29 fps
+  <br>30 = 30 fps</span></td></tr>
+<tr>
+<td class=r title='6 = 0x6'>6</td>
+<td>SMPTEOffset</td>
+<td class=c>no</td>
+<td><span class=s><span class=n>(HH:MM:SS:FF)</span></span></td></tr>
+<tr class=b>
+<td class=r title='7 = 0x7'>7</td>
+<td>NumSampleLoops</td>
+<td class=c>no</td>
+<td>&nbsp;</td></tr>
+<tr>
+<td class=r title='8 = 0x8'>8</td>
+<td>SamplerDataLen</td>
+<td class=c>no</td>
+<td>&nbsp;</td></tr>
+<tr class=b>
+<td class=r title='9 = 0x9'>9</td>
+<td>SamplerData</td>
+<td class=c>no</td>
+<td>&nbsp;</td></tr>
+</table></td></tr></table></blockquote>
+
+<h2><a name='UserText'>RIFF UserText Tags</a></h2>
+<p>Tags decoded from the USER-format txts stream written by Momento M6 dashcam.
+Extracted only if the ExtractEmbedded option is used.</p>
+<blockquote>
+<table class=frame><tr><td>
+<table class=inner cellspacing=1>
+<tr class=h><th>Index1</th><th>Tag Name</th>
+<th>Writable</th><th>Values / <span class=n>Notes</span></th></tr>
+<tr>
+<td class=r title='28 = 0x1c'>28</td>
+<td>GPSAltitude</td>
+<td class=c>no</td>
+<td>&nbsp;</td></tr>
+<tr class=b>
+<td class=r title='40 = 0x28'>40</td>
+<td>Accelerometer</td>
+<td class=c>no</td>
+<td>&nbsp;</td></tr>
+<tr>
+<td class=r title='56 = 0x38'>56</td>
+<td>GPSSpeed</td>
+<td class=c>no</td>
+<td>&nbsp;</td></tr>
+<tr class=b>
+<td class=r title='60 = 0x3c'>60</td>
+<td>GPSLatitude</td>
+<td class=c>no</td>
+<td>&nbsp;</td></tr>
+<tr>
+<td class=r title='64 = 0x40'>64</td>
+<td>GPSLongitude</td>
+<td class=c>no</td>
+<td>&nbsp;</td></tr>
+<tr class=b>
+<td class=r title='68 = 0x44'>68</td>
+<td>GPSDateTime</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
 </table></td></tr></table></blockquote>
 
 <hr>
 (This document generated automatically by Image::ExifTool::BuildTagLookup)
-<br><i>Last revised May 1, 2020</i>
+<br><i>Last revised Nov 19, 2023</i>
 <p class=lf><a href='index.html'>&lt;-- ExifTool Tag Names</a></p>
 </body>
 </html>

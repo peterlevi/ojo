@@ -8,13 +8,13 @@
 </head>
 <body>
 <h2 class=top>ID3 Tags</h2>
-<p>ExifTool extracts ID3 information from MP3, MPEG, AIFF, OGG, FLAC, APE, MPC
-and RealAudio files.  ID3v2 tags which support multiple languages (eg.
-Comment and Lyrics) are extracted by specifying the tag name, followed by a
-dash (&#39;-&#39;), then a 3-character ISO 639-2 language code (eg. &quot;Comment-spa&quot;).
-See <a href="http://www.id3.org/">http://www.id3.org/</a> for the official ID3 specification and
-<a href="http://www.loc.gov/standards/iso639-2/php/code_list.php">http://www.loc.gov/standards/iso639-2/php/code_list.php</a> for a list of ISO
-639-2 language codes.</p>
+<p>ExifTool extracts ID3 and Lyrics3 information from MP3, MPEG, WAV, AIFF,
+OGG, FLAC, APE, MPC and RealAudio files.  ID3v2 tags which support multiple
+languages (eg. Comment and Lyrics) are extracted by specifying the tag name,
+followed by a dash (&#39;-&#39;), then a 3-character ISO 639-2 language code (eg.
+&quot;Comment-spa&quot;). See <a href="https://id3.org/">https://id3.org/</a> for the official ID3 specification
+and <a href="http://www.loc.gov/standards/iso639-2/php/code_list.php">http://www.loc.gov/standards/iso639-2/php/code_list.php</a> for a list of
+ISO 639-2 language codes.</p>
 <blockquote>
 <table class=frame><tr><td>
 <table class=inner cellspacing=1>
@@ -350,302 +350,317 @@ complete list of available ID3v2 tags.</p>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
 <tr>
+<td>'GP1'</td>
+<td>Grouping</td>
+<td class=c>no</td>
+<td>&nbsp;</td></tr>
+<tr class=b>
 <td>'IPL'</td>
 <td>InvolvedPeople</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr class=b>
+<tr>
 <td>'ITU'</td>
 <td>iTunesU?</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
+<tr class=b>
+<td>'MVI'</td>
+<td>MovementNumber</td>
+<td class=c>no</td>
+<td>&nbsp;</td></tr>
 <tr>
+<td>'MVN'</td>
+<td>MovementName</td>
+<td class=c>no</td>
+<td>&nbsp;</td></tr>
+<tr class=b>
 <td>'PCS'</td>
 <td>Podcast?</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr class=b>
+<tr>
 <td>'PIC'</td>
 <td>Picture</td>
 <td class=c>no</td>
 <td><span class=s><span class=n>(the 3 tags below are also extracted from this PIC frame)</span></span></td></tr>
-<tr>
+<tr class=b>
 <td>'PIC-1'</td>
 <td>PictureFormat</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr class=b>
+<tr>
 <td>'PIC-2'</td>
 <td>PictureType</td>
 <td class=c>no</td>
 <td>--&gt; <a href='ID3.html#PictureType'>ID3 PictureType Values</a></td></tr>
-<tr>
+<tr class=b>
 <td>'PIC-3'</td>
 <td>PictureDescription</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr class=b>
+<tr>
 <td>'POP'</td>
 <td>Popularimeter</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr>
+<tr class=b>
 <td>'RVA'</td>
 <td>RelativeVolumeAdjustment</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr class=b>
+<tr>
 <td>'SLT'</td>
 <td>SynLyrics</td>
 <td class=c>-</td>
 <td>--&gt; <a href='ID3.html#SynLyrics'>ID3 SynLyrics Tags</a></td></tr>
-<tr>
+<tr class=b>
 <td>'TAL'</td>
 <td>Album</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr class=b>
+<tr>
 <td>'TBP'</td>
 <td>BeatsPerMinute</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr>
+<tr class=b>
 <td>'TCM'</td>
 <td>Composer</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr class=b>
+<tr>
 <td>'TCO'</td>
 <td>Genre</td>
 <td class=c>no</td>
 <td><span class=s><span class=n>(uses same lookup table as ID3v1 Genre)</span></span></td></tr>
-<tr>
+<tr class=b>
 <td>'TCP'</td>
 <td>Compilation</td>
 <td class=c>no</td>
 <td><span class=s>0 = No
   <br>1 = Yes</span></td></tr>
-<tr class=b>
+<tr>
 <td>'TCR'</td>
 <td>Copyright</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr>
+<tr class=b>
 <td>'TDA'</td>
 <td>Date</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr class=b>
+<tr>
 <td>'TDY'</td>
 <td>PlaylistDelay</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr>
+<tr class=b>
 <td>'TEN'</td>
 <td>EncodedBy</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr class=b>
+<tr>
 <td>'TFT'</td>
 <td>FileType</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr>
+<tr class=b>
 <td>'TIM'</td>
 <td>Time</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr class=b>
+<tr>
 <td>'TKE'</td>
 <td>InitialKey</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr>
+<tr class=b>
 <td>'TLA'</td>
 <td>Language</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr class=b>
+<tr>
 <td>'TLE'</td>
 <td>Length</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr>
+<tr class=b>
 <td>'TMT'</td>
 <td>Media</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr class=b>
+<tr>
 <td>'TOA'</td>
 <td>OriginalArtist</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr>
+<tr class=b>
 <td>'TOF'</td>
 <td>OriginalFileName</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr class=b>
+<tr>
 <td>'TOL'</td>
 <td>OriginalLyricist</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr>
+<tr class=b>
 <td>'TOR'</td>
 <td>OriginalReleaseYear</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr class=b>
+<tr>
 <td>'TOT'</td>
 <td>OriginalAlbum</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr>
+<tr class=b>
 <td>'TP1'</td>
 <td>Artist</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr class=b>
+<tr>
 <td>'TP2'</td>
 <td>Band</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr>
+<tr class=b>
 <td>'TP3'</td>
 <td>Conductor</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr class=b>
+<tr>
 <td>'TP4'</td>
 <td>InterpretedBy</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr>
+<tr class=b>
 <td>'TPA'</td>
 <td>PartOfSet</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr class=b>
+<tr>
 <td>'TPB'</td>
 <td>Publisher</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr>
+<tr class=b>
 <td>'TRC'</td>
 <td>ISRC</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr class=b>
+<tr>
 <td>'TRD'</td>
 <td>RecordingDates</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr>
+<tr class=b>
 <td>'TRK'</td>
 <td>Track</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr class=b>
+<tr>
 <td>'TS2'</td>
 <td>AlbumArtistSortOrder</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr>
+<tr class=b>
 <td>'TSA'</td>
 <td>AlbumSortOrder</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr class=b>
+<tr>
 <td>'TSC'</td>
 <td>ComposerSortOrder</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr>
+<tr class=b>
 <td>'TSI'</td>
 <td>Size</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr class=b>
+<tr>
 <td>'TSP'</td>
 <td>PerformerSortOrder</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr>
+<tr class=b>
 <td>'TSS'</td>
 <td>EncoderSettings</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr class=b>
+<tr>
 <td>'TST'</td>
 <td>TitleSortOrder</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr>
+<tr class=b>
 <td>'TT1'</td>
 <td>Grouping</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr class=b>
+<tr>
 <td>'TT2'</td>
 <td>Title</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr>
+<tr class=b>
 <td>'TT3'</td>
 <td>Subtitle</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr class=b>
+<tr>
 <td>'TXT'</td>
 <td>Lyricist</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr>
+<tr class=b>
 <td>'TXX'</td>
 <td>UserDefinedText</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr class=b>
+<tr>
 <td>'TYE'</td>
 <td>Year</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr>
+<tr class=b>
 <td>'ULT'</td>
 <td>Lyrics</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr class=b>
+<tr>
 <td>'WAF'</td>
 <td>FileURL</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr>
+<tr class=b>
 <td>'WAR'</td>
 <td>ArtistURL</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr class=b>
+<tr>
 <td>'WAS'</td>
 <td>SourceURL</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr>
+<tr class=b>
 <td>'WCM'</td>
 <td>CommercialURL</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr class=b>
+<tr>
 <td>'WCP'</td>
 <td>CopyrightURL</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr>
+<tr class=b>
 <td>'WPB'</td>
 <td>PublisherURL</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
-<tr class=b>
+<tr>
 <td>'WXX'</td>
 <td>UserDefinedURL</td>
 <td class=c>no</td>
@@ -747,6 +762,16 @@ software.</p>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
 <tr class=b>
+<td>'GEOB'</td>
+<td>GeneralEncapsulatedObject</td>
+<td class=c>-</td>
+<td>--&gt; <a href='ID3.html#GEOB'>ID3 GEOB Tags</a></td></tr>
+<tr>
+<td>'GRP1'</td>
+<td>Grouping</td>
+<td class=c>no</td>
+<td>&nbsp;</td></tr>
+<tr class=b>
 <td>'IPLS'</td>
 <td>InvolvedPeople</td>
 <td class=c>no</td>
@@ -759,6 +784,16 @@ software.</p>
 <tr class=b>
 <td>'MCDI'</td>
 <td>MusicCDIdentifier</td>
+<td class=c>no</td>
+<td>&nbsp;</td></tr>
+<tr>
+<td>'MVIN'</td>
+<td>MovementNumber</td>
+<td class=c>no</td>
+<td>&nbsp;</td></tr>
+<tr class=b>
+<td>'MVNM'</td>
+<td>MovementName</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
 <tr>
@@ -1109,6 +1144,39 @@ software.</p>
 <td>&nbsp;</td></tr>
 </table></td></tr></table></blockquote>
 
+<h2><a name='GEOB'>ID3 GEOB Tags</a></h2>
+<blockquote>
+<table class=frame><tr><td>
+<table class=inner cellspacing=1>
+<tr class=h><th>Tag&nbsp;ID</th><th>Tag Name</th>
+<th>Writable</th><th>Values / <span class=n>Notes</span></th></tr>
+<tr>
+<td>'GEOB-Data'</td>
+<td>GEOB-Data</td>
+<td class=c>no</td>
+<td>&nbsp;</td></tr>
+<tr class=b>
+<td>'GEOB-Desc'</td>
+<td>GEOB-Desc</td>
+<td class=c>no</td>
+<td>&nbsp;</td></tr>
+<tr>
+<td>'GEOB-File'</td>
+<td>GEOB-File</td>
+<td class=c>no</td>
+<td>&nbsp;</td></tr>
+<tr class=b>
+<td>'GEOB-Mime'</td>
+<td>GEOB-Mime</td>
+<td class=c>no</td>
+<td>&nbsp;</td></tr>
+<tr>
+<td>'application/x-c2pa-manifest-store'</td>
+<td>JUMBF</td>
+<td class=c>-</td>
+<td>--&gt; <a href='Jpeg2000.html'>Jpeg2000 Tags</a></td></tr>
+</table></td></tr></table></blockquote>
+
 <h2><a name='Private'>ID3 Private Tags</a></h2>
 <p>ID3 private (PRIV) tags.  ExifTool will decode any private tags found, even
 if they do not appear in this table.</p>
@@ -1189,6 +1257,16 @@ software.</p>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
 <tr class=b>
+<td>'GEOB'</td>
+<td>GeneralEncapsulatedObject</td>
+<td class=c>-</td>
+<td>--&gt; <a href='ID3.html#GEOB'>ID3 GEOB Tags</a></td></tr>
+<tr>
+<td>'GRP1'</td>
+<td>Grouping</td>
+<td class=c>no</td>
+<td>&nbsp;</td></tr>
+<tr class=b>
 <td>'ITNU'</td>
 <td>iTunesU?</td>
 <td class=c>no</td>
@@ -1196,6 +1274,16 @@ software.</p>
 <tr>
 <td>'MCDI'</td>
 <td>MusicCDIdentifier</td>
+<td class=c>no</td>
+<td>&nbsp;</td></tr>
+<tr class=b>
+<td>'MVIN'</td>
+<td>MovementNumber</td>
+<td class=c>no</td>
+<td>&nbsp;</td></tr>
+<tr>
+<td>'MVNM'</td>
+<td>MovementName</td>
 <td class=c>no</td>
 <td>&nbsp;</td></tr>
 <tr class=b>
@@ -1586,9 +1674,64 @@ software.</p>
 <td>&nbsp;</td></tr>
 </table></td></tr></table></blockquote>
 
+<h2><a name='Lyrics3'>ID3 Lyrics3 Tags</a></h2>
+<p>ExifTool extracts Lyrics3 version 1.00 and 2.00 tags from any file that
+supports ID3.  See <a href="https://id3.org/Lyrics3">https://id3.org/Lyrics3</a> for the specification.</p>
+<blockquote>
+<table class=frame><tr><td>
+<table class=inner cellspacing=1>
+<tr class=h><th>Tag&nbsp;ID</th><th>Tag Name</th>
+<th>Writable</th><th>Values / <span class=n>Notes</span></th></tr>
+<tr>
+<td>'AUT'</td>
+<td>Author</td>
+<td class=c>no</td>
+<td>&nbsp;</td></tr>
+<tr class=b>
+<td>'CRC'</td>
+<td>CRC</td>
+<td class=c>no</td>
+<td>&nbsp;</td></tr>
+<tr>
+<td>'EAL'</td>
+<td>ExtendedAlbumName</td>
+<td class=c>no</td>
+<td>&nbsp;</td></tr>
+<tr class=b>
+<td>'EAR'</td>
+<td>ExtendedArtistName</td>
+<td class=c>no</td>
+<td>&nbsp;</td></tr>
+<tr>
+<td>'ETT'</td>
+<td>ExtendedTrackTitle</td>
+<td class=c>no</td>
+<td>&nbsp;</td></tr>
+<tr class=b>
+<td>'IMG'</td>
+<td>AssociatedImageFile</td>
+<td class=c>no</td>
+<td>&nbsp;</td></tr>
+<tr>
+<td>'IND'</td>
+<td>Indications</td>
+<td class=c>no</td>
+<td>&nbsp;</td></tr>
+<tr class=b>
+<td>'INF'</td>
+<td>AdditionalInfo</td>
+<td class=c>no</td>
+<td>&nbsp;</td></tr>
+<tr>
+<td>'LYR'</td>
+<td>Lyrics</td>
+<td class=c>no</td>
+<td>&nbsp;</td></tr>
+</table></td></tr></table></blockquote>
+
 <hr>
 (This document generated automatically by Image::ExifTool::BuildTagLookup)
-<br><i>Last revised Jun 24, 2015</i>
+<br><i>Last revised Nov 19, 2023</i>
 <p class=lf><a href='index.html'>&lt;-- ExifTool Tag Names</a></p>
 </body>
 </html>

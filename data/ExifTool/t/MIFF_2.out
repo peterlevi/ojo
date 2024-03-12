@@ -1,11 +1,11 @@
-[ExifTool, ExifTool, ExifTool] ExifToolVersion - ExifTool Version Number: 11.78
+[ExifTool, ExifTool, ExifTool] ExifToolVersion - ExifTool Version Number: 12.46
 [File, System, Other] FileName - File Name: MIFF.miff
 [File, System, Other] Directory - Directory: t/images
-[File, System, Other] FileSize - File Size: 3.7 kB
-[File, System, Time] FileModifyDate - File Modification Date/Time: 2019:12:04 10:03:52-05:00
-[File, System, Time] FileAccessDate - File Access Date/Time: 2019:12:04 10:11:39-05:00
-[File, System, Time] FileInodeChangeDate - File Inode Change Date/Time: 2019:12:04 10:03:52-05:00
-[File, System, Other] FilePermissions - File Permissions: rw-r--r--
+[File, System, Other] FileSize - File Size: 3.8 kB
+[File, System, Time] FileModifyDate - File Modification Date/Time: 2019:12:04 21:22:58-05:00
+[File, System, Time] FileAccessDate - File Access Date/Time: 2022:09:19 14:15:40-04:00
+[File, System, Time] FileInodeChangeDate - File Inode Change Date/Time: 2022:09:18 10:49:22-04:00
+[File, System, Other] FilePermissions - File Permissions: -rw-r--r--
 [File, File, Other] FileType - File Type: MIFF
 [File, File, Other] FileTypeExtension - File Type Extension: miff
 [File, File, Other] MIMEType - MIME Type: application/x-magick-image
@@ -45,7 +45,6 @@
 [Photoshop, Photoshop, Image] 1054 - URL List: 
 [Photoshop, Photoshop, Image] 0 - Photoshop Quality: 2
 [Photoshop, Photoshop, Image] 1 - Photoshop Format: Standard
-[Photoshop, Photoshop, Image] 2 - Progressive Scans: 3 Scans
 [EXIF, IFD0, Image] 270 - Image Description: A witty caption
 [EXIF, IFD0, Camera] 271 - Make: FUJIFILM
 [EXIF, IFD0, Camera] 272 - Camera Model Name: FinePix2400Zoom
@@ -106,9 +105,9 @@
 [XMP, XMP-xmpMM, Other] DocumentID - Document ID: adobe:docid:photoshop:4cc7b857-69d0-11d8-8ac4-bb59c92f0d9a
 [XMP, XMP-xmpRights, Author] Marked - Marked: False
 [XMP, XMP-xmpRights, Author] WebStatement - Web Statement: https://exiftool.org/
-[Composite, Composite, Image] Exif::Aperture - Aperture: 3.5
-[Composite, Composite, Image] Exif::ImageSize - Image Size: 8x8
-[Composite, Composite, Image] Exif::Megapixels - Megapixels: 0.000064
-[Composite, Composite, Image] Exif::ShutterSpeed - Shutter Speed: 1/64
-[Composite, Composite, Camera] Exif::FocalLength35efl - Focal Length: 6.0 mm
-[Composite, Composite, Image] Exif::LightValue - Light Value: 9.6
+[Composite, Composite, Image] Exif-Aperture - Aperture: 3.5
+[Composite, Composite, Image] Exif-ImageSize - Image Size: 8x8
+[Composite, Composite, Image] Exif-Megapixels - Megapixels: 0.000064
+[Composite, Composite, Image] Exif-ShutterSpeed - Shutter Speed: 1/64
+[Composite, Composite, Camera] Exif-FocalLength35efl - Focal Length: 6.0 mm
+[Composite, Composite, Image] Exif-LightValue - Light Value: 9.6
