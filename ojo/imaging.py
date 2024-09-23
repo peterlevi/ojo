@@ -187,7 +187,7 @@ def get_pixbuf(filename, width=None, height=None):
 
     def _from_gdk_pixbuf():
         try:
-            pixbuf = GdkPixbuf.Pixbuf.new_from_file(filename)
+            pixbuf = pixbuf_from_file(filename)
             pixbuf = auto_rotate_pixbuf(orientation, pixbuf)
             logging.debug("Loaded directly")
             return pixbuf
@@ -196,8 +196,10 @@ def get_pixbuf(filename, width=None, height=None):
 
     def _from_pil():
         try:
-            pixbuf = pil_to_pixbuf(get_pil(filename))
+            pil = get_pil(filename)
+            pixbuf = pil_to_pixbuf(pil)
             logging.debug("Loaded with PIL")
+            pil.close()
             return pixbuf
         except:
             return None
@@ -237,7 +239,7 @@ def get_pixbuf(filename, width=None, height=None):
 
 
 def thumbnail(filename, thumb_path, width, height):
-    _, tmp_thumb_path = tempfile.mkstemp(prefix="ojo_thumbnail_")
+    temp_fd, tmp_thumb_path = tempfile.mkstemp(prefix="ojo_thumbnail_")
 
     def use_pil():
         pil = get_pil(filename, width, height)
@@ -246,6 +248,8 @@ def thumbnail(filename, thumb_path, width, height):
         except Exception:
             logging.exception("Could not save thumbnail in format %s:" % format)
             raise
+        finally:
+            pil.close()
 
     def use_pixbuf():
         pixbuf = get_pixbuf(filename, width, height)
@@ -267,6 +271,7 @@ def thumbnail(filename, thumb_path, width, height):
             use_pixbuf()
 
     os.rename(tmp_thumb_path, thumb_path)
+    os.close(temp_fd)
 
     return filename, thumb_path
 
@@ -320,15 +325,17 @@ def folder_thumbnail(folder, thumb_path, width, height, kill_event):
             if total_width + MARGIN + w > MAX_WIDTH + 100:
                 break
             image.paste(fthumb_image, (total_width, 0, total_width + w, h))
+            fthumb_image.close()
             total_width += MARGIN + w
         except Exception:
             logging.exception("folder_thumbnail: Failed thumbing %s" % f)
 
     if total_width > 0:
         image = image.crop((0, 0, min(MAX_WIDTH, total_width), THUMB_HEIGHT))
-        _, tmp_thumb_path = tempfile.mkstemp(prefix="ojo_folder_thumbnail_")
+        fd, tmp_thumb_path = tempfile.mkstemp(prefix="ojo_folder_thumbnail_")
         image.save(tmp_thumb_path, "PNG")
         os.rename(tmp_thumb_path, thumb_path)
+        os.close(fd)
 
     return folder, thumb_path
 
@@ -468,8 +475,8 @@ def get_size_via_pixbuf(image):
         return image_width, image_height
     else:
         try:
-            im = Image.open(image)
-            return im.size
+            with Image.open(image) as im:
+                return im.size
         except:
             raise Exception("Not an image or unsupported image format")
 
