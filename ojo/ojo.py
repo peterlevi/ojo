@@ -1053,10 +1053,11 @@ class Ojo:
         places = self.places.get_places()
         places_items = []
         for place in places:
-            not_mounted = place.get("not_mounted", False)
-            can_unmount = place.get("can_unmount", False)
+            item = None
+            can_mount = place.get("not_mounted", False) and place.get("mount_id")
+            can_unmount = place.get("can_unmount", False) and place.get("unmount_id")
 
-            if not_mounted:
+            if can_mount:
                 command = "command:mount_and_go:" + place["mount_id"]
                 item = self.get_command_item(
                     command=command,
@@ -1065,26 +1066,26 @@ class Ojo:
                     label=place["label"],
                     icon=place["icon"],
                 )
-            else:
+                item["with_command"] = {
+                    "command": "ojo-mount:" + place["mount_id"],
+                    "label": "Mount",
+                }
+            elif place.get("path"):
                 item = self.get_folder_item(
                     path=place["path"],
                     group="Places",
                     label=place["label"],
                     icon=place["icon"],
                 )
+                if can_unmount:
+                    item["with_command"] = {
+                        "command": "ojo-unmount:" + place["unmount_id"],
+                        "label": "Unmount",
+                    }
 
-            if not_mounted:
-                item["with_command"] = {
-                    "command": "ojo-mount:" + place["mount_id"],
-                    "label": "Mount",
-                }
-            elif can_unmount:
-                item["with_command"] = {
-                    "command": "ojo-unmount:" + place["unmount_id"],
-                    "label": "Unmount",
-                }
-            item["filename"] = place["label"]
-            places_items.append(item)
+            if item:
+                item["filename"] = place["label"]
+                places_items.append(item)
 
         return {"label": "Places", "items": places_items}
 
